@@ -96,7 +96,10 @@ function calculateTrueCost(techName, onsiteHrs, travelHrs, miles, partsCost, con
   const travelCost = miles * CONFIG.FUEL_PER_MILE;
   const overheadPerJob = getMonthlyOverhead() / (CONFIG.JOBS_PER_WEEK * CONFIG.WEEKS_PER_YEAR / 12);
 
-  const trueCost = laborCost + travelCost + (partsCost || 0) + (consumables || 0) + overheadPerJob;
+  const qaCost = CONFIG.QA_COST_PER_JOB;
+  const adminCost = CONFIG.ADMIN_MGMT_SW_PER_JOB;
+  const riskBuffer = CONFIG.RISK_BUFFER;
+  const trueCost = laborCost + travelCost + (partsCost || 0) + (consumables || 0) + qaCost + adminCost + riskBuffer + overheadPerJob;
 
   return {
     techRate: rate,
@@ -104,6 +107,9 @@ function calculateTrueCost(techName, onsiteHrs, travelHrs, miles, partsCost, con
     travelCost: travelCost,
     partsCost: partsCost || 0,
     consumables: consumables || 0,
+    qaCost: qaCost,
+    adminCost: adminCost,
+    riskBuffer: riskBuffer,
     overheadAlloc: overheadPerJob,
     trueCost: trueCost,
   };

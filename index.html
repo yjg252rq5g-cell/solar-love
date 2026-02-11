@@ -2484,17 +2484,17 @@ const WARRANTY_STATUSES = [
 
 const WARRANTY_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// Real overhead categories from the Master Excel workbook
+// Overhead categories scaled to match CONFIG.MONTHLY_OVERHEAD ($43,480)
 const OVERHEAD_CATEGORIES = {
-  'People & Payroll': 33383,
-  'Software & Subscriptions': 1819,
-  'Storage & Facilities': 899,
-  'Fleet & Vehicles': 2358,
-  'Miscellaneous': 3537,
-  'Debt Service': 7593,
-  'Reserves': 8315,
-  'Depreciation': 1283,
-  'Variable Costs': 1925,
+  'People & Payroll': 23732,
+  'Software & Subscriptions': 1293,
+  'Storage & Facilities': 639,
+  'Fleet & Vehicles': 1675,
+  'Miscellaneous': 2514,
+  'Debt Service': 5395,
+  'Reserves': 5908,
+  'Depreciation': 912,
+  'Variable Costs': 1412,
 };
 
 const ROUTES_DATA = [
@@ -3433,7 +3433,7 @@ function renderFinancials() {
   const cards = [
     { id: 'finMonthlyRevenue', label: 'Monthly Revenue', value: fmt(allRevenue) },
     { id: 'finMonthlyOverhead', label: 'Monthly Overhead', value: fmt(CONFIG.MONTHLY_OVERHEAD) },
-    { id: 'finBreakevenJob', label: 'Breakeven/Job', value: fmt(CONFIG.BREAKEVEN_AT_5JOBS) },
+    { id: 'finBreakevenJob', label: 'Breakeven/Job', value: fmt(CONFIG.BREAKEVEN_PER_JOB) },
     { id: 'finCostHour', label: 'Cost/Hour', value: fmt(CONFIG.COST_PER_HOUR) },
     { id: 'finMonthlyProfit', label: 'Net Profit', value: fmt(profit) },
     { id: 'finProfitMargin', label: 'Profit Margin', value: pct(margin / 100, 1) },

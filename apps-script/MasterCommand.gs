@@ -170,7 +170,7 @@ function writeRoutes(routes, s) {
     const techName = s.getTechForRoute(rid);
     const hourlyRate = s.getTechRate(techName);
 
-    let mapUrl = `http://googleusercontent.com/maps.google.com/dir/${s.depotLat},${s.depotLng}`;
+    let mapUrl = `https://www.google.com/maps/dir/${s.depotLat},${s.depotLng}`;
     route.forEach(rStop => { mapUrl += `/${rStop.lat},${rStop.lng}`; });
     mapUrl += `/${s.depotLat},${s.depotLng}/`; 
 

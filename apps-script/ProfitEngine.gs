@@ -11,7 +11,7 @@
  */
 
 // --- GLOBAL CONFIGURATION & CONSTANTS ---
-var TECH_RATE_DEFAULT = 40.63; 
+var TECH_RATE_DEFAULT = 30;
 var AVG_MPH = 55; 
 var JOB_LOG_SHEET = 'Job_Log';
 var PERSONNEL_SHEET = 'Personnel';
@@ -194,14 +194,18 @@ function generateQuote(data) {
   const qaFee = 85.00; // Flat Fee Per Job [cite: 8]
   const adminFee = 315.00; // Flat Fee Per Job 
   
-  // Full Tech Roster Burden Mapping [cite: 13]
+  // Full Tech Roster Burden Mapping (synced with Code.gs TECH_RATES)
   const techBurdens = {
-    "Sam": 28.25,
-    "Lucas": 23.25,
-    "Caden": 31.50,
-    "Lex": 45.00
+    "Sam": 32.50,
+    "Lucas": 26.00,
+    "Katie": 26.00,
+    "Spencer": 52.00,
+    "Lex": 39.00,
+    "Caden": 37.51,
+    "Jen": 19.50,
+    "Andrew": 32.50
   };
-  const selectedBurden = techBurdens[data.tech] || TECH_RATE_DEFAULT;
+  const selectedBurden = techBurdens[data.tech] || 30;
 
   // Calculation Logic
   const hours = parseFloat(data.hours) || 0;
@@ -236,9 +240,8 @@ function showSidebar() {
       .setTitle('Akino Platinum V10')
       .setWidth(320);
   
-  // High-Tech Logic: Targets the specific title and card to hide it from the UI
-  // Note: Toggle this line on/off to hide/show the qualitative section
-  html.append('<style>.card:has(> .title:contains("High-Tech Job Options")) { display: none !important; }</style>');
+  // Hide the qualitative section via supported CSS
+  html.append('<style>.card-qualitative { display: none !important; }</style>');
   
   SpreadsheetApp.getUi().showSidebar(html);
 }
