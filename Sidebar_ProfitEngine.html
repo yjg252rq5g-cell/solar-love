@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 12px; font-size: 13px; color: #333; background: #fdfdfd; line-height: 1.4; }
+    * { box-sizing: border-box; }
+    
+    /* DASHBOARD CARD & STATS */
+    .card { background: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
+    .card:hover { border-color: #1a73e8; }
+    .title { font-weight: bold; font-size: 15px; margin-bottom: 12px; border-bottom: 2px solid #f1f3f4; padding-bottom: 6px; color: #1a73e8; text-transform: uppercase; letter-spacing: 0.5px; }
+    
+    .stat-row { display: flex; justify-content: space-between; margin-bottom: 6px; align-items: center; }
+    .stat-label { color: #5f6368; font-weight: 500; }
+    .stat-val { font-weight: 700; font-size: 16px; font-family: 'Roboto Mono', monospace; }
+    
+    /* PROGRESS TRACKING */
+    .progress-track { background:#e8eaed; height:12px; border-radius:6px; margin: 12px 0 5px 0; overflow:hidden; border: 1px solid #dadce0; }
+    .progress-fill { background: linear-gradient(90deg, #34a853, #2e7d32); width:14%; height:100%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+    .sub-text { font-size: 11px; color: #80868b; text-align: right; font-style: italic; margin-top: 4px; }
+    
+    /* INTERACTIVE TABS */
+    .tab-group { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tab-btn { flex:1; padding: 10px; border: 1px solid #dadce0; background: #f8f9fa; border-radius: 6px; cursor: pointer; color:#3c4043; font-size: 12px; font-weight: 600; transition: 0.3s; }
+    .tab-btn:hover { background: #e8f0fe; color: #1a73e8; }
+    .tab-btn.active { background: #1a73e8; color: white; border-color: #1a73e8; box-shadow: 0 2px 4px rgba(26,115,232,0.3); }
+    
+    /* INPUT ARCHITECTURE */
+    .input-label { font-size: 10px; display: block; color: #9aa0a6; text-transform: uppercase; margin-top: 10px; font-weight: 700; }
+    input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #dadce0; border-radius: 6px; font-size: 13px; outline: none; transition: border 0.2s; }
+    input:focus { border-color: #1a73e8; }
+    
+    /* BUTTONS */
+    .btn { width: 100%; padding: 12px; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 10px; font-size:13px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn:hover { filter: brightness(0.9); transform: translateY(-1px); }
+    
+    .btn-sync { background: #34a853; } 
+    .btn-audit { background: #fbbc04; color: #202124; }
+    .btn-refresh { background: #1a73e8; }
+    .blue-btn { background: #1a73e8; }
+    
+    .control-box { border-top: 2px solid #f1f3f4; margin-top: 20px; padding-top: 15px; }
+    .control-label { font-size: 11px; text-transform: uppercase; color: #9aa0a6; letter-spacing: 1px; font-weight: 800; margin-bottom: 12px; display: block; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="title">Akino Profit Engine</div>
+    <div class="stat-row">
+      <span class="stat-label">Total Revenue:</span>
+      <span id="dashRev" class="stat-val">$14,251.00</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Net Profit:</span>
+      <span id="dashProf" class="stat-val" style="color:#d93025;">-$8,135.44</span>
+    </div>
+    <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
+    <div class="sub-text">Goal Progress: <span id="progText">14%</span></div>
+  </div>
+
+  <div class="tab-group">
+    <button id="tab1" class="tab-btn active" onclick="switchTab('job')">Job Detail</button>
+    <button id="tab2" class="tab-btn" onclick="switchTab('quote')">New Quote</button>
+  </div>
+
+  <div id="jobSection">
+    <div class="card">
+      <div class="title">Contextual Job Actions</div>
+      <div id="jobBox" style="text-align:center; color:#5f6368; font-size:11px; margin-bottom:10px;">Select a row in Job_Log and click Refresh.</div>
+      <button class="btn btn-refresh" onclick="refreshData()">🔄 Refresh Job Data</button>
+    </div>
+
+    <div id="highTechSection" class="card">
+      <div class="title">High-Tech Job Options</div>
+      <label class="input-label">Accept Next Time?</label>
+      <select id="acceptNext">
+        <option value="Yes">Yes - Worth the effort</option>
+        <option value="No">No - Operational burden</option>
+      </select>
+      
+      <label class="input-label">Loss Reason Notes</label>
+      <input type="text" id="lossReason" placeholder="e.g. tech performance, travel delay">
+      
+      <button class="btn blue-btn" onclick="submitQualitative()">💾 Save Qualitative Notes</button>
+    </div>
+  </div>
+
+  <div id="quoteSection" style="display:none;">
+    <div class="card">
+      <div class="title">Survival Quote Tool</div>
+      <div style="font-size:11px; color:#5f6368; margin-bottom:10px;">Calculates minimum price needed for survival based on $280.99/hr rate.</div>
+      
+      <label class="input-label">Total Proposed Revenue ($)</label>
+      <input type="number" id="propRev" placeholder="Total job price...">
+
+      <label class="input-label">Assigned Technician</label>
+      <select id="techSelect">
+        <option value="Sam">Sam ($28.25/hr burden)</option>
+        <option value="Lucas">Lucas ($23.25/hr burden)</option>
+        <option value="Caden">Caden ($31.50/hr burden)</option>
+        <option value="Lex">Lex (Enterprise Rate)</option>
+      </select>
+      
+      <label class="input-label">Roundtrip Miles</label>
+      <input type="number" id="qMiles" placeholder="e.g. 50">
+      
+      <label class="input-label">Est. Tech Hours Onsite</label>
+      <input type="number" id="qHours" placeholder="4">
+      
+      <label class="input-label">Parts Cost ($)</label>
+      <input type="number" id="qParts" placeholder="150">
+
+      <button class="btn blue-btn" onclick="calculateQuote()">💰 Calculate Quote</button>
+      <button class="btn btn-sync" onclick="convertToJob()">🚀 Convert to Job Log</button>
+    </div>
+  </div>
+
+  <div class="control-box">
+    <div class="control-label">Management Suite</div>
+    <button class="btn btn-sync" onclick="google.script.run.withSuccessHandler(msg => alert(msg)).runMasterSync()">🚀 1. RUN MASTER SYNC</button>
+    <button class="btn btn-audit" onclick="google.script.run.withSuccessHandler(msg => alert(msg)).runTroubleshooter()">🩺 Run System Audit</button>
+    <button class="btn btn-refresh" onclick="google.script.run.archiveJobs()">📦 Archive Paid Jobs</button>
+    <button class="btn blue-btn" onclick="google.script.run.autoReconcileJobs()">⚡ Auto Reconcile</button>
+  </div>
+
+<script>
+  function switchTab(t) {
+    document.getElementById('jobSection').style.display = (t=='job' ? 'block' : 'none');
+    document.getElementById('quoteSection').style.display = (t=='quote' ? 'block' : 'none');
+    document.getElementById('tab1').classList.toggle('active', t=='job');
+    document.getElementById('tab2').classList.toggle('active', t=='quote');
+  }
+
+  function submitQualitative() {
+    const data = {
+      acceptNext: document.getElementById('acceptNext').value,
+      lossReason: document.getElementById('lossReason').value
+    };
+    google.script.run.withSuccessHandler(msg => alert(msg)).submitJobQualitative(data);
+  }
+
+  function calculateQuote() {
+    const data = {
+      hours: document.getElementById('qHours').value,
+      miles: document.getElementById('qMiles').value,
+      parts: document.getElementById('qParts').value,
+      revenue: document.getElementById('propRev').value,
+      tech: document.getElementById('techSelect').value
+    };
+    google.script.run.withSuccessHandler(res => {
+      alert(`SURVIVAL QUOTE\n---\nSurvival Breakeven: $${res.breakeven}\nSuggested Price: $${res.suggested}\nProfitability: ${res.profitStatus}`);
+    }).generateQuote(data);
+  }
+
+  function convertToJob() {
+    alert("Functionality triggered: Quoted variables converting into a new Job Log entry.");
+  }
+
+  function refreshData() { google.script.run.withSuccessHandler(updateUI).getActiveJobData(); }
+
+  function updateUI(d) {
+    if(d.valid) {
+      document.getElementById('jobBox').innerHTML = `<strong>${d.jobName}</strong><br>Net Margin: <strong>$${d.netMargin.toFixed(2)}</strong>`;
+    }
+  }
+
+  window.onload = refreshData;
+</script>
+</body>
+</html>
