@@ -1264,7 +1264,7 @@
             <p>Command Center</p>
           </div>
         </div>
-        <div class="sidebar-rate">$43,480/mo</div>
+        <div class="sidebar-rate" id="sidebarOverheadRate">$43,480/mo overhead</div>
       </div>
 
       <div class="sidebar-nav">
@@ -2447,24 +2447,33 @@ const CONFIG = {
   QA_PER_JOB: 85,
   ADMIN_PER_JOB: 315,
   RISK_BUFFER: 100,
-  BREAKEVEN_AT_5JOBS: 2698,
-  COST_PER_HOUR: 250.85,
+  EMPLOYER_BURDEN: 0.30,
+  JOBS_PER_WEEK: 5,
+  WEEKS_PER_YEAR: 52,
+  HOURS_PER_MONTH: 173.33,
   MAX_JOBS_PER_ROUTE: 4,
   REGIONS: ['TN', 'GA', 'KY', 'VA', 'NC'],
   HOURS_PER_WEEK: 40,
   WORK_HOURS_PER_DAY: 8,
 };
 
+// Derived constants (computed once)
+CONFIG.JOBS_PER_MONTH = CONFIG.JOBS_PER_WEEK * CONFIG.WEEKS_PER_YEAR / 12;
+CONFIG.OVERHEAD_PER_JOB = CONFIG.MONTHLY_OVERHEAD / CONFIG.JOBS_PER_MONTH;
+CONFIG.BREAKEVEN_PER_JOB = CONFIG.OVERHEAD_PER_JOB + CONFIG.RISK_BUFFER;
+CONFIG.COST_PER_HOUR = CONFIG.MONTHLY_OVERHEAD / CONFIG.HOURS_PER_MONTH;
+
+// Personnel rates synced with Apps Script backend (hourly * (1 + EMPLOYER_BURDEN))
 const PERSONNEL = [
-  { name: 'Sam', role: 'Technician', loaded: 35.21 },
-  { name: 'Lucas', role: 'Technician', loaded: 28.17 },
-  { name: 'Katie', role: 'Technician', loaded: 28.17 },
-  { name: 'Spencer', role: 'Lead Tech', loaded: 56.33 },
-  { name: 'Lex', role: 'Technician', loaded: 42.25 },
-  { name: 'Caden', role: 'Manager', loaded: 40.63 },
-  { name: 'Jen', role: 'Admin', loaded: 5.28 },
-  { name: 'Andrew', role: 'Technician', loaded: 32.50 },
-  { name: 'QA', role: 'QA Lead', loaded: 17.60 },
+  { name: 'Sam', role: 'Technician', hourly: 25, loaded: 32.50 },
+  { name: 'Lucas', role: 'Technician', hourly: 20, loaded: 26.00 },
+  { name: 'Katie', role: 'Technician', hourly: 20, loaded: 26.00 },
+  { name: 'Spencer', role: 'Lead Tech', hourly: 40, loaded: 52.00 },
+  { name: 'Lex', role: 'Technician', hourly: 30, loaded: 39.00 },
+  { name: 'Caden', role: 'Manager', hourly: 28.85, loaded: 37.51 },
+  { name: 'Jen', role: 'Admin', hourly: 15, loaded: 19.50 },
+  { name: 'Andrew', role: 'Technician', hourly: 25, loaded: 32.50 },
+  { name: 'QA', role: 'QA Lead', hourly: 13.54, loaded: 17.60 },
 ];
 
 const WARRANTY_STATUSES = [
@@ -2475,10 +2484,18 @@ const WARRANTY_STATUSES = [
 
 const WARRANTY_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const OVERHEAD_CATEGORIES = [
-  'Facility Rent', 'Utilities', 'Insurance', 'Vehicle Maintenance', 'Office Supplies',
-  'Software & Subscriptions', 'Marketing & Sales', 'Professional Services', 'Other'
-];
+// Real overhead categories from the Master Excel workbook
+const OVERHEAD_CATEGORIES = {
+  'People & Payroll': 33383,
+  'Software & Subscriptions': 1819,
+  'Storage & Facilities': 899,
+  'Fleet & Vehicles': 2358,
+  'Miscellaneous': 3537,
+  'Debt Service': 7593,
+  'Reserves': 8315,
+  'Depreciation': 1283,
+  'Variable Costs': 1925,
+};
 
 const ROUTES_DATA = [
   { id: 'R1', jobs: 4, miles: 372.56, min: 640, val: 400 },
@@ -2545,6 +2562,128 @@ const DataStore = {
     unansweredThreshold: 24,
   },
 };
+
+// ============================================================================
+// DATA PERSISTENCE (localStorage)
+// ============================================================================
+
+function persistData() {
+  try {
+    localStorage.setItem('akino_solar_data', JSON.stringify({
+      jobs: DataStore.jobs,
+      warranty: DataStore.warranty,
+      inventory: DataStore.inventory,
+      settings: DataStore.settings,
+    }));
+  } catch (e) {
+    console.warn('Failed to persist data:', e);
+  }
+}
+
+function loadPersistedData() {
+  try {
+    const saved = localStorage.getItem('akino_solar_data');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.jobs) DataStore.jobs = parsed.jobs;
+      if (parsed.warranty) DataStore.warranty = parsed.warranty;
+      if (parsed.inventory) DataStore.inventory = parsed.inventory;
+      if (parsed.settings) Object.assign(DataStore.settings, parsed.settings);
+      return true;
+    }
+  } catch (e) {
+    console.warn('Failed to load persisted data:', e);
+  }
+  return false;
+}
+
+// ============================================================================
+// APPS SCRIPT BACKEND CONNECTION
+// ============================================================================
+
+async function fetchFromBackend(action, params = {}) {
+  const url = DataStore.settings.appsScriptUrl;
+  if (!url) return null;
+
+  try {
+    const query = new URLSearchParams({ action, ...params });
+    const res = await fetch(`${url}?${query}`);
+    const data = await res.json();
+    if (data.error) {
+      console.error('Backend error:', data.error);
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.error('Backend fetch failed:', e);
+    return null;
+  }
+}
+
+async function postToBackend(action, payload = {}) {
+  const url = DataStore.settings.appsScriptUrl;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('Backend post failed:', e);
+    return null;
+  }
+}
+
+async function syncWithBackend() {
+  if (!DataStore.settings.appsScriptUrl) {
+    toast('Set Apps Script URL in Settings to enable sync', 'warning');
+    return;
+  }
+
+  toast('Syncing with backend...', 'info');
+
+  const [jobs, warranty, personnel, routes] = await Promise.all([
+    fetchFromBackend('jobs'),
+    fetchFromBackend('warranty'),
+    fetchFromBackend('personnel'),
+    fetchFromBackend('routes'),
+  ]);
+
+  if (jobs) DataStore.jobs = jobs.map(j => ({
+    date: j.routeDate || '',
+    id: String(j.jobId || ''),
+    customer: j.customer || '',
+    city: j.city || '',
+    state: j.state || '',
+    zip: j.zip || '',
+    priority: j.priority || 'Medium',
+    tech: j.tech || '',
+    type: 'Service',
+    onsite: 2,
+    travel: 1,
+    miles: 0,
+    parts: 0,
+    consumables: 0,
+    revenue: j.revenue || 0,
+    wcase: '',
+    wstatus: '',
+    notes: j.notes || '',
+    flags: [],
+    status: 'scheduled',
+    route: '',
+    routeDate: j.routeDate || '',
+    requested: j.requestedDate || '',
+  }));
+
+  if (warranty) DataStore.warranty = warranty;
+
+  persistData();
+  toast('Sync complete!', 'success');
+  switchTab('dashboard');
+}
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -2635,7 +2774,7 @@ function calcJobCost(job) {
   const travelCost = (job.miles || 0) * CONFIG.FUEL_PER_MILE;
   const parts = job.parts || 0;
   const consumables = job.consumables || 0;
-  const overhead = CONFIG.MONTHLY_OVERHEAD / (CONFIG.MAX_JOBS_PER_ROUTE * 4.33); // ~jobs per week * weeks per month
+  const overhead = CONFIG.OVERHEAD_PER_JOB;
 
   const total = labor + travelCost + parts + consumables + CONFIG.QA_PER_JOB + CONFIG.ADMIN_PER_JOB + CONFIG.RISK_BUFFER + overhead;
   const profit = (job.revenue || 0) - total;
@@ -2675,25 +2814,27 @@ function destroyChart(chartId) {
 
 function switchTab(tabName) {
   // Hide all tab contents
-  document.querySelectorAll('[data-tab-content]').forEach(el => {
+  document.querySelectorAll('.tab-content').forEach(el => {
     el.style.display = 'none';
+    el.classList.remove('active');
   });
 
   // Deactivate all nav items
-  document.querySelectorAll('[data-nav-item]').forEach(el => {
-    el.classList.remove('nav-item-active');
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.remove('active');
   });
 
   // Show selected tab
-  const tabContent = document.querySelector(`[data-tab-content="${tabName}"]`);
+  const tabContent = document.getElementById(`tab-${tabName}`);
   if (tabContent) {
     tabContent.style.display = 'block';
+    tabContent.classList.add('active');
   }
 
   // Activate nav item
-  const navItem = document.querySelector(`[data-nav-item="${tabName}"]`);
+  const navItem = document.querySelector(`.nav-item[data-tab="${tabName}"]`);
   if (navItem) {
-    navItem.classList.add('nav-item-active');
+    navItem.classList.add('active');
   }
 
   // Update current tab name
@@ -2707,22 +2848,25 @@ function switchTab(tabName) {
       inventory: 'Inventory',
       technicians: 'Technicians',
       financials: 'Financials',
-      email: 'Email',
+      'email-monitor': 'Email Monitor',
       settings: 'Settings',
     };
     nameEl.textContent = labels[tabName] || tabName;
   }
 
   // Render tab-specific content
-  if (tabName === 'dashboard') renderDashboard();
-  if (tabName === 'jobs') renderJobs();
-  if (tabName === 'routes') renderRoutes();
-  if (tabName === 'warranty') renderWarranty();
-  if (tabName === 'inventory') renderInventory();
-  if (tabName === 'technicians') renderTechnicians();
-  if (tabName === 'financials') renderFinancials();
-  if (tabName === 'email') renderEmail();
-  if (tabName === 'settings') renderSettings();
+  const renderers = {
+    dashboard: renderDashboard,
+    jobs: renderJobs,
+    routes: renderRoutes,
+    warranty: renderWarranty,
+    inventory: renderInventory,
+    technicians: renderTechnicians,
+    financials: renderFinancials,
+    'email-monitor': renderEmail,
+    settings: renderSettings,
+  };
+  if (renderers[tabName]) renderers[tabName]();
 }
 
 // ============================================================================
@@ -2946,6 +3090,7 @@ function editJob(jobId) {
 function deleteJob(jobId) {
   if (!confirm('Delete this job?')) return;
   DataStore.jobs = DataStore.jobs.filter(j => j.id !== jobId);
+  persistData();
   toast('Job deleted', 'success');
   renderJobs();
 }
@@ -2955,11 +3100,6 @@ function saveJob() {
   if (!modal) return;
 
   const jobId = modal.dataset.editingId;
-  if (!jobId) return;
-
-  const job = DataStore.jobs.find(j => j.id === jobId);
-  if (!job) return;
-
   const fields = {
     customer: 'jobModalCustomer',
     city: 'jobModalCity',
@@ -2972,15 +3112,48 @@ function saveJob() {
     notes: 'jobModalNotes',
   };
 
-  Object.entries(fields).forEach(([key, fieldId]) => {
-    const el = document.getElementById(fieldId);
-    if (el) {
-      job[key] = key === 'revenue' ? parseFloat(el.value) || 0 : el.value;
-    }
-  });
+  if (jobId) {
+    // Edit existing job
+    const job = DataStore.jobs.find(j => j.id === jobId);
+    if (!job) return;
+    Object.entries(fields).forEach(([key, fieldId]) => {
+      const el = document.getElementById(fieldId);
+      if (el) {
+        job[key] = key === 'revenue' ? parseFloat(el.value) || 0 : el.value;
+      }
+    });
+    toast('Job updated', 'success');
+  } else {
+    // Create new job
+    const newJob = {
+      date: dateStr(new Date()),
+      id: String(Date.now()).slice(-6),
+      priority: 'Medium',
+      onsite: 2,
+      travel: 1,
+      miles: 0,
+      parts: 0,
+      consumables: 0,
+      wcase: '',
+      wstatus: '',
+      flags: [],
+      route: '',
+      requested: dateStr(new Date()),
+    };
+    Object.entries(fields).forEach(([key, fieldId]) => {
+      const el = document.getElementById(fieldId);
+      if (el) {
+        newJob[key] = key === 'revenue' ? parseFloat(el.value) || 0 : el.value;
+      }
+    });
+    newJob.status = newJob.status || 'scheduled';
+    newJob.type = newJob.type || 'Service';
+    DataStore.jobs.push(newJob);
+    toast('Job created', 'success');
+  }
 
+  persistData();
   hideModal('jobModal');
-  toast('Job saved', 'success');
   renderJobs();
 }
 
@@ -3326,7 +3499,7 @@ function calculateTrueCost() {
   const rate = getPersonnelByName(tech)?.loaded || 30;
   const labor = (onsite + travel) * rate;
   const travelCost = miles * CONFIG.FUEL_PER_MILE;
-  const overhead = CONFIG.MONTHLY_OVERHEAD / (CONFIG.MAX_JOBS_PER_ROUTE * 4.33);
+  const overhead = CONFIG.OVERHEAD_PER_JOB;
 
   const costs = {
     labor,
@@ -3492,7 +3665,7 @@ function renderBreakevenScenarios() {
       perJob: perJob.toFixed(2),
       be: be.toFixed(2),
       cph: cph.toFixed(2),
-      isCurrent: jpw === 5,
+      isCurrent: jpw === CONFIG.JOBS_PER_WEEK,
     };
   });
 
@@ -3526,7 +3699,7 @@ function renderBreakevenScenarios() {
         </tbody>
       </table>
     </div>
-    <div style="margin-top:8px;font-size:12px;color:#666;">Current scenario (5 jobs/week) is highlighted in blue.</div>
+    <div style="margin-top:8px;font-size:12px;color:#666;">Current scenario (${CONFIG.JOBS_PER_WEEK} jobs/week) is highlighted in blue.</div>
   `;
 }
 
@@ -3566,17 +3739,16 @@ function renderFinancialCharts() {
     });
   }
 
-  // Overhead Categories
+  // Overhead Categories (real data from Master workbook)
   const overheadCtx = document.getElementById('overheadChart');
   if (overheadCtx) {
     destroyChart('overheadChart');
-    const categoryValues = OVERHEAD_CATEGORIES.map((_, i) => CONFIG.MONTHLY_OVERHEAD / OVERHEAD_CATEGORIES.length);
     charts.overheadChart = new Chart(overheadCtx, {
       type: 'doughnut',
       data: {
-        labels: OVERHEAD_CATEGORIES,
+        labels: Object.keys(OVERHEAD_CATEGORIES),
         datasets: [{
-          data: categoryValues,
+          data: Object.values(OVERHEAD_CATEGORIES),
           backgroundColor: ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe', '#16a34a', '#10b981', '#34d399', '#6ee7b7'],
         }],
       },
@@ -3591,8 +3763,8 @@ function renderFinancialCharts() {
 
 function renderEmail() {
   const unansweredList = document.getElementById('unansweredList');
-  if (!unansweredList) {
-    unansweredList.innerHTML = `<div style="padding:24px;text-align:center;color:#666;">No unanswered emails.</div>`;
+  if (unansweredList) {
+    unansweredList.innerHTML = `<div style="padding:24px;text-align:center;color:#666;">No unanswered emails. Connect Apps Script URL in Settings to enable email monitoring.</div>`;
   }
 }
 
@@ -3665,6 +3837,7 @@ function saveSettings() {
     }
   });
 
+  persistData();
   toast('Settings saved', 'success');
 }
 
@@ -3676,18 +3849,82 @@ function initClaudeSidebar() {
   const fab = document.getElementById('claudeFab');
   const sidebar = document.getElementById('claudeSidebar');
   const closeBtn = document.getElementById('claudeClose');
+  const sendBtn = document.getElementById('claudeSend');
+  const input = document.getElementById('claudeInput');
+  const chatContainer = document.getElementById('claudeChat');
 
   if (fab && sidebar) {
     fab.addEventListener('click', () => {
-      sidebar.style.display = sidebar.style.display === 'none' ? 'flex' : 'none';
+      const isOpen = sidebar.style.right === '0px';
+      sidebar.style.right = isOpen ? '-400px' : '0px';
     });
   }
 
   if (closeBtn && sidebar) {
     closeBtn.addEventListener('click', () => {
-      sidebar.style.display = 'none';
+      sidebar.style.right = '-400px';
     });
   }
+
+  // Claude tab switching
+  document.querySelectorAll('.claude-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.claude-tab').forEach(t => {
+        t.classList.remove('active');
+        t.style.borderBottomColor = 'transparent';
+        t.style.color = '#6b7280';
+      });
+      tab.classList.add('active');
+      tab.style.borderBottomColor = '#1F4E79';
+      tab.style.color = '#1F4E79';
+    });
+  });
+
+  // Claude chat send
+  function sendClaudeMessage() {
+    if (!input || !chatContainer) return;
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    // Add user message
+    const userBubble = document.createElement('div');
+    userBubble.className = 'claude-message';
+    userBubble.textContent = msg;
+    chatContainer.appendChild(userBubble);
+
+    // Simulate response
+    const assistantBubble = document.createElement('div');
+    assistantBubble.className = 'claude-message assistant';
+    assistantBubble.textContent = getClaudeResponse(msg);
+    chatContainer.appendChild(assistantBubble);
+
+    input.value = '';
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  if (sendBtn) sendBtn.addEventListener('click', sendClaudeMessage);
+  if (input) input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendClaudeMessage();
+  });
+}
+
+function getClaudeResponse(msg) {
+  const lower = msg.toLowerCase();
+  if (lower.includes('breakeven') || lower.includes('break even')) {
+    return `At ${CONFIG.JOBS_PER_WEEK} jobs/week (${CONFIG.JOBS_PER_MONTH.toFixed(1)}/month), overhead per job is ${fmt(CONFIG.OVERHEAD_PER_JOB)}. Breakeven per job: ${fmt(CONFIG.BREAKEVEN_PER_JOB)}.`;
+  }
+  if (lower.includes('overhead')) {
+    return `Monthly overhead: ${fmt(CONFIG.MONTHLY_OVERHEAD)}. At ${CONFIG.JOBS_PER_WEEK} jobs/week, that's ${fmt(CONFIG.OVERHEAD_PER_JOB)} per job. Cost per hour: ${fmt(CONFIG.COST_PER_HOUR)}.`;
+  }
+  if (lower.includes('profit') || lower.includes('revenue')) {
+    const allRevenue = DataStore.jobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
+    const allCost = DataStore.jobs.reduce((sum, j) => sum + calcJobCost(j).total, 0);
+    return `Total revenue: ${fmt(allRevenue)}. Total cost: ${fmt(allCost)}. Net profit: ${fmt(allRevenue - allCost)}. Margin: ${pct((allRevenue - allCost) / allRevenue)}.`;
+  }
+  if (lower.includes('job') && lower.includes('count')) {
+    return `${DataStore.jobs.length} total jobs. ${DataStore.jobs.filter(j => j.status === 'completed').length} completed, ${DataStore.jobs.filter(j => j.status === 'in-progress').length} in progress, ${DataStore.jobs.filter(j => j.status === 'scheduled').length} scheduled.`;
+  }
+  return `I can help with breakeven analysis, overhead calculations, profit reports, and job counts. Try asking about any of those topics.`;
 }
 
 // ============================================================================
@@ -3695,11 +3932,49 @@ function initClaudeSidebar() {
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Initialize tabs
-  const navItems = document.querySelectorAll('[data-nav-item]');
+  // Load persisted data (if any)
+  loadPersistedData();
+
+  // Login handling
+  const loginForm = document.getElementById('loginForm');
+  const loginContainer = document.getElementById('loginContainer');
+  const appContainer = document.getElementById('appContainer');
+  const demoModeBtn = document.getElementById('demoModeBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  function doLogin() {
+    if (loginContainer) loginContainer.style.display = 'none';
+    if (appContainer) appContainer.style.display = 'flex';
+    localStorage.setItem('akino_logged_in', 'true');
+    switchTab('dashboard');
+  }
+
+  function doLogout() {
+    if (loginContainer) loginContainer.style.display = 'flex';
+    if (appContainer) appContainer.style.display = 'none';
+    localStorage.removeItem('akino_logged_in');
+  }
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      doLogin();
+    });
+  }
+
+  if (demoModeBtn) demoModeBtn.addEventListener('click', doLogin);
+  if (logoutBtn) logoutBtn.addEventListener('click', doLogout);
+
+  // Auto-login if session persists
+  if (localStorage.getItem('akino_logged_in') === 'true') {
+    doLogin();
+  }
+
+  // Initialize tab navigation
+  const navItems = document.querySelectorAll('.nav-item[data-tab]');
   navItems.forEach(item => {
     item.addEventListener('click', () => {
-      const tab = item.dataset.navItem;
+      const tab = item.dataset.tab;
       switchTab(tab);
     });
   });
@@ -3709,7 +3984,16 @@ document.addEventListener('DOMContentLoaded', () => {
   if (addJobBtn) {
     addJobBtn.addEventListener('click', () => {
       const modal = document.getElementById('jobModal');
-      if (modal) modal.dataset.editingId = '';
+      if (modal) {
+        modal.dataset.editingId = '';
+        // Clear form fields for new job
+        ['jobModalCustomer', 'jobModalCity', 'jobModalState', 'jobModalTech',
+         'jobModalStatus', 'jobModalService', 'jobModalRevenue', 'jobModalScheduled',
+         'jobModalNotes'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+      }
       showModal('jobModal');
     });
   }
@@ -3726,12 +4010,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const calculateBtn = document.getElementById('calculateBtn');
   if (calculateBtn) calculateBtn.addEventListener('click', calculateTrueCost);
 
-  // Hamburger menu
+  // Sync button
+  const syncBtn = document.getElementById('syncBackendBtn');
+  if (syncBtn) syncBtn.addEventListener('click', syncWithBackend);
+
+  // Hamburger menu (mobile)
   const hamburger = document.getElementById('hamburgerMenu');
   const sidebar = document.getElementById('navSidebar');
   if (hamburger && sidebar) {
     hamburger.addEventListener('click', () => {
-      sidebar.style.display = sidebar.style.display === 'none' || sidebar.style.display === '' ? 'block' : 'none';
+      sidebar.classList.toggle('mobile-hidden');
+      sidebar.classList.toggle('active');
     });
   }
 
@@ -3776,6 +4065,7 @@ function importData(file) {
     try {
       const imported = JSON.parse(e.target.result);
       Object.assign(DataStore, imported);
+      persistData();
       toast('Data imported successfully', 'success');
       switchTab('dashboard');
     } catch (err) {
