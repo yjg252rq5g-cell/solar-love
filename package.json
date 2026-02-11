@@ -1,0 +1,20 @@
+{
+  "name": "solar-love",
+  "version": "10.0.0",
+  "description": "Akino Solar Profit Engine - Google Apps Script project",
+  "private": true,
+  "scripts": {
+    "test": "node node_modules/jest/bin/jest.js",
+    "test:watch": "node node_modules/jest/bin/jest.js --watch",
+    "push": "node node_modules/@google/clasp/src/index.js push",
+    "pull": "node node_modules/@google/clasp/src/index.js pull",
+    "open": "node node_modules/@google/clasp/src/index.js open",
+    "deploy": "node node_modules/@google/clasp/src/index.js push && node node_modules/@google/clasp/src/index.js deploy"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/types": "^7.29.0",
+    "@google/clasp": "^2.4.2",
+    "jest": "^29.7.0"
+  }
+}

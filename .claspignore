@@ -1,0 +1,8 @@
+node_modules/**
+tests/**
+package.json
+package-lock.json
+jest.config.js
+.git/**
+.gitignore
+CLAUDE.md

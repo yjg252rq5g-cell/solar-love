@@ -39,6 +39,11 @@ function onOpen() {
       .addItem('📦 Archive Completed Jobs', 'archiveJobs')
       .addItem('📊 Generate Profit Report', 'generateReport'))
     .addSeparator()
+    .addSubMenu(ui.createMenu('💳 Reconciliation')
+      .addItem('📥 Import Unreconciled Jobs', 'importUnreconciledJobs')
+      .addItem('🔄 Run Auto-Match', 'runAutoMatch')
+      .addItem('✅ Force Match Selected Row', 'forceMatchSelected'))
+    .addSeparator()
     .addItem('💻 Show Dashboard Sidebar', 'showSidebar')
     .addToUi();
 }
