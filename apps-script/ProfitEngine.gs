@@ -212,10 +212,30 @@ function generateQuote(data) {
   const miles = parseFloat(data.miles) || 0;
   const parts = parseFloat(data.parts) || 0;
   const proposedRev = parseFloat(data.revenue) || 0;
+  const jobDays = parseInt(data.jobDays) || 1;
+  const hotelPerNight = parseFloat(data.hotelPerNight) || 125;
 
-  // Total Job Cost = (Labor Burden + Mileage + Survival Overhead + Parts + Fees)
-  const breakeven = (hours * survivalRate) + (miles * mileRate) + (hours * selectedBurden) + parts + qaFee + adminFee;
-  
+  // Hotel vs Drive-Back Analysis (multi-day jobs)
+  const overnights = jobDays > 1 ? jobDays - 1 : 0;
+  var hotelCost = 0;
+  var driveBackCost = 0;
+  var hotelSavings = 0;
+  var stayOvernight = false;
+
+  if (overnights > 0) {
+    hotelCost = overnights * hotelPerNight;
+    var driveTimeOneWay = miles / AVG_MPH;
+    var extraMileageCost = overnights * (miles * 2) * mileRate;
+    var extraLaborCost = overnights * (driveTimeOneWay * 2) * selectedBurden;
+    driveBackCost = extraMileageCost + extraLaborCost;
+    hotelSavings = driveBackCost - hotelCost;
+    stayOvernight = hotelSavings >= 0;
+  }
+
+  // Total Job Cost = (Labor Burden + Mileage + Survival Overhead + Parts + Fees + Hotel if staying)
+  const hotelAdded = stayOvernight ? hotelCost : 0;
+  const breakeven = (hours * survivalRate) + (miles * mileRate) + (hours * selectedBurden) + parts + qaFee + adminFee + hotelAdded;
+
   // Suggested Price = (Breakeven + 10% Risk Buffer) / Target Net Margin [cite: 9]
   const riskPrice = breakeven * 1.10;
   const suggested = riskPrice / 0.85;
@@ -227,7 +247,14 @@ function generateQuote(data) {
     breakeven: breakeven.toFixed(2),
     suggested: suggested.toFixed(2),
     profitStatus: status,
-    hourlyRate: survivalRate.toFixed(2)
+    hourlyRate: survivalRate.toFixed(2),
+    hotel: overnights > 0 ? {
+      overnights: overnights,
+      hotelCost: hotelCost.toFixed(2),
+      driveBackCost: driveBackCost.toFixed(2),
+      savings: hotelSavings.toFixed(2),
+      recommendation: stayOvernight ? "STAY — saves $" + hotelSavings.toFixed(2) : "DRIVE BACK — cheaper by $" + Math.abs(hotelSavings).toFixed(2)
+    } : null
   };
 }
 

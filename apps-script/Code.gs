@@ -30,6 +30,9 @@ const CONFIG = {
   WARRANTY_RESERVE_PCT: 0.02,
   MERCHANT_FEE_PCT: 0.0275,
   BAD_DEBT_PCT: 0.01,
+  HOTEL_BUDGET_MIN: 100,
+  HOTEL_BUDGET_MAX: 175,
+  AVG_MPH: 55,
 };
 
 // TECH LOADED RATES
@@ -90,7 +93,7 @@ function getWarrantySS() { return SpreadsheetApp.openById(SHEET_IDS.WARRANTY); }
 // ============================================================================
 // 2. CORE: CALCULATE TRUE COST FOR ANY JOB
 // ============================================================================
-function calculateTrueCost(techName, onsiteHrs, travelHrs, miles, partsCost, consumables) {
+function calculateTrueCost(techName, onsiteHrs, travelHrs, miles, partsCost, consumables, jobDays, hotelPerNight) {
   const rate = TECH_RATES[techName] ? TECH_RATES[techName].loaded : 30;
   const laborCost = (onsiteHrs + travelHrs) * rate;
   const travelCost = miles * CONFIG.FUEL_PER_MILE;
@@ -99,7 +102,27 @@ function calculateTrueCost(techName, onsiteHrs, travelHrs, miles, partsCost, con
   const qaCost = CONFIG.QA_COST_PER_JOB;
   const adminCost = CONFIG.ADMIN_MGMT_SW_PER_JOB;
   const riskBuffer = CONFIG.RISK_BUFFER;
-  const trueCost = laborCost + travelCost + (partsCost || 0) + (consumables || 0) + qaCost + adminCost + riskBuffer + overheadPerJob;
+
+  // Hotel vs drive-back analysis for multi-day jobs
+  var overnights = (jobDays || 1) > 1 ? (jobDays - 1) : 0;
+  var hotelCost = 0;
+  var driveBackCost = 0;
+  var hotelSavings = 0;
+  var stayOvernight = false;
+
+  if (overnights > 0) {
+    var nightRate = Math.min(Math.max(hotelPerNight || 125, CONFIG.HOTEL_BUDGET_MIN), CONFIG.HOTEL_BUDGET_MAX);
+    hotelCost = overnights * nightRate;
+    var driveTimeOneWay = miles / CONFIG.AVG_MPH;
+    var extraMileageCost = overnights * (miles * 2) * CONFIG.FUEL_PER_MILE;
+    var extraLaborCost = overnights * (driveTimeOneWay * 2) * rate;
+    driveBackCost = extraMileageCost + extraLaborCost;
+    hotelSavings = driveBackCost - hotelCost;
+    stayOvernight = hotelSavings >= 0;
+  }
+
+  var hotelAdded = stayOvernight ? hotelCost : 0;
+  const trueCost = laborCost + travelCost + (partsCost || 0) + (consumables || 0) + qaCost + adminCost + riskBuffer + overheadPerJob + hotelAdded;
 
   return {
     techRate: rate,
@@ -111,7 +134,15 @@ function calculateTrueCost(techName, onsiteHrs, travelHrs, miles, partsCost, con
     adminCost: adminCost,
     riskBuffer: riskBuffer,
     overheadAlloc: overheadPerJob,
+    hotelCost: hotelAdded,
     trueCost: trueCost,
+    hotel: overnights > 0 ? {
+      overnights: overnights,
+      hotelCost: hotelCost,
+      driveBackCost: driveBackCost,
+      savings: hotelSavings,
+      recommendation: stayOvernight ? 'STAY' : 'DRIVE BACK',
+    } : null,
   };
 }
 
@@ -1404,7 +1435,9 @@ function doGet(e) {
           parseFloat(e.parameter.travel_hrs || 2),
           parseFloat(e.parameter.miles || 200),
           parseFloat(e.parameter.parts || 0),
-          parseFloat(e.parameter.consumables || 0)
+          parseFloat(e.parameter.consumables || 0),
+          parseInt(e.parameter.job_days || 1),
+          parseFloat(e.parameter.hotel_per_night || 125)
         );
         break;
       case 'ping':

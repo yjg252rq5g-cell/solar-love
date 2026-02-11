@@ -2176,6 +2176,19 @@
             <label class="form-label">Proposed Revenue ($)</label>
             <input type="number" id="quoteRevenue" class="form-input" step="0.01" value="0" placeholder="0.00">
           </div>
+          <div class="form-group">
+            <label class="form-label">Job Days</label>
+            <select id="quoteJobDays" class="form-input" onchange="document.getElementById('hotelSection').style.display=this.value>1?'block':'none'">
+              <option value="1">1 Day</option>
+              <option value="2">2 Days</option>
+              <option value="3">3 Days</option>
+            </select>
+          </div>
+          <div class="form-group" id="hotelSection" style="display:none;">
+            <label class="form-label">Hotel Per Night ($)</label>
+            <input type="number" id="quoteHotel" class="form-input" step="1" value="125" min="100" max="175" placeholder="100-175">
+            <span style="font-size:11px;color:#6b7280;">Budget: $100–$175/night</span>
+          </div>
         </div>
         <button id="generateQuoteBtn" class="btn btn-primary" style="width:100%;margin-top:8px;">Generate Quote</button>
       </div>
@@ -2584,6 +2597,9 @@ const CONFIG = {
   REGIONS: ['TN', 'GA', 'KY', 'VA', 'NC'],
   HOURS_PER_WEEK: 40,
   WORK_HOURS_PER_DAY: 8,
+  AVG_MPH: 55,
+  HOTEL_BUDGET_MIN: 100,
+  HOTEL_BUDGET_MAX: 175,
 };
 
 // Derived constants (computed once)
@@ -4030,13 +4046,56 @@ function generateQuote() {
   const miles = parseFloat(document.getElementById('quoteMiles')?.value) || 0;
   const parts = parseFloat(document.getElementById('quoteParts')?.value) || 0;
   const proposedRev = parseFloat(document.getElementById('quoteRevenue')?.value) || 0;
+  const jobDays = parseInt(document.getElementById('quoteJobDays')?.value) || 1;
+  const hotelPerNight = parseFloat(document.getElementById('quoteHotel')?.value) || 125;
 
   const rate = getPersonnelByName(tech)?.loaded || 30;
   const laborCost = hours * rate;
   const travelCost = miles * CONFIG.FUEL_PER_MILE;
   const overheadCost = CONFIG.OVERHEAD_PER_JOB;
 
-  const breakeven = laborCost + travelCost + parts + CONFIG.QA_PER_JOB + CONFIG.ADMIN_PER_JOB + CONFIG.RISK_BUFFER + overheadCost;
+  // Hotel vs drive-back savings (for multi-day jobs)
+  const AVG_MPH = 55;
+  const overnights = jobDays > 1 ? jobDays - 1 : 0;
+  let hotelCost = 0;
+  let driveBackCost = 0;
+  let hotelSavings = 0;
+  let hotelHtml = '';
+
+  if (overnights > 0) {
+    hotelCost = overnights * hotelPerNight;
+
+    // Drive-back cost = extra round trips: mileage + labor for drive time each way
+    const driveTimeOneWay = miles / AVG_MPH; // hours
+    const extraRoundTrips = overnights; // each overnight avoided = 1 round trip saved
+    const extraMileageCost = extraRoundTrips * (miles * 2) * CONFIG.FUEL_PER_MILE;
+    const extraLaborCost = extraRoundTrips * (driveTimeOneWay * 2) * rate;
+    driveBackCost = extraMileageCost + extraLaborCost;
+    hotelSavings = driveBackCost - hotelCost;
+
+    hotelHtml = `
+      <div style="margin-top:12px;border-top:2px solid #1F4E79;padding-top:12px;">
+        <div style="font-weight:600;color:#1F4E79;margin-bottom:8px;">Hotel vs Drive-Back Analysis (${overnights} night${overnights > 1 ? 's' : ''})</div>
+        <div class="cost-row"><span class="clabel">Hotel Cost (${overnights} x ${fmt(hotelPerNight)})</span><span class="cval">${fmt(hotelCost)}</span></div>
+        <div class="cost-row"><span class="clabel">Drive-Back Cost (${overnights} round trip${overnights > 1 ? 's' : ''})</span><span class="cval">${fmt(driveBackCost)}</span></div>
+        <div style="font-size:11px;color:#6b7280;margin-left:8px;margin-bottom:4px;">
+          Mileage: ${overnights} x ${miles * 2}mi x $0.99 = ${fmt(extraRoundTrips * miles * 2 * CONFIG.FUEL_PER_MILE)}<br>
+          Labor: ${overnights} x ${(driveTimeOneWay * 2).toFixed(1)}h x ${fmt(rate)}/hr = ${fmt(extraRoundTrips * driveTimeOneWay * 2 * rate)}
+        </div>
+        <div class="cost-row" style="font-weight:700;">
+          <span class="clabel">${hotelSavings >= 0 ? 'Savings by Staying' : 'Extra Cost to Stay'}</span>
+          <span class="cval" style="color:${hotelSavings >= 0 ? '#16a34a' : '#dc2626'};">${fmt(Math.abs(hotelSavings))}</span>
+        </div>
+        <div style="margin-top:6px;padding:8px;border-radius:6px;font-size:12px;font-weight:600;text-align:center;background:${hotelSavings >= 0 ? '#dcfce7;color:#166534' : '#fee2e2;color:#991b1b'}">
+          ${hotelSavings >= 0 ? 'STAY OVERNIGHT — saves ' + fmt(hotelSavings) + ' vs driving back' : 'DRIVE BACK — cheaper by ' + fmt(Math.abs(hotelSavings))}
+        </div>
+      </div>`;
+  }
+
+  // Total job cost includes hotel if staying
+  const baseCost = laborCost + travelCost + parts + CONFIG.QA_PER_JOB + CONFIG.ADMIN_PER_JOB + CONFIG.RISK_BUFFER + overheadCost;
+  const totalHotelAdded = (overnights > 0 && hotelSavings >= 0) ? hotelCost : 0;
+  const breakeven = baseCost + totalHotelAdded;
   const riskPrice = breakeven * 1.10;
   const suggested = riskPrice / 0.85;
   const isProfitable = proposedRev >= breakeven;
@@ -4051,16 +4110,18 @@ function generateQuote() {
         <div class="verdict-text">${isProfitable ? 'PROFITABLE' : 'LOSS'}</div>
         <div style="font-size:14px;margin-top:8px;color:${isProfitable ? '#16a34a' : '#dc2626'};">${proposedRev > 0 ? 'Proposed: ' + fmt(proposedRev) + ' | Profit: ' + fmt(profit) : 'Enter revenue to see verdict'}</div>
       </div>
-      <div class="cost-row"><span class="clabel">Breakeven Price</span><span class="cval" style="color:#dc2626;">${fmt(breakeven)}</span></div>
+      <div class="cost-row"><span class="clabel">Breakeven Price${totalHotelAdded > 0 ? ' (incl. hotel)' : ''}</span><span class="cval" style="color:#dc2626;">${fmt(breakeven)}</span></div>
       <div class="cost-row"><span class="clabel">Suggested Quote (15% margin)</span><span class="cval" style="color:#2563eb;">${fmt(suggested)}</span></div>
       <div class="cost-row"><span class="clabel">Risk Price (+10%)</span><span class="cval">${fmt(riskPrice)}</span></div>
       <div style="margin-top:12px;border-top:1px solid #e5e7eb;padding-top:12px;">
         <div class="cost-row"><span class="clabel">Labor (${hours}h x ${fmt(rate)}/hr)</span><span class="cval">${fmt(laborCost)}</span></div>
         <div class="cost-row"><span class="clabel">Travel (${miles}mi x $0.99)</span><span class="cval">${fmt(travelCost)}</span></div>
         <div class="cost-row"><span class="clabel">Parts</span><span class="cval">${fmt(parts)}</span></div>
+        ${totalHotelAdded > 0 ? `<div class="cost-row"><span class="clabel">Hotel (${overnights} night${overnights > 1 ? 's' : ''})</span><span class="cval">${fmt(hotelCost)}</span></div>` : ''}
         <div class="cost-row"><span class="clabel">QA + Admin + Risk</span><span class="cval">${fmt(CONFIG.QA_PER_JOB + CONFIG.ADMIN_PER_JOB + CONFIG.RISK_BUFFER)}</span></div>
         <div class="cost-row"><span class="clabel">Overhead Allocation</span><span class="cval">${fmt(overheadCost)}</span></div>
       </div>
+      ${hotelHtml}
     </div>
   `;
 }
