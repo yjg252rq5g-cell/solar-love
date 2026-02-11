@@ -1284,6 +1284,10 @@
           <i class="fas fa-shield-halved"></i>
           <span>Warranty</span>
         </div>
+        <div class="nav-item" data-tab="reconciliation">
+          <i class="fas fa-scale-balanced"></i>
+          <span>Reconciliation</span>
+        </div>
         <div class="nav-item" data-tab="inventory">
           <i class="fas fa-warehouse"></i>
           <span>Inventory</span>
@@ -1402,6 +1406,7 @@
 
     <button id="addJobBtn" class="btn btn-primary">Add Job</button>
     <button id="importCsvBtn" class="btn btn-secondary">Import CSV</button>
+    <button id="archivePaidBtn" class="btn btn-warning"><i class="fas fa-box-archive"></i> Archive Paid</button>
   </div>
 
   <div class="card" style="overflow-x:auto;">
@@ -1546,7 +1551,8 @@
     <input type="date" id="routeStartDate" class="form-input" style="flex:0 0 150px;">
     <input type="date" id="routeEndDate" class="form-input" style="flex:0 0 150px;">
     <button id="optimizeRoutesBtn" class="btn btn-primary">Optimize Routes</button>
-    <button id="exportPdfsBtn" class="btn btn-secondary">Export PDFs</button>
+    <button id="exportPdfsBtn" class="btn btn-secondary"><i class="fas fa-file-pdf"></i> Fleet PDF</button>
+    <button id="geocodeBacklogBtn" class="btn btn-secondary"><i class="fas fa-map-pin"></i> Geocode Backlog</button>
     <button id="archiveRoutesBtn" class="btn btn-secondary">Archive Routes</button>
   </div>
 
@@ -2135,6 +2141,50 @@
     </div>
   </div>
 
+  <!-- QUOTING ENGINE -->
+  <div class="card" style="margin-bottom:24px;">
+    <h3 style="margin-top:0;color:#1F4E79;">Quoting Engine</h3>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:16px;">Survival-based pricing: enter job details to get a suggested quote with risk buffer and target margin.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Technician</label>
+            <select id="quoteTech" class="form-input">
+              <option value="Sam">Sam ($32.50/hr)</option>
+              <option value="Lucas" selected>Lucas ($26.00/hr)</option>
+              <option value="Katie">Katie ($26.00/hr)</option>
+              <option value="Spencer">Spencer ($52.00/hr)</option>
+              <option value="Lex">Lex ($39.00/hr)</option>
+              <option value="Caden">Caden ($37.51/hr)</option>
+              <option value="Andrew">Andrew ($32.50/hr)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Estimated Hours</label>
+            <input type="number" id="quoteHours" class="form-input" step="0.5" value="2" placeholder="0.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">One-Way Miles</label>
+            <input type="number" id="quoteMiles" class="form-input" step="1" value="100" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Parts Cost ($)</label>
+            <input type="number" id="quoteParts" class="form-input" step="0.01" value="0" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Proposed Revenue ($)</label>
+            <input type="number" id="quoteRevenue" class="form-input" step="0.01" value="0" placeholder="0.00">
+          </div>
+        </div>
+        <button id="generateQuoteBtn" class="btn btn-primary" style="width:100%;margin-top:8px;">Generate Quote</button>
+      </div>
+      <div id="quoteResult" style="background:#f9fafb;border-radius:8px;padding:20px;display:flex;align-items:center;justify-content:center;">
+        <p style="color:#6b7280;text-align:center;margin:0;">Enter job details and click Generate Quote</p>
+      </div>
+    </div>
+  </div>
+
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
     <div class="card">
       <h3 style="margin-top:0;color:#1F4E79;">Overhead Breakdown</h3>
@@ -2381,11 +2431,90 @@
       </div>
     </div>
 
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">System Diagnostics</h3>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:16px;">Run system health checks, repair dashboard linkage, and clean orphan records.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <button id="runDiagnosticsBtn" class="btn btn-secondary"><i class="fas fa-stethoscope"></i> Run Full Audit</button>
+        <button id="repairDashboardBtn" class="btn btn-secondary"><i class="fas fa-wrench"></i> Repair Dashboard</button>
+        <button id="cleanOverheadBtn" class="btn btn-secondary"><i class="fas fa-broom"></i> Clean Overhead Orphans</button>
+      </div>
+      <div id="diagnosticsResult" style="margin-top:16px;display:none;padding:16px;background:#f0f2f5;border-radius:8px;font-size:13px;white-space:pre-wrap;">
+      </div>
+    </div>
+
     <button id="saveSettingsBtn" class="btn btn-primary" style="width:100%;padding:16px;font-size:16px;">Save All Settings</button>
   </div>
 </div>
 
 </div>
+</div>
+
+<!-- TAB 10: RECONCILIATION -->
+<div id="tab-reconciliation" class="tab-content" style="display:none;">
+  <h2 class="section-title">Payment Reconciliation</h2>
+
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+    <button id="reconImportBtn" class="btn btn-primary"><i class="fas fa-file-import"></i> Import Unreconciled</button>
+    <button id="reconAutoMatchBtn" class="btn btn-success"><i class="fas fa-check-double"></i> Auto-Match</button>
+    <button id="reconForceMatchBtn" class="btn btn-warning"><i class="fas fa-link"></i> Force Match Selected</button>
+    <select id="reconStatusFilter" class="form-input" style="flex:0 0 160px;">
+      <option value="">All Statuses</option>
+      <option value="Pending">Pending</option>
+      <option value="Matched">Matched</option>
+      <option value="Force Matched">Force Matched</option>
+      <option value="Variance">Variance</option>
+    </select>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px;">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Records</div>
+      <div class="kpi-value" id="reconTotal">0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Matched</div>
+      <div class="kpi-value" style="color:#16a34a;" id="reconMatched">0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Pending</div>
+      <div class="kpi-value" style="color:#f59e0b;" id="reconPending">0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Variance</div>
+      <div class="kpi-value" style="color:#dc2626;" id="reconVariance">0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total HCP</div>
+      <div class="kpi-value" id="reconTotalHcp">$0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Bank</div>
+      <div class="kpi-value" id="reconTotalBank">$0</div>
+    </div>
+  </div>
+
+  <div class="card" style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;">
+      <thead style="background-color:#1F4E79;color:white;">
+        <tr>
+          <th style="padding:10px 12px;text-align:left;">Recon ID</th>
+          <th style="padding:10px 12px;text-align:left;">Job</th>
+          <th style="padding:10px 12px;text-align:right;">HCP Amount</th>
+          <th style="padding:10px 12px;text-align:left;">HCP Date</th>
+          <th style="padding:10px 12px;text-align:right;">Bank Amount</th>
+          <th style="padding:10px 12px;text-align:left;">Bank Date</th>
+          <th style="padding:10px 12px;text-align:right;">Variance</th>
+          <th style="padding:10px 12px;text-align:center;">Status</th>
+          <th style="padding:10px 12px;text-align:left;">Notes</th>
+          <th style="padding:10px 12px;text-align:center;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="reconTableBody">
+        <!-- JS fills rows -->
+      </tbody>
+    </table>
+  </div>
 </div>
 
       </div>  <!-- end contentWrapper -->
@@ -2541,6 +2670,7 @@ const DataStore = {
     { date: '2026-01-05', id: '999', customer: 'Anna Testa', city: '', state: 'TN', zip: '', priority: 'Low', tech: '', type: 'Warranty', onsite: 0, travel: 0, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: 'Submitted', notes: 'Pending', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '2026-01-02' },
   ],
   warranty: [],
+  reconciliation: [],
   inventory: [],
   routes: [],
   settings: {
@@ -2573,6 +2703,7 @@ function persistData() {
       jobs: DataStore.jobs,
       warranty: DataStore.warranty,
       inventory: DataStore.inventory,
+      reconciliation: DataStore.reconciliation,
       settings: DataStore.settings,
     }));
   } catch (e) {
@@ -2588,6 +2719,7 @@ function loadPersistedData() {
       if (parsed.jobs) DataStore.jobs = parsed.jobs;
       if (parsed.warranty) DataStore.warranty = parsed.warranty;
       if (parsed.inventory) DataStore.inventory = parsed.inventory;
+      if (parsed.reconciliation) DataStore.reconciliation = parsed.reconciliation;
       if (parsed.settings) Object.assign(DataStore.settings, parsed.settings);
       return true;
     }
@@ -2845,6 +2977,7 @@ function switchTab(tabName) {
       jobs: 'Jobs',
       routes: 'Routes',
       warranty: 'Warranty',
+      reconciliation: 'Reconciliation',
       inventory: 'Inventory',
       technicians: 'Technicians',
       financials: 'Financials',
@@ -2860,6 +2993,7 @@ function switchTab(tabName) {
     jobs: renderJobs,
     routes: renderRoutes,
     warranty: renderWarranty,
+    reconciliation: renderReconciliation,
     inventory: renderInventory,
     technicians: renderTechnicians,
     financials: renderFinancials,
@@ -3758,14 +3892,393 @@ function renderFinancialCharts() {
 }
 
 // ============================================================================
-// EMAIL RENDERING
+// RECONCILIATION RENDERING
+// ============================================================================
+
+function renderReconciliation() {
+  const recon = DataStore.reconciliation || [];
+  const filterStatus = document.getElementById('reconStatusFilter')?.value || '';
+
+  // Update KPIs
+  const matched = recon.filter(r => r.status === 'Matched' || r.status === 'Force Matched').length;
+  const pending = recon.filter(r => r.status === 'Pending').length;
+  const variance = recon.filter(r => r.status === 'Variance').length;
+  const totalHcp = recon.reduce((s, r) => s + (r.hcpAmount || 0), 0);
+  const totalBank = recon.reduce((s, r) => s + (r.bankAmount || 0), 0);
+
+  const setKpi = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setKpi('reconTotal', recon.length);
+  setKpi('reconMatched', matched);
+  setKpi('reconPending', pending);
+  setKpi('reconVariance', variance);
+  setKpi('reconTotalHcp', fmt(totalHcp));
+  setKpi('reconTotalBank', fmt(totalBank));
+
+  // Filter
+  const filtered = filterStatus ? recon.filter(r => r.status === filterStatus) : recon;
+
+  const tbody = document.getElementById('reconTableBody');
+  if (!tbody) return;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="padding:24px;text-align:center;color:#666;">No reconciliation records. Click "Import Unreconciled" to pull jobs from the system.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((r, i) => {
+    const varianceAmt = (r.bankAmount || 0) - (r.hcpAmount || 0);
+    const statusClass = r.status === 'Matched' || r.status === 'Force Matched' ? 'badge-paid' : r.status === 'Variance' ? 'badge-needs-attention' : 'badge-pending';
+    return `<tr style="border-bottom:1px solid #f3f4f6;">
+      <td style="padding:10px 12px;font-weight:600;">${r.reconId || 'R-' + (i+1)}</td>
+      <td style="padding:10px 12px;">${r.jobName || ''}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:600;">${fmt(r.hcpAmount || 0)}</td>
+      <td style="padding:10px 12px;">${r.hcpDate || ''}</td>
+      <td style="padding:10px 12px;text-align:right;">
+        <input type="number" step="0.01" value="${r.bankAmount || ''}" data-recon-idx="${i}" data-field="bankAmount" class="form-input" style="width:110px;padding:4px 8px;font-size:13px;" onchange="updateReconField(this)">
+      </td>
+      <td style="padding:10px 12px;">
+        <input type="date" value="${r.bankDate || ''}" data-recon-idx="${i}" data-field="bankDate" class="form-input" style="width:130px;padding:4px 8px;font-size:13px;" onchange="updateReconField(this)">
+      </td>
+      <td style="padding:10px 12px;text-align:right;color:${varianceAmt === 0 ? '#16a34a' : '#dc2626'};font-weight:600;">${r.bankAmount ? fmt(varianceAmt) : '-'}</td>
+      <td style="padding:10px 12px;text-align:center;"><span class="badge ${statusClass}">${r.status}</span></td>
+      <td style="padding:10px 12px;">
+        <input type="text" value="${r.notes || ''}" data-recon-idx="${i}" data-field="notes" class="form-input" style="width:120px;padding:4px 8px;font-size:13px;" onchange="updateReconField(this)" placeholder="Notes...">
+      </td>
+      <td style="padding:10px 12px;text-align:center;">
+        <button class="btn btn-xs btn-secondary" onclick="forceMatchRecon(${i})">Force</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function updateReconField(el) {
+  const idx = parseInt(el.dataset.reconIdx);
+  const field = el.dataset.field;
+  if (field === 'bankAmount') {
+    DataStore.reconciliation[idx].bankAmount = parseFloat(el.value) || 0;
+  } else {
+    DataStore.reconciliation[idx][field] = el.value;
+  }
+  persistData();
+}
+
+function importUnreconciled() {
+  const jobs = DataStore.jobs.filter(j => j.revenue > 0 && j.status !== 'archived');
+  const existingIds = new Set(DataStore.reconciliation.map(r => r.jobId));
+  let imported = 0;
+
+  jobs.forEach(j => {
+    if (!existingIds.has(j.id)) {
+      DataStore.reconciliation.push({
+        reconId: 'R-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + j.id,
+        jobId: j.id,
+        jobName: j.customer + ' (#' + j.id + ')',
+        hcpAmount: j.revenue || 0,
+        hcpDate: j.date || '',
+        bankAmount: 0,
+        bankDate: '',
+        status: 'Pending',
+        matchedDate: '',
+        notes: '',
+      });
+      imported++;
+    }
+  });
+
+  persistData();
+  toast(imported + ' job(s) imported for reconciliation', 'success');
+  renderReconciliation();
+}
+
+function autoMatchRecon() {
+  let matched = 0;
+  DataStore.reconciliation.forEach(r => {
+    if (r.status === 'Pending' && r.bankAmount > 0) {
+      const variance = Math.abs(r.bankAmount - r.hcpAmount);
+      if (variance <= 0.01) {
+        r.status = 'Matched';
+        r.matchedDate = new Date().toISOString().slice(0, 10);
+        matched++;
+      } else {
+        r.status = 'Variance';
+      }
+    }
+  });
+
+  persistData();
+  toast(matched + ' exact match(es) found', matched > 0 ? 'success' : 'info');
+  renderReconciliation();
+}
+
+function forceMatchRecon(idx) {
+  const r = DataStore.reconciliation[idx];
+  if (!r) return;
+  r.status = 'Force Matched';
+  r.matchedDate = new Date().toISOString().slice(0, 10);
+  persistData();
+  toast('Force matched: ' + r.jobName, 'success');
+  renderReconciliation();
+}
+
+// ============================================================================
+// QUOTING ENGINE
+// ============================================================================
+
+function generateQuote() {
+  const tech = document.getElementById('quoteTech')?.value || 'Lucas';
+  const hours = parseFloat(document.getElementById('quoteHours')?.value) || 0;
+  const miles = parseFloat(document.getElementById('quoteMiles')?.value) || 0;
+  const parts = parseFloat(document.getElementById('quoteParts')?.value) || 0;
+  const proposedRev = parseFloat(document.getElementById('quoteRevenue')?.value) || 0;
+
+  const rate = getPersonnelByName(tech)?.loaded || 30;
+  const laborCost = hours * rate;
+  const travelCost = miles * CONFIG.FUEL_PER_MILE;
+  const overheadCost = CONFIG.OVERHEAD_PER_JOB;
+
+  const breakeven = laborCost + travelCost + parts + CONFIG.QA_PER_JOB + CONFIG.ADMIN_PER_JOB + CONFIG.RISK_BUFFER + overheadCost;
+  const riskPrice = breakeven * 1.10;
+  const suggested = riskPrice / 0.85;
+  const isProfitable = proposedRev >= breakeven;
+  const profit = proposedRev - breakeven;
+
+  const resultEl = document.getElementById('quoteResult');
+  if (!resultEl) return;
+
+  resultEl.innerHTML = `
+    <div style="width:100%;">
+      <div class="verdict-box ${isProfitable ? 'accept' : 'reject'}" style="margin-bottom:16px;">
+        <div class="verdict-text">${isProfitable ? 'PROFITABLE' : 'LOSS'}</div>
+        <div style="font-size:14px;margin-top:8px;color:${isProfitable ? '#16a34a' : '#dc2626'};">${proposedRev > 0 ? 'Proposed: ' + fmt(proposedRev) + ' | Profit: ' + fmt(profit) : 'Enter revenue to see verdict'}</div>
+      </div>
+      <div class="cost-row"><span class="clabel">Breakeven Price</span><span class="cval" style="color:#dc2626;">${fmt(breakeven)}</span></div>
+      <div class="cost-row"><span class="clabel">Suggested Quote (15% margin)</span><span class="cval" style="color:#2563eb;">${fmt(suggested)}</span></div>
+      <div class="cost-row"><span class="clabel">Risk Price (+10%)</span><span class="cval">${fmt(riskPrice)}</span></div>
+      <div style="margin-top:12px;border-top:1px solid #e5e7eb;padding-top:12px;">
+        <div class="cost-row"><span class="clabel">Labor (${hours}h x ${fmt(rate)}/hr)</span><span class="cval">${fmt(laborCost)}</span></div>
+        <div class="cost-row"><span class="clabel">Travel (${miles}mi x $0.99)</span><span class="cval">${fmt(travelCost)}</span></div>
+        <div class="cost-row"><span class="clabel">Parts</span><span class="cval">${fmt(parts)}</span></div>
+        <div class="cost-row"><span class="clabel">QA + Admin + Risk</span><span class="cval">${fmt(CONFIG.QA_PER_JOB + CONFIG.ADMIN_PER_JOB + CONFIG.RISK_BUFFER)}</span></div>
+        <div class="cost-row"><span class="clabel">Overhead Allocation</span><span class="cval">${fmt(overheadCost)}</span></div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================================
+// JOB ARCHIVING
+// ============================================================================
+
+function archivePaidJobs() {
+  const before = DataStore.jobs.length;
+  const archived = DataStore.jobs.filter(j => j.status === 'completed' && j.revenue > 0);
+  DataStore.jobs = DataStore.jobs.filter(j => !(j.status === 'completed' && j.revenue > 0));
+
+  // Store archived jobs in localStorage for record-keeping
+  const existingArchive = JSON.parse(localStorage.getItem('akino_archived_jobs') || '[]');
+  archived.forEach(j => { j.archivedDate = new Date().toISOString(); j.status = 'archived'; });
+  localStorage.setItem('akino_archived_jobs', JSON.stringify([...existingArchive, ...archived]));
+
+  persistData();
+  const count = before - DataStore.jobs.length;
+  toast(count + ' completed job(s) archived', count > 0 ? 'success' : 'info');
+  renderJobs();
+}
+
+// ============================================================================
+// FLEET PDF EXPORT (browser-side)
+// ============================================================================
+
+function exportFleetPDF() {
+  const routes = {};
+  DataStore.jobs.forEach(j => {
+    if (j.route) {
+      if (!routes[j.route]) routes[j.route] = [];
+      routes[j.route].push(j);
+    }
+  });
+
+  if (Object.keys(routes).length === 0) {
+    toast('No routed jobs to export', 'warning');
+    return;
+  }
+
+  let html = '<html><head><title>Fleet Manifest</title><style>body{font-family:Arial,sans-serif;padding:20px}h1{text-align:center;color:#1F4E79}h2{color:#1F4E79;border-bottom:2px solid #1F4E79;padding-bottom:4px}table{width:100%;border-collapse:collapse;margin-bottom:24px}th{background:#1F4E79;color:white;padding:8px;text-align:left}td{padding:8px;border-bottom:1px solid #ddd}</style></head><body>';
+  html += '<h1>AKINO SOLAR - DAILY FLEET MANIFEST</h1>';
+  html += '<p style="text-align:center;color:#666;">' + new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) + '</p><hr>';
+
+  Object.entries(routes).forEach(([routeId, jobs]) => {
+    const tech = jobs[0]?.tech || 'Unassigned';
+    const totalRev = jobs.reduce((s, j) => s + (j.revenue || 0), 0);
+    html += '<h2>' + routeId + ' - ' + tech + ' (' + jobs.length + ' stops, ' + fmt(totalRev) + ' revenue)</h2>';
+    html += '<table><tr><th>#</th><th>Customer</th><th>City</th><th>State</th><th>Revenue</th><th>Notes</th></tr>';
+    jobs.forEach((j, i) => {
+      html += '<tr><td>' + (i+1) + '</td><td>' + j.customer + '</td><td>' + (j.city || '') + '</td><td>' + (j.state || '') + '</td><td>' + fmt(j.revenue || 0) + '</td><td>' + (j.notes || '') + '</td></tr>';
+    });
+    html += '</table>';
+  });
+
+  html += '</body></html>';
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.print();
+}
+
+// ============================================================================
+// GEOCODE BACKLOG (uses browser geocoding placeholder)
+// ============================================================================
+
+function geocodeBacklog() {
+  const missing = DataStore.jobs.filter(j => j.city && !j.lat);
+  if (missing.length === 0) {
+    toast('All jobs with addresses already have coordinates', 'info');
+    return;
+  }
+  toast(missing.length + ' jobs need geocoding. Connect to Google Maps API in Settings to resolve.', 'warning');
+}
+
+// ============================================================================
+// SYSTEM DIAGNOSTICS
+// ============================================================================
+
+function runDiagnostics() {
+  const issues = [];
+  const today = new Date();
+
+  // Check for jobs with no revenue
+  const noRevJobs = DataStore.jobs.filter(j => !j.revenue || j.revenue === 0);
+  if (noRevJobs.length > 0) issues.push('WARNING: ' + noRevJobs.length + ' job(s) with $0 revenue.');
+
+  // Check for unassigned jobs
+  const unassigned = DataStore.jobs.filter(j => !j.tech && j.status !== 'archived');
+  if (unassigned.length > 0) issues.push('WARNING: ' + unassigned.length + ' job(s) with no technician assigned.');
+
+  // Check for stale jobs (>30 days old and not completed)
+  const stale = DataStore.jobs.filter(j => {
+    if (!j.date || j.status === 'completed' || j.status === 'archived') return false;
+    const diff = (today - new Date(j.date)) / (1000 * 60 * 60 * 24);
+    return diff > 30;
+  });
+  if (stale.length > 0) issues.push('AGING ALERT: ' + stale.length + ' job(s) are >30 days old and not completed.');
+
+  // Check unreconciled payments
+  const unrecon = DataStore.reconciliation.filter(r => r.status === 'Pending');
+  if (unrecon.length > 0) issues.push('RECON: ' + unrecon.length + ' payment(s) pending reconciliation.');
+
+  // Check overhead matches
+  const catSum = Object.values(OVERHEAD_CATEGORIES).reduce((a, b) => a + b, 0);
+  if (Math.abs(catSum - CONFIG.MONTHLY_OVERHEAD) > 10) {
+    issues.push('MISMATCH: Overhead categories sum (' + fmt(catSum) + ') != CONFIG.MONTHLY_OVERHEAD (' + fmt(CONFIG.MONTHLY_OVERHEAD) + ')');
+  }
+
+  const result = issues.length === 0 ? 'SYSTEM HEALTHY - All checks passed.' : 'ISSUES FOUND:\n\n' + issues.join('\n');
+
+  const el = document.getElementById('diagnosticsResult');
+  if (el) {
+    el.style.display = 'block';
+    el.style.borderLeft = issues.length === 0 ? '4px solid #16a34a' : '4px solid #dc2626';
+    el.textContent = result;
+  }
+  toast(issues.length === 0 ? 'System healthy' : issues.length + ' issue(s) found', issues.length === 0 ? 'success' : 'warning');
+}
+
+// ============================================================================
+// EMAIL RENDERING (enhanced)
 // ============================================================================
 
 function renderEmail() {
   const unansweredList = document.getElementById('unansweredList');
-  if (unansweredList) {
-    unansweredList.innerHTML = `<div style="padding:24px;text-align:center;color:#666;">No unanswered emails. Connect Apps Script URL in Settings to enable email monitoring.</div>`;
+  const emailFeed = document.getElementById('emailFeed');
+  const autoActionLog = document.getElementById('autoActionLog');
+
+  if (DataStore.settings.appsScriptUrl) {
+    if (unansweredList) {
+      unansweredList.innerHTML = '<div style="padding:12px;color:#666;font-size:13px;">Checking for unanswered emails... Configure Apps Script triggers for automatic monitoring.</div>';
+    }
+    if (emailFeed) {
+      emailFeed.innerHTML = '<div style="padding:24px;text-align:center;color:#666;">Email feed will populate when Apps Script email monitoring is active.<br><br><button class="btn btn-primary btn-sm" onclick="syncWithBackend()">Sync Now</button></div>';
+    }
+  } else {
+    if (unansweredList) {
+      unansweredList.innerHTML = '<div style="padding:12px;color:#666;font-size:13px;">No Apps Script URL configured. Go to <strong>Settings</strong> to connect your backend for email monitoring.</div>';
+    }
+    if (emailFeed) {
+      emailFeed.innerHTML = '<div style="padding:24px;text-align:center;color:#666;">Connect your Apps Script URL in Settings to enable email monitoring across all inboxes.</div>';
+    }
   }
+
+  if (autoActionLog) {
+    autoActionLog.innerHTML = '<div style="padding:16px;color:#666;font-size:13px;">Auto-actions (warranty auto-routing, invoice auto-tagging) will appear here when email monitoring is active.</div>';
+  }
+}
+
+// ============================================================================
+// INVENTORY RENDERING (enhanced)
+// ============================================================================
+
+function renderInventory() {
+  const inventoryTableBody = document.getElementById('inventoryTableBody');
+  if (!inventoryTableBody) return;
+
+  const inventory = DataStore.inventory || [];
+
+  if (inventory.length === 0) {
+    inventoryTableBody.innerHTML = `
+      <tr><td colspan="6" style="padding:24px;text-align:center;color:#666;">
+        No inventory items. <button class="btn btn-sm btn-primary" onclick="addInventoryItem()">Add First Item</button>
+      </td></tr>`;
+    return;
+  }
+
+  inventoryTableBody.innerHTML = inventory.map((item, i) => {
+    const lowStock = item.quantity <= (item.reorderPoint || 5);
+    return `<tr style="border-bottom:1px solid #e5e7eb;${lowStock ? 'background:#fef2f2;' : ''}">
+      <td style="padding:10px 12px;font-weight:600;">${item.name}</td>
+      <td style="padding:10px 12px;">${item.category || 'General'}</td>
+      <td style="padding:10px 12px;text-align:center;${lowStock ? 'color:#dc2626;font-weight:700;' : ''}">${item.quantity}</td>
+      <td style="padding:10px 12px;text-align:right;">${fmt(item.unitCost || 0)}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:600;">${fmt((item.quantity || 0) * (item.unitCost || 0))}</td>
+      <td style="padding:10px 12px;text-align:center;">
+        <button class="btn btn-xs btn-secondary" onclick="editInventoryItem(${i})">Edit</button>
+        <button class="btn btn-xs btn-danger" onclick="deleteInventoryItem(${i})">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function addInventoryItem() {
+  const name = prompt('Item name:');
+  if (!name) return;
+  const category = prompt('Category (e.g., Parts, Consumables, Tools):', 'Parts');
+  const quantity = parseInt(prompt('Quantity:', '10')) || 0;
+  const unitCost = parseFloat(prompt('Unit cost ($):', '0')) || 0;
+
+  if (!DataStore.inventory) DataStore.inventory = [];
+  DataStore.inventory.push({ name, category, quantity, unitCost, reorderPoint: 5 });
+  persistData();
+  toast('Added: ' + name, 'success');
+  renderInventory();
+}
+
+function editInventoryItem(idx) {
+  const item = DataStore.inventory[idx];
+  if (!item) return;
+  const qty = parseInt(prompt('New quantity for ' + item.name + ':', item.quantity));
+  if (isNaN(qty)) return;
+  item.quantity = qty;
+  persistData();
+  toast('Updated: ' + item.name, 'success');
+  renderInventory();
+}
+
+function deleteInventoryItem(idx) {
+  const item = DataStore.inventory[idx];
+  if (!item || !confirm('Delete ' + item.name + '?')) return;
+  DataStore.inventory.splice(idx, 1);
+  persistData();
+  toast('Deleted: ' + item.name, 'success');
+  renderInventory();
 }
 
 // ============================================================================
@@ -4013,6 +4526,38 @@ document.addEventListener('DOMContentLoaded', () => {
   // Sync button
   const syncBtn = document.getElementById('syncBackendBtn');
   if (syncBtn) syncBtn.addEventListener('click', syncWithBackend);
+
+  // Reconciliation buttons
+  const reconImportBtn = document.getElementById('reconImportBtn');
+  if (reconImportBtn) reconImportBtn.addEventListener('click', importUnreconciled);
+  const reconAutoMatchBtn = document.getElementById('reconAutoMatchBtn');
+  if (reconAutoMatchBtn) reconAutoMatchBtn.addEventListener('click', autoMatchRecon);
+  const reconStatusFilter = document.getElementById('reconStatusFilter');
+  if (reconStatusFilter) reconStatusFilter.addEventListener('change', renderReconciliation);
+
+  // Quoting Engine button
+  const generateQuoteBtn = document.getElementById('generateQuoteBtn');
+  if (generateQuoteBtn) generateQuoteBtn.addEventListener('click', generateQuote);
+
+  // Archive Paid Jobs button
+  const archivePaidBtn = document.getElementById('archivePaidBtn');
+  if (archivePaidBtn) archivePaidBtn.addEventListener('click', archivePaidJobs);
+
+  // Fleet PDF Export button
+  const exportPdfsBtn = document.getElementById('exportPdfsBtn');
+  if (exportPdfsBtn) exportPdfsBtn.addEventListener('click', exportFleetPDF);
+
+  // Geocode Backlog button
+  const geocodeBacklogBtn = document.getElementById('geocodeBacklogBtn');
+  if (geocodeBacklogBtn) geocodeBacklogBtn.addEventListener('click', geocodeBacklog);
+
+  // System Diagnostics buttons
+  const runDiagnosticsBtn = document.getElementById('runDiagnosticsBtn');
+  if (runDiagnosticsBtn) runDiagnosticsBtn.addEventListener('click', runDiagnostics);
+  const repairDashboardBtn = document.getElementById('repairDashboardBtn');
+  if (repairDashboardBtn) repairDashboardBtn.addEventListener('click', () => { toast('Dashboard repair requires backend connection. Set Apps Script URL in Settings.', 'info'); });
+  const cleanOverheadBtn = document.getElementById('cleanOverheadBtn');
+  if (cleanOverheadBtn) cleanOverheadBtn.addEventListener('click', () => { toast('Overhead cleanup requires backend connection. Set Apps Script URL in Settings.', 'info'); });
 
   // Hamburger menu (mobile)
   const hamburger = document.getElementById('hamburgerMenu');
