@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f8; color: #333; padding: 16px; }
+    h2 { font-size: 18px; margin-bottom: 12px; color: #1a237e; }
+    .card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+    .title { font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #1a237e; }
+    .metric { font-size: 22px; font-weight: 700; color: #2e7d32; }
+    .metric.loss { color: #c62828; }
+    .label { font-size: 11px; color: #777; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .btn { display: block; width: 100%; padding: 10px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px; }
+    .btn-primary { background: #1a237e; color: #fff; }
+    .btn-primary:hover { background: #283593; }
+    .btn-secondary { background: #e8eaf6; color: #1a237e; }
+    .btn-secondary:hover { background: #c5cae9; }
+    input, select { width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+    .status { padding: 8px; border-radius: 4px; text-align: center; font-weight: 600; margin-top: 8px; }
+    .status.ok { background: #e8f5e9; color: #2e7d32; }
+    .status.warn { background: #fff3e0; color: #e65100; }
+    .divider { height: 1px; background: #e0e0e0; margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <h2>☀️ Akino Platinum V10</h2>
+
+  <!-- Summary Card -->
+  <div class="card" id="summaryCard">
+    <div class="title">Business Summary</div>
+    <div class="row">
+      <div>
+        <div class="label">Total Revenue</div>
+        <div class="metric" id="totalRevenue">--</div>
+      </div>
+      <div>
+        <div class="label">Total Profit</div>
+        <div class="metric" id="totalProfit">--</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Job Card -->
+  <div class="card" id="jobCard" style="display:none;">
+    <div class="title">Active Job</div>
+    <div class="label">Job Name</div>
+    <div id="jobName" style="font-weight:600; margin-bottom:8px;">--</div>
+    <div class="row">
+      <div>
+        <div class="label">Tech</div>
+        <div id="jobTech">--</div>
+      </div>
+      <div>
+        <div class="label">Net Margin</div>
+        <div id="jobMargin">--</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Quoting Engine -->
+  <div class="card">
+    <div class="title">Quick Quote</div>
+    <select id="quoteTech">
+      <option value="">Select Tech</option>
+      <option value="Sam">Sam</option>
+      <option value="Lucas">Lucas</option>
+      <option value="Caden">Caden</option>
+      <option value="Lex">Lex</option>
+    </select>
+    <input type="number" id="quoteHours" placeholder="Hours on site" step="0.5">
+    <input type="number" id="quoteMiles" placeholder="Round-trip miles" step="1">
+    <input type="number" id="quoteParts" placeholder="Parts cost ($)" step="0.01">
+    <input type="number" id="quoteRevenue" placeholder="Proposed revenue ($)" step="0.01">
+    <button class="btn btn-primary" onclick="runQuote()">Generate Quote</button>
+    <div id="quoteResult"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Actions -->
+  <div class="card">
+    <div class="title">Actions</div>
+    <button class="btn btn-primary" onclick="runSync()">🚀 Run Master Sync</button>
+    <button class="btn btn-secondary" onclick="runAudit()">🔍 Run Full Audit</button>
+    <button class="btn btn-secondary" onclick="runArchive()">📦 Archive Completed</button>
+  </div>
+
+  <div id="statusBar" class="status" style="display:none;"></div>
+
+  <script>
+    function loadData() {
+      google.script.run.withSuccessHandler(function(data) {
+        if (!data) return;
+        document.getElementById('totalRevenue').textContent = '$' + Number(data.totalRevenue || 0).toLocaleString();
+        var profit = Number(data.totalProfit || 0);
+        var profitEl = document.getElementById('totalProfit');
+        profitEl.textContent = '$' + profit.toLocaleString();
+        profitEl.className = profit >= 0 ? 'metric' : 'metric loss';
+
+        if (data.valid) {
+          document.getElementById('jobCard').style.display = 'block';
+          document.getElementById('jobName').textContent = data.jobName || '--';
+          document.getElementById('jobTech').textContent = data.tech || '--';
+          var margin = data.netMargin;
+          document.getElementById('jobMargin').textContent = typeof margin === 'number' ? (margin * 100).toFixed(1) + '%' : '--';
+        } else {
+          document.getElementById('jobCard').style.display = 'none';
+        }
+      }).getActiveJobData();
+    }
+
+    function runQuote() {
+      var data = {
+        tech: document.getElementById('quoteTech').value,
+        hours: document.getElementById('quoteHours').value,
+        miles: document.getElementById('quoteMiles').value,
+        parts: document.getElementById('quoteParts').value,
+        revenue: document.getElementById('quoteRevenue').value
+      };
+      google.script.run.withSuccessHandler(function(result) {
+        if (!result) return;
+        var html = '<div style="margin-top:8px;">';
+        html += '<div class="label">Breakeven</div><div style="font-weight:600;">$' + result.breakeven + '</div>';
+        html += '<div class="label" style="margin-top:4px;">Suggested Price</div><div style="font-weight:600;">$' + result.suggested + '</div>';
+        html += '<div class="status ' + (result.profitStatus.includes('PROFITABLE') ? 'ok' : 'warn') + '" style="margin-top:8px;">' + result.profitStatus + '</div>';
+        html += '</div>';
+        document.getElementById('quoteResult').innerHTML = html;
+      }).generateQuote(data);
+    }
+
+    function showStatus(msg, isOk) {
+      var el = document.getElementById('statusBar');
+      el.textContent = msg;
+      el.className = 'status ' + (isOk ? 'ok' : 'warn');
+      el.style.display = 'block';
+      setTimeout(function() { el.style.display = 'none'; }, 5000);
+    }
+
+    function runSync() {
+      google.script.run.withSuccessHandler(function(msg) {
+        showStatus(msg || 'Sync complete', true);
+        loadData();
+      }).runMasterSync();
+    }
+
+    function runAudit() {
+      google.script.run.withSuccessHandler(function(msg) {
+        var isOk = msg && msg.includes('HEALTHY');
+        showStatus(msg || 'Audit complete', isOk);
+      }).runTroubleshooter();
+    }
+
+    function runArchive() {
+      google.script.run.withSuccessHandler(function(msg) {
+        showStatus(msg || 'Archive complete', true);
+        loadData();
+      }).archiveJobs();
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
