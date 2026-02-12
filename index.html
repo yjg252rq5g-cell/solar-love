@@ -1383,11 +1383,10 @@
   <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
     <select id="jobStatusFilter" class="form-input" style="flex:0 0 150px;">
       <option value="">All Statuses</option>
-      <option value="Pending">Pending</option>
-      <option value="Scheduled">Scheduled</option>
-      <option value="In Progress">In Progress</option>
-      <option value="Completed">Completed</option>
-      <option value="Done">Done</option>
+      <option value="scheduled">Scheduled</option>
+      <option value="in-progress">In Progress</option>
+      <option value="completed">Completed</option>
+      <option value="archived">Archived</option>
     </select>
 
     <select id="jobTechFilter" class="form-input" style="flex:0 0 150px;">
@@ -1413,21 +1412,20 @@
     <table style="width:100%;border-collapse:collapse;">
       <thead style="background-color:#1F4E79;color:white;">
         <tr>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Date</th>
           <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Job#</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Priority</th>
           <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Customer</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">City</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">State</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Zip</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Requested</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Route Date</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Location</th>
           <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Tech</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Tags</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Revenue</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Notes</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Flags</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Route</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Actions</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Type</th>
+          <th style="padding:12px;text-align:right;border-bottom:1px solid #1a1a2e;">Hours</th>
+          <th style="padding:12px;text-align:right;border-bottom:1px solid #1a1a2e;">Miles</th>
+          <th style="padding:12px;text-align:right;border-bottom:1px solid #1a1a2e;">Revenue</th>
+          <th style="padding:12px;text-align:right;border-bottom:1px solid #1a1a2e;">Cost</th>
+          <th style="padding:12px;text-align:right;border-bottom:1px solid #1a1a2e;">Profit</th>
+          <th style="padding:12px;text-align:right;border-bottom:1px solid #1a1a2e;">Margin</th>
+          <th style="padding:12px;text-align:center;border-bottom:1px solid #1a1a2e;">Verdict</th>
+          <th style="padding:12px;text-align:center;border-bottom:1px solid #1a1a2e;">Actions</th>
         </tr>
       </thead>
       <tbody id="jobsTableBody">
@@ -1507,11 +1505,9 @@
           <div class="form-group">
             <label class="form-label">Status</label>
             <select id="jobModalStatus" class="form-input">
-              <option value="Pending">Pending</option>
-              <option value="Scheduled">Scheduled</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Done">Done</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
             </select>
           </div>
           <div class="form-group">
@@ -2022,13 +2018,8 @@
         <tr>
           <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Name</th>
           <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Role</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Hourly Rate</th>
           <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Loaded Rate</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Monthly Pay</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Annual Pay</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Status</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Jobs (Month)</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Efficiency %</th>
+          <th style="padding:12px;text-align:center;border-bottom:1px solid #1a1a2e;">Jobs</th>
         </tr>
       </thead>
       <tbody id="personnelTableBody">
@@ -2091,14 +2082,14 @@
             <label class="form-label">Technician</label>
             <select id="calcTech" class="form-input">
               <option value="">Select Tech</option>
-              <option value="Sam" data-rate="35.21">Sam ($35.21/hr)</option>
-              <option value="Lucas" data-rate="28.17">Lucas ($28.17/hr)</option>
-              <option value="Katie" data-rate="28.17">Katie ($28.17/hr)</option>
-              <option value="Spencer" data-rate="56.33">Spencer ($56.33/hr)</option>
-              <option value="Lex" data-rate="42.25">Lex ($42.25/hr)</option>
-              <option value="Caden" data-rate="40.63">Caden ($40.63/hr)</option>
-              <option value="Jen" data-rate="5.28">Jen ($5.28/hr)</option>
-              <option value="Andrew" data-rate="32.50">Andrew ($32.50/hr)</option>
+              <option value="Sam">Sam ($32.50/hr)</option>
+              <option value="Lucas">Lucas ($26.00/hr)</option>
+              <option value="Katie">Katie ($26.00/hr)</option>
+              <option value="Spencer">Spencer ($52.00/hr)</option>
+              <option value="Lex">Lex ($39.00/hr)</option>
+              <option value="Caden">Caden ($37.51/hr)</option>
+              <option value="Jen">Jen ($19.50/hr)</option>
+              <option value="Andrew">Andrew ($32.50/hr)</option>
             </select>
           </div>
           <div class="form-group">
@@ -2221,42 +2212,6 @@
     <div id="breakevenScenarioTable" style="overflow-x:auto;margin-bottom:20px;">
       <!-- JS fills expanded break-even scenarios -->
     </div>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
-      <thead style="background-color:#1F4E79;color:white;">
-        <tr>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Jobs/Week</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Jobs/Month</th>
-          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Required Revenue</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style="border-bottom:1px solid #f3f4f6;">
-          <td style="padding:12px;">3</td>
-          <td style="padding:12px;">12</td>
-          <td style="padding:12px;">$32,376</td>
-        </tr>
-        <tr style="border-bottom:1px solid #f3f4f6;">
-          <td style="padding:12px;">4</td>
-          <td style="padding:12px;">16</td>
-          <td style="padding:12px;">$43,168</td>
-        </tr>
-        <tr style="border-bottom:1px solid #f3f4f6;background-color:#d4e8f0;">
-          <td style="padding:12px;"><strong>5</strong></td>
-          <td style="padding:12px;"><strong>20</strong></td>
-          <td style="padding:12px;"><strong>$53,960</strong></td>
-        </tr>
-        <tr style="border-bottom:1px solid #f3f4f6;">
-          <td style="padding:12px;">6</td>
-          <td style="padding:12px;">24</td>
-          <td style="padding:12px;">$64,752</td>
-        </tr>
-        <tr style="border-bottom:1px solid #f3f4f6;">
-          <td style="padding:12px;">7</td>
-          <td style="padding:12px;">28</td>
-          <td style="padding:12px;">$75,544</td>
-        </tr>
-      </tbody>
-    </table>
     <canvas id="breakevenChart" style="max-height:300px;"></canvas>
   </div>
 </div>
@@ -2458,9 +2413,6 @@
 
     <button id="saveSettingsBtn" class="btn btn-primary" style="width:100%;padding:16px;font-size:16px;">Save All Settings</button>
   </div>
-</div>
-
-</div>
 </div>
 
 <!-- TAB 10: RECONCILIATION -->
@@ -2695,7 +2647,7 @@ const DataStore = {
     depot: { lat: 35.9641, lng: -83.9201 },
     maxJobsPerRoute: 4,
     serviceDuration: 2,
-    workdayStart: 8,
+    workdayStart: '08:00',
     fuelCost: 0.99,
     qaCost: 85,
     adminCost: 315,
@@ -2720,6 +2672,7 @@ function persistData() {
       warranty: DataStore.warranty,
       inventory: DataStore.inventory,
       reconciliation: DataStore.reconciliation,
+      routes: DataStore.routes,
       settings: DataStore.settings,
     }));
   } catch (e) {
@@ -2736,6 +2689,7 @@ function loadPersistedData() {
       if (parsed.warranty) DataStore.warranty = parsed.warranty;
       if (parsed.inventory) DataStore.inventory = parsed.inventory;
       if (parsed.reconciliation) DataStore.reconciliation = parsed.reconciliation;
+      if (parsed.routes) DataStore.routes = parsed.routes;
       if (parsed.settings) Object.assign(DataStore.settings, parsed.settings);
       return true;
     }
@@ -2879,7 +2833,7 @@ function toast(message, type = 'info') {
     border-radius: 6px;
     color: white;
     font-weight: 500;
-    background: ${type === 'success' ? '#16a34a' : type === 'error' ? '#dc2626' : '#3b82f6'};
+    background: ${type === 'success' ? '#16a34a' : type === 'error' ? '#dc2626' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
     animation: slideIn 0.3s ease-out;
   `;
   toast.textContent = message;
@@ -3317,6 +3271,12 @@ function initMap() {
   const routeMap = document.getElementById('routeMap');
   if (!routeMap || typeof L === 'undefined') return;
 
+  // Prevent re-initialization crash
+  if (map) {
+    map.remove();
+    map = null;
+  }
+
   map = L.map('routeMap').setView([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], 7);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
@@ -3384,38 +3344,47 @@ function renderRoutes() {
     `;
   }).join('');
 
-  // View toggle buttons
+  // View toggle buttons (only attach once)
   const mapBtn = document.getElementById('routeMapViewBtn');
   const listBtn = document.getElementById('routeListViewBtn');
   const analyticsBtn = document.getElementById('routeAnalyticsViewBtn');
 
-  if (mapBtn) mapBtn.addEventListener('click', () => {
-    const map = document.getElementById('routeMap');
-    const list = document.getElementById('routeList');
-    const analytics = document.getElementById('analyticsSection');
-    if (map) map.style.display = 'block';
-    if (list) list.style.display = 'none';
-    if (analytics) analytics.style.display = 'none';
-  });
+  if (mapBtn && !mapBtn._listenersAttached) {
+    mapBtn._listenersAttached = true;
+    mapBtn.addEventListener('click', () => {
+      const mapEl = document.getElementById('routeMap');
+      const list = document.getElementById('routeList');
+      const analytics = document.getElementById('analyticsSection');
+      if (mapEl) mapEl.style.display = 'block';
+      if (list) list.style.display = 'none';
+      if (analytics) analytics.style.display = 'none';
+    });
+  }
 
-  if (listBtn) listBtn.addEventListener('click', () => {
-    const map = document.getElementById('routeMap');
-    const list = document.getElementById('routeList');
-    const analytics = document.getElementById('analyticsSection');
-    if (map) map.style.display = 'none';
-    if (list) list.style.display = 'block';
-    if (analytics) analytics.style.display = 'none';
-  });
+  if (listBtn && !listBtn._listenersAttached) {
+    listBtn._listenersAttached = true;
+    listBtn.addEventListener('click', () => {
+      const mapEl = document.getElementById('routeMap');
+      const list = document.getElementById('routeList');
+      const analytics = document.getElementById('analyticsSection');
+      if (mapEl) mapEl.style.display = 'none';
+      if (list) list.style.display = 'block';
+      if (analytics) analytics.style.display = 'none';
+    });
+  }
 
-  if (analyticsBtn) analyticsBtn.addEventListener('click', () => {
-    const map = document.getElementById('routeMap');
-    const list = document.getElementById('routeList');
-    const analytics = document.getElementById('analyticsSection');
-    if (map) map.style.display = 'none';
-    if (list) list.style.display = 'none';
-    if (analytics) analytics.style.display = 'block';
-    renderRouteAnalytics();
-  });
+  if (analyticsBtn && !analyticsBtn._listenersAttached) {
+    analyticsBtn._listenersAttached = true;
+    analyticsBtn.addEventListener('click', () => {
+      const mapEl = document.getElementById('routeMap');
+      const list = document.getElementById('routeList');
+      const analytics = document.getElementById('analyticsSection');
+      if (mapEl) mapEl.style.display = 'none';
+      if (list) list.style.display = 'none';
+      if (analytics) analytics.style.display = 'block';
+      renderRouteAnalytics();
+    });
+  }
 
   // Weather widget
   fetchWeather();
@@ -3479,53 +3448,125 @@ function renderWarranty() {
   const warrantyTableBody = document.getElementById('warrantyTableBody');
   if (!warrantyTableBody) return;
 
-  // Placeholder warranty data
-  warrantyTableBody.innerHTML = `
-    <tr style="border-bottom:1px solid #e5e7eb;">
-      <td colspan="20" style="padding:24px;text-align:center;color:#666;">
-        No warranty claims yet. Click "Add Claim" to get started.
-      </td>
-    </tr>
-  `;
+  let claims = [...(DataStore.warranty || [])];
 
-  // Summary cards
-  const summaryEl = document.getElementById('warrantySummaryTotalClaims');
-  if (summaryEl) {
-    summaryEl.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;">
-        <div style="padding:12px;background:#f0f9ff;border-radius:6px;text-align:center;">
-          <div style="font-size:28px;font-weight:700;color:#2563eb;">0</div>
-          <div style="font-size:12px;color:#666;margin-top:4px;">Total Claims</div>
-        </div>
-        <div style="padding:12px;background:#f0fdf4;border-radius:6px;text-align:center;">
-          <div style="font-size:28px;font-weight:700;color:#16a34a;">$0.00</div>
-          <div style="font-size:12px;color:#666;margin-top:4px;">Paid</div>
-        </div>
-        <div style="padding:12px;background:#fef2f2;border-radius:6px;text-align:center;">
-          <div style="font-size:28px;font-weight:700;color:#dc2626;">$0.00</div>
-          <div style="font-size:12px;color:#666;margin-top:4px;">Outstanding</div>
-        </div>
-      </div>
-    `;
+  // Apply filters
+  const statusFilter = document.getElementById('warrantyStatusFilter');
+  if (statusFilter && statusFilter.value) {
+    claims = claims.filter(c => c.status === statusFilter.value);
   }
+  const techFilter = document.getElementById('warrantyTechFilter');
+  if (techFilter && techFilter.value) {
+    claims = claims.filter(c => c.tech === techFilter.value);
+  }
+  const startDate = document.getElementById('warrantyStartDate');
+  const endDate = document.getElementById('warrantyEndDate');
+  if (startDate && startDate.value) {
+    claims = claims.filter(c => (c.dateOfJob || '') >= startDate.value);
+  }
+  if (endDate && endDate.value) {
+    claims = claims.filter(c => (c.dateOfJob || '') <= endDate.value);
+  }
+
+  if (claims.length === 0) {
+    warrantyTableBody.innerHTML = `
+      <tr style="border-bottom:1px solid #e5e7eb;">
+        <td colspan="20" style="padding:24px;text-align:center;color:#666;">
+          No warranty claims yet. Click "Add Claim" to get started.
+        </td>
+      </tr>
+    `;
+  } else {
+    warrantyTableBody.innerHTML = claims.map(c => {
+      const statusClass = (c.status || '').toLowerCase().includes('paid') ? 'badge-paid' :
+        (c.status || '').toLowerCase().includes('attention') ? 'badge-needs-attention' : 'badge-pending';
+      return `<tr style="border-bottom:1px solid #e5e7eb;">
+        <td style="padding:10px 12px;"><span class="badge ${statusClass}">${c.status || ''}</span></td>
+        <td style="padding:10px 12px;font-weight:600;">${c.customer || ''}</td>
+        <td style="padding:10px 12px;">${c.dateOfJob || ''}</td>
+        <td style="padding:10px 12px;font-family:monospace;">${c.caseNum || ''}</td>
+        <td style="padding:10px 12px;">${c.tech || ''}</td>
+        <td style="padding:10px 12px;text-align:right;">${fmt(c.allottedAmount || 0)}</td>
+        <td style="padding:10px 12px;text-align:right;">${fmt(c.paidAmount || 0)}</td>
+        <td style="padding:10px 12px;text-align:right;">${fmt(c.companyCost || 0)}</td>
+        <td style="padding:10px 12px;text-align:right;color:${(c.profitAmount || 0) >= 0 ? '#16a34a' : '#dc2626'};font-weight:600;">${fmt((c.profitAmount || 0) - (c.lossAmount || 0))}</td>
+        <td style="padding:10px 12px;font-size:12px;">${c.notes || ''}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Update KPI cards
+  const all = DataStore.warranty || [];
+  const totalClaims = all.length;
+  const totalAllotted = all.reduce((s, c) => s + (c.allottedAmount || 0), 0);
+  const totalPaid = all.reduce((s, c) => s + (c.paidAmount || 0), 0);
+  const outstanding = totalAllotted - totalPaid;
+  const rmaCount = all.filter(c => (c.status || '').toLowerCase().includes('rma')).length;
+  const goBackCount = all.filter(c => (c.status || '').toLowerCase().includes('go back')).length;
+
+  const setKpi = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setKpi('warrantySummaryTotalClaims', totalClaims);
+  setKpi('warrantySummaryAllotted', fmt(totalAllotted));
+  setKpi('warrantySummaryPaid', fmt(totalPaid));
+  setKpi('warrantySummaryOutstanding', fmt(outstanding));
+  setKpi('warrantySummaryRma', rmaCount);
+  setKpi('warrantySummaryGoBack', goBackCount);
+
+  // Populate tech filter
+  if (techFilter) {
+    const techs = [...new Set(all.map(c => c.tech).filter(Boolean))];
+    const currentVal = techFilter.value;
+    techFilter.innerHTML = '<option value="">All Techs</option>' +
+      techs.map(t => `<option value="${t}" ${t === currentVal ? 'selected' : ''}>${t}</option>`).join('');
+  }
+}
+
+function saveWarrantyClaim() {
+  const modal = document.getElementById('warrantyModal');
+  if (!modal) return;
+
+  const getVal = (id) => document.getElementById(id)?.value || '';
+  const getNum = (id) => parseFloat(document.getElementById(id)?.value) || 0;
+
+  const claim = {
+    status: getVal('wStatus'),
+    customer: getVal('wCustomer'),
+    dateOfJob: getVal('wDateOfJob'),
+    caseNum: getVal('wCaseNum'),
+    tech: getVal('wTech'),
+    allottedTravel: getNum('wAllottedTravel'),
+    actualTravel: getNum('wActualTravel'),
+    distanceMiles: getNum('wDistanceMiles'),
+    actualMiles: getNum('wActualMiles'),
+    allottedTechTime: getNum('wAllottedTechTime'),
+    actualTechTime: getNum('wActualTechTime'),
+    allottedAmount: getNum('wAllottedAmount'),
+    adjustedAmount: getNum('wAdjustedAmount'),
+    paidAmount: getNum('wPaidAmount'),
+    dateCheckCut: getVal('wDateCheckCut'),
+    svn: getVal('wSvn'),
+    companyCost: getNum('wCompanyCost'),
+    profitAmount: getNum('wProfitAmount'),
+    lossAmount: getNum('wLossAmount'),
+    notes: getVal('wNotes'),
+  };
+
+  if (!claim.customer && !claim.caseNum) {
+    toast('Customer name or case # is required', 'error');
+    return;
+  }
+
+  if (!DataStore.warranty) DataStore.warranty = [];
+  DataStore.warranty.push(claim);
+  persistData();
+  hideModal('warrantyModal');
+  toast('Warranty claim saved', 'success');
+  renderWarranty();
 }
 
 // ============================================================================
 // INVENTORY RENDERING
 // ============================================================================
-
-function renderInventory() {
-  const inventoryTableBody = document.getElementById('inventoryTableBody');
-  if (!inventoryTableBody) return;
-
-  inventoryTableBody.innerHTML = `
-    <tr style="border-bottom:1px solid #e5e7eb;">
-      <td colspan="6" style="padding:24px;text-align:center;color:#666;">
-        No inventory items yet.
-      </td>
-    </tr>
-  `;
-}
 
 // ============================================================================
 // TECHNICIANS RENDERING
@@ -3592,12 +3633,7 @@ function renderFinancials() {
   cards.forEach(card => {
     const el = document.getElementById(card.id);
     if (el) {
-      el.innerHTML = `
-        <div style="padding:12px;background:#f9fafb;border-radius:6px;">
-          <div style="font-size:12px;color:#666;text-transform:uppercase;font-weight:500;">${card.label}</div>
-          <div style="font-size:20px;font-weight:700;color:#1a1a2e;margin-top:4px;">${card.value}</div>
-        </div>
-      `;
+      el.textContent = card.value;
     }
   });
 
@@ -3614,8 +3650,10 @@ function renderFinancials() {
   renderFinancialCharts();
 }
 
+let trueCostListenersAttached = false;
 function renderTrueCostCalculator() {
-  // Auto-calculate on input change
+  if (trueCostListenersAttached) return;
+  trueCostListenersAttached = true;
   ['calcTech', 'calcOnsite', 'calcTravel', 'calcMiles', 'calcParts', 'calcConsumables', 'calcRevenue'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
@@ -4284,9 +4322,19 @@ function renderInventory() {
 
   const inventory = DataStore.inventory || [];
 
+  // Update KPI cards
+  const inStock = inventory.filter(i => i.quantity > (i.reorderPoint || 5)).length;
+  const lowStock = inventory.filter(i => i.quantity > 0 && i.quantity <= (i.reorderPoint || 5)).length;
+  const outOfStock = inventory.filter(i => !i.quantity || i.quantity <= 0).length;
+  const setInvKpi = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setInvKpi('invTotalItems', inventory.length);
+  setInvKpi('invInStock', inStock);
+  setInvKpi('invLowStock', lowStock);
+  setInvKpi('invOutOfStock', outOfStock);
+
   if (inventory.length === 0) {
     inventoryTableBody.innerHTML = `
-      <tr><td colspan="6" style="padding:24px;text-align:center;color:#666;">
+      <tr><td colspan="10" style="padding:24px;text-align:center;color:#666;">
         No inventory items. <button class="btn btn-sm btn-primary" onclick="addInventoryItem()">Add First Item</button>
       </td></tr>`;
     return;
@@ -4369,9 +4417,15 @@ function renderSettings() {
     settUnansweredThreshold: settings.unansweredThreshold,
   };
 
+  const checkboxFields = ['emailGenerac', 'emailInfo', 'emailCustomerSupport'];
   Object.entries(fields).forEach(([fieldId, value]) => {
     const el = document.getElementById(fieldId);
-    if (el) el.value = value;
+    if (!el) return;
+    if (checkboxFields.includes(fieldId)) {
+      el.checked = !!value;
+    } else {
+      el.value = value;
+    }
   });
 }
 
@@ -4398,11 +4452,16 @@ function saveSettings() {
     settUnansweredThreshold: 'unansweredThreshold',
   };
 
+  const numericFields = ['settDepotLat', 'settDepotLng', 'settFuelCost', 'settQaCost', 'settAdminCost',
+    'settRiskBuffer', 'settMaxJobs', 'settServiceDuration', 'settOverheadAlloc',
+    'settScanFrequency', 'settUnansweredThreshold'];
+
   Object.entries(fields).forEach(([fieldId, path]) => {
     const el = document.getElementById(fieldId);
     if (!el) return;
 
-    const value = ['settDepotLat', 'settDepotLng'].includes(fieldId) ? parseFloat(el.value) : el.value;
+    const checkboxes = ['emailGenerac', 'emailInfo', 'emailCustomerSupport'];
+    const value = checkboxes.includes(fieldId) ? el.checked : numericFields.includes(fieldId) ? parseFloat(el.value) : el.value;
 
     if (Array.isArray(path)) {
       settings[path[0]][path[1]] = value;
@@ -4410,6 +4469,19 @@ function saveSettings() {
       settings[path] = value;
     }
   });
+
+  // Apply settings to CONFIG so calculations use updated values
+  CONFIG.FUEL_PER_MILE = settings.fuelCost;
+  CONFIG.QA_PER_JOB = settings.qaCost;
+  CONFIG.ADMIN_PER_JOB = settings.adminCost;
+  CONFIG.RISK_BUFFER = settings.riskBuffer;
+  CONFIG.MAX_JOBS_PER_ROUTE = settings.maxJobsPerRoute;
+  CONFIG.DEPOT.lat = settings.depot.lat;
+  CONFIG.DEPOT.lng = settings.depot.lng;
+  // Recompute derived constants
+  CONFIG.OVERHEAD_PER_JOB = CONFIG.MONTHLY_OVERHEAD / CONFIG.JOBS_PER_MONTH;
+  CONFIG.BREAKEVEN_PER_JOB = CONFIG.OVERHEAD_PER_JOB + CONFIG.RISK_BUFFER;
+  CONFIG.COST_PER_HOUR = CONFIG.MONTHLY_OVERHEAD / CONFIG.HOURS_PER_MONTH;
 
   persistData();
   toast('Settings saved', 'success');
@@ -4611,6 +4683,62 @@ document.addEventListener('DOMContentLoaded', () => {
   // Geocode Backlog button
   const geocodeBacklogBtn = document.getElementById('geocodeBacklogBtn');
   if (geocodeBacklogBtn) geocodeBacklogBtn.addEventListener('click', geocodeBacklog);
+
+  // Job modal close button
+  const jobModalClose = document.getElementById('jobModalClose');
+  if (jobModalClose) jobModalClose.addEventListener('click', () => hideModal('jobModal'));
+
+  // Warranty buttons
+  const addClaimBtn = document.getElementById('addClaimBtn');
+  if (addClaimBtn) addClaimBtn.addEventListener('click', () => {
+    ['wStatus','wCustomer','wDateOfJob','wCaseNum','wTech','wAllottedTravel','wActualTravel',
+     'wDistanceMiles','wActualMiles','wAllottedTechTime','wActualTechTime','wAllottedAmount',
+     'wAdjustedAmount','wPaidAmount','wDateCheckCut','wSvn','wCompanyCost','wProfitAmount',
+     'wLossAmount','wNotes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    showModal('warrantyModal');
+  });
+  const saveClaimBtn = document.getElementById('saveClaimBtn');
+  if (saveClaimBtn) saveClaimBtn.addEventListener('click', saveWarrantyClaim);
+  const cancelClaimBtn = document.getElementById('cancelClaimBtn');
+  if (cancelClaimBtn) cancelClaimBtn.addEventListener('click', () => hideModal('warrantyModal'));
+  const warrantyModalClose = document.getElementById('warrantyModalClose');
+  if (warrantyModalClose) warrantyModalClose.addEventListener('click', () => hideModal('warrantyModal'));
+
+  // Warranty filters
+  const warrantyStatusFilter = document.getElementById('warrantyStatusFilter');
+  if (warrantyStatusFilter) warrantyStatusFilter.addEventListener('change', renderWarranty);
+  const warrantyTechFilter = document.getElementById('warrantyTechFilter');
+  if (warrantyTechFilter) warrantyTechFilter.addEventListener('change', renderWarranty);
+  const warrantyStartDate = document.getElementById('warrantyStartDate');
+  if (warrantyStartDate) warrantyStartDate.addEventListener('change', renderWarranty);
+  const warrantyEndDate = document.getElementById('warrantyEndDate');
+  if (warrantyEndDate) warrantyEndDate.addEventListener('change', renderWarranty);
+
+  // Inventory add item button
+  const addItemBtn = document.getElementById('addItemBtn');
+  if (addItemBtn) addItemBtn.addEventListener('click', addInventoryItem);
+
+  // Test Connection button
+  const testConnectionBtn = document.getElementById('testConnectionBtn');
+  if (testConnectionBtn) testConnectionBtn.addEventListener('click', async () => {
+    const url = DataStore.settings.appsScriptUrl;
+    const statusEl = document.getElementById('connectionStatus');
+    if (!url) { toast('Set Apps Script URL first', 'warning'); return; }
+    if (statusEl) statusEl.textContent = 'Testing...';
+    try {
+      const res = await fetch(url + '?action=ping');
+      if (res.ok) {
+        if (statusEl) statusEl.textContent = 'Connected!';
+        statusEl.style.color = '#16a34a';
+        toast('Connection successful', 'success');
+      } else {
+        if (statusEl) statusEl.textContent = 'Failed (' + res.status + ')';
+        statusEl.style.color = '#dc2626';
+      }
+    } catch (e) {
+      if (statusEl) { statusEl.textContent = 'Error: ' + e.message; statusEl.style.color = '#dc2626'; }
+    }
+  });
 
   // System Diagnostics buttons
   const runDiagnosticsBtn = document.getElementById('runDiagnosticsBtn');
