@@ -4356,28 +4356,144 @@ function renderInventory() {
   }).join('');
 }
 
-function addInventoryItem() {
-  const name = prompt('Item name:');
-  if (!name) return;
-  const category = prompt('Category (e.g., Parts, Consumables, Tools):', 'Parts');
-  const quantity = parseInt(prompt('Quantity:', '10')) || 0;
-  const unitCost = parseFloat(prompt('Unit cost ($):', '0')) || 0;
+// ============================================================================
+// CSV IMPORT
+// ============================================================================
 
-  if (!DataStore.inventory) DataStore.inventory = [];
-  DataStore.inventory.push({ name, category, quantity, unitCost, reorderPoint: 5 });
+let csvParsedRows = [];
+
+function handleCsvFile(file) {
+  if (!file.name.endsWith('.csv')) {
+    toast('Please select a CSV file', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) { toast('CSV file is empty or has no data rows', 'error'); return; }
+
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    csvParsedRows = lines.slice(1).map(line => {
+      const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const row = {};
+      headers.forEach((h, i) => { row[h] = vals[i] || ''; });
+      return row;
+    });
+
+    const preview = document.getElementById('csvPreview');
+    if (preview) {
+      preview.innerHTML = `<p style="color:#16a34a;font-weight:600;">Parsed ${csvParsedRows.length} rows with columns: ${headers.join(', ')}</p>
+        <div style="max-height:200px;overflow:auto;font-size:12px;margin-top:8px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead><tr>${headers.map(h => `<th style="padding:4px 8px;background:#f3f4f6;text-align:left;border:1px solid #e5e7eb;">${h}</th>`).join('')}</tr></thead>
+            <tbody>${csvParsedRows.slice(0, 5).map(r => `<tr>${headers.map(h => `<td style="padding:4px 8px;border:1px solid #e5e7eb;">${r[h] || ''}</td>`).join('')}</tr>`).join('')}</tbody>
+          </table>
+          ${csvParsedRows.length > 5 ? `<p style="color:#666;margin-top:8px;">...and ${csvParsedRows.length - 5} more rows</p>` : ''}
+        </div>`;
+    }
+
+    const dropZone = document.getElementById('csvDropZone');
+    if (dropZone) dropZone.innerHTML = `<p style="color:#16a34a;font-weight:600;">${file.name} loaded (${csvParsedRows.length} rows)</p>`;
+  };
+  reader.readAsText(file);
+}
+
+function importCsvData() {
+  if (!csvParsedRows.length) { toast('No CSV data loaded. Drop a file first.', 'warning'); return; }
+
+  if (!DataStore.jobs) DataStore.jobs = [];
+  let imported = 0;
+  csvParsedRows.forEach(row => {
+    const job = {
+      id: row['Job#'] || row['JobID'] || row['id'] || ('CSV-' + (DataStore.jobs.length + 1)),
+      customer: row['Customer'] || row['customer'] || '',
+      city: row['City'] || row['city'] || row['Location'] || '',
+      state: row['State'] || row['state'] || 'TN',
+      tech: row['Tech'] || row['Technician'] || row['tech'] || '',
+      type: row['Type'] || row['Service'] || row['type'] || 'Service',
+      hours: parseFloat(row['Hours'] || row['hours'] || 0),
+      miles: parseFloat(row['Miles'] || row['miles'] || 0),
+      revenue: parseFloat(row['Revenue'] || row['revenue'] || row['Amount'] || 0),
+      status: (row['Status'] || row['status'] || 'scheduled').toLowerCase(),
+      date: row['Date'] || row['date'] || new Date().toISOString().slice(0, 10),
+      notes: row['Notes'] || row['notes'] || '',
+    };
+    DataStore.jobs.push(job);
+    imported++;
+  });
+
   persistData();
-  toast('Added: ' + name, 'success');
-  renderInventory();
+  csvParsedRows = [];
+  hideModal('csvModal');
+  toast(`Imported ${imported} jobs from CSV`, 'success');
+  renderJobs();
+  renderDashboard();
+}
+
+// ============================================================================
+// INVENTORY MANAGEMENT
+// ============================================================================
+
+let editingInventoryIdx = null;
+
+function addInventoryItem() {
+  editingInventoryIdx = null;
+  const nameEl = document.getElementById('checkoutItemName');
+  const techEl = document.getElementById('checkoutTech');
+  const qtyEl = document.getElementById('checkoutQty');
+  if (nameEl) { nameEl.value = ''; nameEl.readOnly = false; nameEl.placeholder = 'Item name'; }
+  if (techEl) techEl.value = '';
+  if (qtyEl) qtyEl.value = '1';
+
+  // Repurpose checkout modal for add/edit
+  const title = document.querySelector('#checkoutModal .modal-title');
+  if (title) title.textContent = 'Add Inventory Item';
+  const saveBtn = document.getElementById('saveCheckoutBtn');
+  if (saveBtn) saveBtn.textContent = 'Add Item';
+
+  showModal('checkoutModal');
 }
 
 function editInventoryItem(idx) {
   const item = DataStore.inventory[idx];
   if (!item) return;
-  const qty = parseInt(prompt('New quantity for ' + item.name + ':', item.quantity));
-  if (isNaN(qty)) return;
-  item.quantity = qty;
+  editingInventoryIdx = idx;
+
+  const nameEl = document.getElementById('checkoutItemName');
+  const techEl = document.getElementById('checkoutTech');
+  const qtyEl = document.getElementById('checkoutQty');
+  if (nameEl) { nameEl.value = item.name; nameEl.readOnly = true; }
+  if (techEl) techEl.value = '';
+  if (qtyEl) qtyEl.value = item.quantity;
+
+  const title = document.querySelector('#checkoutModal .modal-title');
+  if (title) title.textContent = 'Edit: ' + item.name;
+  const saveBtn = document.getElementById('saveCheckoutBtn');
+  if (saveBtn) saveBtn.textContent = 'Save Changes';
+
+  showModal('checkoutModal');
+}
+
+function saveCheckout() {
+  const name = document.getElementById('checkoutItemName')?.value?.trim();
+  const qty = parseInt(document.getElementById('checkoutQty')?.value) || 0;
+
+  if (!DataStore.inventory) DataStore.inventory = [];
+
+  if (editingInventoryIdx !== null) {
+    // Editing existing item quantity
+    DataStore.inventory[editingInventoryIdx].quantity = qty;
+    toast('Updated: ' + DataStore.inventory[editingInventoryIdx].name, 'success');
+  } else {
+    // Adding new item
+    if (!name) { toast('Item name is required', 'error'); return; }
+    DataStore.inventory.push({ name, category: 'Parts', quantity: qty, unitCost: 0, reorderPoint: 5 });
+    toast('Added: ' + name, 'success');
+  }
+
   persistData();
-  toast('Updated: ' + item.name, 'success');
+  hideModal('checkoutModal');
   renderInventory();
 }
 
@@ -4687,6 +4803,39 @@ document.addEventListener('DOMContentLoaded', () => {
   // Job modal close button
   const jobModalClose = document.getElementById('jobModalClose');
   if (jobModalClose) jobModalClose.addEventListener('click', () => hideModal('jobModal'));
+
+  // CSV modal buttons
+  const csvModalClose = document.getElementById('csvModalClose');
+  if (csvModalClose) csvModalClose.addEventListener('click', () => hideModal('csvModal'));
+  const csvCancelBtn = document.getElementById('csvCancelBtn');
+  if (csvCancelBtn) csvCancelBtn.addEventListener('click', () => hideModal('csvModal'));
+  const importCsvBtn = document.getElementById('importCsvBtn');
+  if (importCsvBtn) importCsvBtn.addEventListener('click', () => showModal('csvModal'));
+  const csvDropZone = document.getElementById('csvDropZone');
+  const csvFileInput = document.getElementById('csvFileInput');
+  if (csvDropZone && csvFileInput) {
+    csvDropZone.addEventListener('click', () => csvFileInput.click());
+    csvDropZone.addEventListener('dragover', (e) => { e.preventDefault(); csvDropZone.style.borderColor = '#16a34a'; });
+    csvDropZone.addEventListener('dragleave', () => { csvDropZone.style.borderColor = '#2563EB'; });
+    csvDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      csvDropZone.style.borderColor = '#2563EB';
+      if (e.dataTransfer.files.length) handleCsvFile(e.dataTransfer.files[0]);
+    });
+    csvFileInput.addEventListener('change', () => {
+      if (csvFileInput.files.length) handleCsvFile(csvFileInput.files[0]);
+    });
+  }
+  const csvImportBtn = document.getElementById('csvImportBtn');
+  if (csvImportBtn) csvImportBtn.addEventListener('click', importCsvData);
+
+  // Checkout modal buttons
+  const checkoutModalClose = document.getElementById('checkoutModalClose');
+  if (checkoutModalClose) checkoutModalClose.addEventListener('click', () => hideModal('checkoutModal'));
+  const checkoutCancelBtn = document.getElementById('checkoutCancelBtn');
+  if (checkoutCancelBtn) checkoutCancelBtn.addEventListener('click', () => hideModal('checkoutModal'));
+  const saveCheckoutBtn = document.getElementById('saveCheckoutBtn');
+  if (saveCheckoutBtn) saveCheckoutBtn.addEventListener('click', saveCheckout);
 
   // Warranty buttons
   const addClaimBtn = document.getElementById('addClaimBtn');
