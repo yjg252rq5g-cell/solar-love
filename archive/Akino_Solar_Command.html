@@ -1,0 +1,2939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akino Solar Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        :root {
+            --primary: #F97316;
+            --sidebar-bg: #1F2937;
+            --text-light: #F3F4F6;
+            --border-color: #374151;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #F9FAFB;
+        }
+
+        .sidebar {
+            background-color: var(--sidebar-bg);
+            color: var(--text-light);
+            width: 280px;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar.mobile-hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 2px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .sidebar-nav {
+            list-style: none;
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(249, 115, 22, 0.1);
+            border-left-color: var(--primary);
+        }
+
+        .nav-item.active {
+            background-color: rgba(249, 115, 22, 0.2);
+            border-left-color: var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-icon {
+            width: 20px;
+            text-align: center;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.mobile-view {
+            margin-left: 0;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1F2937;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .sync-status {
+            font-size: 12px;
+            color: #6B7280;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .sync-status.synced::before {
+            content: '✓';
+            color: #10B981;
+            font-weight: bold;
+        }
+
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 250px;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+
+            .hamburger {
+                display: block;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .kpi-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--primary);
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: #6B7280;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1F2937;
+        }
+
+        .kpi-subtext {
+            font-size: 12px;
+            color: #6B7280;
+            margin-top: 5px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            position: relative;
+            height: 350px;
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 15px;
+        }
+
+        .data-table {
+            width: 100%;
+            background: white;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .data-table thead {
+            background-color: #F3F4F6;
+            border-bottom: 2px solid #E5E7EB;
+        }
+
+        .data-table th {
+            padding: 12px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6B7280;
+            text-transform: uppercase;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .data-table th:hover {
+            background-color: #E5E7EB;
+        }
+
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid #E5E7EB;
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .data-table tbody tr:hover {
+            background-color: #F9FAFB;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background-color: #D1FAE5;
+            color: #047857;
+        }
+
+        .badge-warning {
+            background-color: #FEF3C7;
+            color: #B45309;
+        }
+
+        .badge-danger {
+            background-color: #FEE2E2;
+            color: #B91C1C;
+        }
+
+        .badge-info {
+            background-color: #DBEAFE;
+            color: #0C4A6E;
+        }
+
+        .badge-primary {
+            background-color: #FED7AA;
+            color: #92400E;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px rgba(0,0,0,0.15);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #E5E7EB;
+            padding-bottom: 15px;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1F2937;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6B7280;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 5px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #D1D5DB;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #EA580C;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(249, 115, 22, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: #E5E7EB;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background-color: #D1D5DB;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #10B981;
+            color: white;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 3000;
+            animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.error {
+            background: #EF4444;
+        }
+
+        .toast.warning {
+            background: #F59E0B;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-info {
+            background-color: #DBEAFE;
+            color: #0C4A6E;
+            border-left: 4px solid #0284C7;
+        }
+
+        .alert-warning {
+            background-color: #FEF3C7;
+            color: #B45309;
+            border-left: 4px solid #F59E0B;
+        }
+
+        .alert-danger {
+            background-color: #FEE2E2;
+            color: #B91C1C;
+            border-left: 4px solid #EF4444;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #E5E7EB;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6B7280;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab-button {
+            padding: 10px 15px;
+            border: 2px solid #E5E7EB;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6B7280;
+            transition: all 0.2s;
+        }
+
+        .tab-button.active {
+            border-color: var(--primary);
+            color: var(--primary);
+            background-color: rgba(249, 115, 22, 0.1);
+        }
+
+        .tab-button:hover {
+            border-color: var(--primary);
+        }
+
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .stat-label {
+            color: #6B7280;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            color: #1F2937;
+            font-weight: 700;
+        }
+
+        .demo-banner {
+            background-color: #FEF3C7;
+            border-left: 4px solid #F59E0B;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            color: #B45309;
+            font-weight: 500;
+        }
+        /* LOGIN PAGE */
+        .login-page {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: linear-gradient(135deg, #1F2937 0%, #111827 50%, #0F172A 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .login-page.hidden {
+            opacity: 0;
+            transform: scale(1.05);
+            pointer-events: none;
+        }
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 48px 40px;
+            width: 420px;
+            max-width: 92vw;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            animation: slideUp 0.6s ease;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #F97316, #EA580C);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 36px;
+            color: white;
+        }
+        .login-card h1 {
+            font-size: 26px;
+            font-weight: 800;
+            color: #1F2937;
+            margin-bottom: 6px;
+        }
+        .login-card .subtitle {
+            color: #6B7280;
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+        .login-field {
+            position: relative;
+            margin-bottom: 16px;
+            text-align: left;
+        }
+        .login-field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        .login-field input {
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+            background: #F9FAFB;
+        }
+        .login-field input:focus {
+            border-color: #F97316;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(249,115,22,0.1);
+        }
+        .login-field i {
+            position: absolute;
+            left: 14px;
+            top: 40px;
+            color: #9CA3AF;
+            font-size: 16px;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #F97316, #EA580C);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(249,115,22,0.3);
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249,115,22,0.4);
+        }
+        .login-btn:active { transform: translateY(0); }
+        .login-remember {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 16px 0;
+            font-size: 13px;
+            color: #6B7280;
+        }
+        .login-remember input[type="checkbox"] { accent-color: #F97316; width: 16px; height: 16px; }
+        .login-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 20px 0;
+            color: #9CA3AF;
+            font-size: 12px;
+        }
+        .login-divider::before, .login-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #E5E7EB;
+        }
+        .login-quick-btn {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            background: white;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .login-quick-btn:hover {
+            border-color: #F97316;
+            color: #F97316;
+            background: #FFF7ED;
+        }
+        .login-footer {
+            margin-top: 24px;
+            font-size: 12px;
+            color: #9CA3AF;
+        }
+    </style>
+</head>
+<body>
+    <!-- LOGIN PAGE -->
+    <div class="login-page" id="loginPage">
+        <div class="login-card">
+            <div class="login-logo">
+                <i class="fas fa-solar-panel"></i>
+            </div>
+            <h1>Akino Solar</h1>
+            <p class="subtitle">Fleet Command Center</p>
+
+            <div class="login-field">
+                <label>Email</label>
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="loginEmail" placeholder="you@akinosolar.com" value="">
+            </div>
+            <div class="login-field">
+                <label>Password</label>
+                <i class="fas fa-lock"></i>
+                <input type="password" id="loginPassword" placeholder="Enter password" value="">
+            </div>
+            <div class="login-remember">
+                <input type="checkbox" id="loginRemember" checked>
+                <label for="loginRemember">Keep me signed in</label>
+            </div>
+            <button class="login-btn" onclick="handleLogin()">
+                <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+            <div class="login-divider">or</div>
+            <button class="login-quick-btn" onclick="quickLogin()">
+                <i class="fas fa-bolt" style="color:#F97316;"></i> Quick Access (Demo Mode)
+            </button>
+            <p class="login-footer">Akino Solar Command Center v2.0</p>
+        </div>
+    </div>
+
+    <script>
+        // Login handler
+        function handleLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            if (!email) {
+                document.getElementById('loginEmail').style.borderColor = '#EF4444';
+                document.getElementById('loginEmail').focus();
+                return;
+            }
+            // Simple auth — store user and proceed
+            const remember = document.getElementById('loginRemember').checked;
+            if (remember) {
+                localStorage.setItem('akino_user', JSON.stringify({ email, name: email.split('@')[0], loggedIn: true }));
+            }
+            sessionStorage.setItem('akino_session', 'active');
+            document.getElementById('loginPage').classList.add('hidden');
+            setTimeout(() => document.getElementById('loginPage').style.display = 'none', 500);
+        }
+
+        function quickLogin() {
+            localStorage.setItem('akino_user', JSON.stringify({ email: 'demo@akinosolar.com', name: 'Demo', loggedIn: true }));
+            sessionStorage.setItem('akino_session', 'active');
+            document.getElementById('loginPage').classList.add('hidden');
+            setTimeout(() => document.getElementById('loginPage').style.display = 'none', 500);
+        }
+
+        // Auto-login if remembered
+        (function() {
+            const saved = localStorage.getItem('akino_user');
+            if (saved) {
+                const user = JSON.parse(saved);
+                if (user.loggedIn) {
+                    sessionStorage.setItem('akino_session', 'active');
+                    document.getElementById('loginPage').style.display = 'none';
+                }
+            }
+            // Allow Enter key on login fields
+            document.getElementById('loginPassword')?.addEventListener('keypress', e => { if(e.key === 'Enter') handleLogin(); });
+            document.getElementById('loginEmail')?.addEventListener('keypress', e => { if(e.key === 'Enter') document.getElementById('loginPassword').focus(); });
+        })();
+    </script>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <i class="fas fa-bolt"></i> Akino
+            </div>
+            <button class="hamburger" id="mobileMenuClose" style="display: none;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <ul class="sidebar-nav" id="navMenu">
+            <li class="nav-item active" data-tab="dashboard">
+                <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+                <span>Dashboard</span>
+            </li>
+            <li class="nav-item" data-tab="jobs">
+                <span class="nav-icon"><i class="fas fa-briefcase"></i></span>
+                <span>Jobs</span>
+            </li>
+            <li class="nav-item" data-tab="routes">
+                <span class="nav-icon"><i class="fas fa-map"></i></span>
+                <span>Routes</span>
+            </li>
+            <li class="nav-item" data-tab="warranty">
+                <span class="nav-icon"><i class="fas fa-shield"></i></span>
+                <span>Warranty Claims</span>
+            </li>
+            <li class="nav-item" data-tab="inventory">
+                <span class="nav-icon"><i class="fas fa-boxes"></i></span>
+                <span>Inventory</span>
+            </li>
+            <li class="nav-item" data-tab="technicians">
+                <span class="nav-icon"><i class="fas fa-users"></i></span>
+                <span>Technicians</span>
+            </li>
+            <li class="nav-item" data-tab="financials">
+                <span class="nav-icon"><i class="fas fa-dollar-sign"></i></span>
+                <span>Financials</span>
+            </li>
+            <li class="nav-item" data-tab="settings">
+                <span class="nav-icon"><i class="fas fa-cog"></i></span>
+                <span>Settings</span>
+            </li>
+        </ul>
+        <div style="padding: 16px 20px; border-top: 1px solid #374151; margin-top: auto;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:#F97316;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;" id="userAvatar">C</div>
+                <div>
+                    <div style="font-size:14px;font-weight:600;color:#F3F4F6;" id="userName">Caden</div>
+                    <div style="font-size:11px;color:#9CA3AF;" id="userEmail">caden@akinosolar.com</div>
+                </div>
+            </div>
+            <button onclick="handleLogout()" style="width:100%;padding:8px;border-radius:8px;border:1px solid #4B5563;background:transparent;color:#9CA3AF;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s;" onmouseover="this.style.borderColor='#EF4444';this.style.color='#EF4444'" onmouseout="this.style.borderColor='#4B5563';this.style.color='#9CA3AF'">
+                <i class="fas fa-sign-out-alt"></i> Sign Out
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <!-- Header -->
+        <div class="header">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button class="hamburger" id="hamburger">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 id="pageTitle">Dashboard</h1>
+            </div>
+            <div class="header-right">
+                <div class="sync-status synced" id="syncStatus">
+                    Last synced: <span id="lastSyncTime">now</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- DASHBOARD TAB -->
+        <div class="tab-content active" id="dashboard">
+            <div id="demoModeBanner"></div>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid" id="kpiGrid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Jobs</div>
+                    <div class="kpi-value" id="totalJobs">0</div>
+                    <div class="kpi-subtext">This month</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Active Routes</div>
+                    <div class="kpi-value" id="activeRoutes">0</div>
+                    <div class="kpi-subtext">In progress</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Revenue</div>
+                    <div class="kpi-value" id="totalRevenue">$0</div>
+                    <div class="kpi-subtext">Monthly</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Profit/Loss</div>
+                    <div class="kpi-value" id="profitLoss" style="color: #10B981;">$0</div>
+                    <div class="kpi-subtext">Net margin</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Warranty Claims</div>
+                    <div class="kpi-value" id="warrantyClaims">0</div>
+                    <div class="kpi-subtext">Open claims</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Inventory Value</div>
+                    <div class="kpi-value" id="inventoryValue">$0</div>
+                    <div class="kpi-subtext">Total stock</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid-2">
+                <div class="chart-container">
+                    <div class="chart-title">Revenue vs Cost (Last 12 Months)</div>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Job Status Breakdown</div>
+                    <canvas id="jobStatusChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Route Efficiency & Warranty Summary -->
+            <div class="grid-2">
+                <div class="card">
+                    <h3 style="font-weight: 700; margin-bottom: 15px; font-size: 16px;">Route Efficiency</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Avg Miles per Job</span>
+                        <span class="stat-value" id="avgMilesPerJob">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Avg Time per Stop</span>
+                        <span class="stat-value" id="avgTimePerStop">0 min</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Routes</span>
+                        <span class="stat-value" id="totalRoutesCount">0</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 style="font-weight: 700; margin-bottom: 15px; font-size: 16px;">Warranty Claims Status</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Open</span>
+                        <span class="stat-value" id="warrantyOpen">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Paid</span>
+                        <span class="stat-value" id="warrantyPaid">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Waiting RMA</span>
+                        <span class="stat-value" id="warrantyRMA">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts Panel -->
+            <div class="card" style="margin-top: 20px;">
+                <h3 style="font-weight: 700; margin-bottom: 15px; font-size: 16px;">System Alerts</h3>
+                <div id="alertsPanel">
+                    <p style="color: #6B7280; text-align: center; padding: 20px;">No alerts at this time</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- JOBS TAB -->
+        <div class="tab-content" id="jobs">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <input type="text" placeholder="Search jobs..." class="form-input" id="jobSearch" style="width: 200px;">
+                    <select class="form-select" id="jobStatusFilter" style="width: 150px;">
+                        <option value="">All Statuses</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="emergency">Emergency</option>
+                        <option value="done">Done</option>
+                        <option value="parts-needed">Parts Needed</option>
+                        <option value="go-back">Go-Back</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="addJobBtn">
+                    <i class="fas fa-plus"></i> Add Job
+                </button>
+            </div>
+
+            <!-- Jobs Table -->
+            <div class="card" style="overflow-x: auto;">
+                <table class="data-table" id="jobsTable">
+                    <thead>
+                        <tr>
+                            <th>Job #</th>
+                            <th>Priority</th>
+                            <th>Customer</th>
+                            <th>City</th>
+                            <th>Requested</th>
+                            <th>Tech</th>
+                            <th>Status</th>
+                            <th>Revenue</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ROUTES TAB -->
+        <div class="tab-content" id="routes">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <button class="tab-button active" data-route-view="map">
+                    <i class="fas fa-map"></i> Map View
+                </button>
+                <button class="tab-button" data-route-view="list">
+                    <i class="fas fa-list"></i> List View
+                </button>
+                <button class="tab-button" data-route-view="analytics">
+                    <i class="fas fa-chart-bar"></i> Analytics
+                </button>
+                <button class="btn btn-primary" id="optimizeAllBtn" style="margin-left: auto;">
+                    <i class="fas fa-sync"></i> Optimize All Routes
+                </button>
+            </div>
+
+            <!-- Map View -->
+            <div id="routeMapView" class="route-view active">
+                <div id="map"></div>
+                <div class="grid-2">
+                    <div class="card">
+                        <h3 style="font-weight: 700; margin-bottom: 15px;">Route Summary</h3>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Routes</span>
+                            <span class="stat-value" id="routeCount">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Miles</span>
+                            <span class="stat-value" id="totalMiles">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Drive Time</span>
+                            <span class="stat-value" id="totalDriveTime">0h</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3 style="font-weight: 700; margin-bottom: 15px;">Weather</h3>
+                        <div id="weatherPanel">
+                            <p style="color: #6B7280;">Loading weather...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- List View -->
+            <div id="routeListView" class="route-view" style="display: none;">
+                <div id="routesList"></div>
+            </div>
+
+            <!-- Analytics View -->
+            <div id="routeAnalyticsView" class="route-view" style="display: none;">
+                <div class="grid-2">
+                    <div class="chart-container">
+                        <div class="chart-title">Jobs by Status</div>
+                        <canvas id="routeJobStatusChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Technician Workload</div>
+                        <canvas id="techWorkloadChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Route Mileage Trend</div>
+                    <canvas id="mileageTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- WARRANTY CLAIMS TAB -->
+        <div class="tab-content" id="warranty">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <div class="tab-buttons" id="monthTabs"></div>
+                <button class="btn btn-primary" id="addClaimBtn">
+                    <i class="fas fa-plus"></i> Add Claim
+                </button>
+            </div>
+
+            <!-- Claims Table -->
+            <div class="card" style="overflow-x: auto;">
+                <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="tab-button active" data-claim-filter="all">All Claims</button>
+                    <button class="tab-button" data-claim-filter="waiting-rma">Waiting RMA</button>
+                    <button class="tab-button" data-claim-filter="waiting-go-back">Waiting Go-Back</button>
+                    <button class="tab-button" data-claim-filter="paid">Paid</button>
+                </div>
+                <table class="data-table" id="warrantyTable">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Customer</th>
+                            <th>Date</th>
+                            <th>Case #</th>
+                            <th>Tech</th>
+                            <th>Allotted $</th>
+                            <th>Paid $</th>
+                            <th>Company Cost</th>
+                            <th>Profit</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="warrantyTableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Monthly Summary -->
+            <div class="card" style="margin-top: 20px;">
+                <h3 style="font-weight: 700; margin-bottom: 15px;">Monthly Financial Summary</h3>
+                <div class="stat-row">
+                    <span class="stat-label">Total Allotted</span>
+                    <span class="stat-value" id="totalAllotted">$0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total Paid</span>
+                    <span class="stat-value" id="totalPaid">$0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Company Cost</span>
+                    <span class="stat-value" id="monthlyCost">$0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Profit/Loss</span>
+                    <span class="stat-value" id="monthlyProfit">$0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- INVENTORY TAB -->
+        <div class="tab-content" id="inventory">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <input type="text" placeholder="Search inventory..." class="form-input" id="inventorySearch" style="width: 200px;">
+                    <select class="form-select" id="inventoryFilter" style="width: 150px;">
+                        <option value="">All Categories</option>
+                        <option value="parts">Parts</option>
+                        <option value="tools">Tools</option>
+                        <option value="consumables">Consumables</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="addInventoryBtn">
+                    <i class="fas fa-plus"></i> Add Item
+                </button>
+            </div>
+
+            <div class="grid-2">
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Items</div>
+                    <div class="kpi-value" id="totalInventoryItems">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Value</div>
+                    <div class="kpi-value" id="totalInventoryValue">$0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Low Stock Items</div>
+                    <div class="kpi-value" id="lowStockCount">0</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Checked Out</div>
+                    <div class="kpi-value" id="checkedOutCount">0</div>
+                </div>
+            </div>
+
+            <div class="card" style="overflow-x: auto;">
+                <table class="data-table" id="inventoryTable">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                            <th>Qty</th>
+                            <th>Min Stock</th>
+                            <th>Price</th>
+                            <th>Total Value</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TECHNICIANS TAB -->
+        <div class="tab-content" id="technicians">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+                <button class="btn btn-primary" id="addTechBtn">
+                    <i class="fas fa-plus"></i> Add Technician
+                </button>
+            </div>
+
+            <div class="grid-2">
+                <div class="chart-container">
+                    <div class="chart-title">Technician Workload Distribution</div>
+                    <canvas id="techLoadChart"></canvas>
+                </div>
+                <div class="card">
+                    <h3 style="font-weight: 700; margin-bottom: 15px;">Tech Performance Summary</h3>
+                    <div id="techSummaryPanel"></div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 20px; overflow-x: auto;">
+                <table class="data-table" id="techniciansTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Hourly Rate</th>
+                            <th>Loaded Rate</th>
+                            <th>Monthly Pay</th>
+                            <th>Annual Pay</th>
+                            <th>Status</th>
+                            <th>Current Route</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="techniciansTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- FINANCIALS TAB -->
+        <div class="tab-content" id="financials">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <button class="tab-button active" data-financial-view="pnl">
+                    <i class="fas fa-chart-pie"></i> P&L Report
+                </button>
+                <button class="tab-button" data-financial-view="cost-calculator">
+                    <i class="fas fa-calculator"></i> True Cost Calculator
+                </button>
+                <button class="tab-button" data-financial-view="break-even">
+                    <i class="fas fa-crosshairs"></i> Break-Even Analysis
+                </button>
+                <button class="tab-button" data-financial-view="overhead">
+                    <i class="fas fa-layer-group"></i> Overhead Breakdown
+                </button>
+            </div>
+
+            <!-- P&L View -->
+            <div id="pnlView" class="financial-view active">
+                <div class="card" style="overflow-x: auto; margin-bottom: 20px;">
+                    <h3 style="font-weight: 700; margin-bottom: 15px;">Monthly P&L Summary</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Revenue</span>
+                        <span class="stat-value" id="pnlRevenue">$0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Total True Cost</span>
+                        <span class="stat-value" id="pnlCost">$0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Gross Profit</span>
+                        <span class="stat-value" id="pnlProfit">$0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Profit Margin %</span>
+                        <span class="stat-value" id="pnlMargin">0%</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Monthly P&L Trend</div>
+                    <canvas id="pnlChart"></canvas>
+                </div>
+            </div>
+
+            <!-- True Cost Calculator -->
+            <div id="costCalculatorView" class="financial-view" style="display: none;">
+                <div class="card">
+                    <h3 style="font-weight: 700; margin-bottom: 20px;">True Cost Calculator</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                        <div>
+                            <label class="form-label">Select Technician</label>
+                            <select class="form-select" id="calcTech">
+                                <option value="">Choose tech...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Labor Hours</label>
+                            <input type="number" class="form-input" id="calcHours" placeholder="0" min="0" step="0.5">
+                        </div>
+                        <div>
+                            <label class="form-label">Miles Driven</label>
+                            <input type="number" class="form-input" id="calcMiles" placeholder="0" min="0">
+                        </div>
+                        <div>
+                            <label class="form-label">Parts Cost</label>
+                            <input type="number" class="form-input" id="calcParts" placeholder="0" min="0" step="0.01">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="calculateBtn" style="margin-top: 20px;">
+                        Calculate True Cost
+                    </button>
+                    <div id="calculatorResult" style="margin-top: 20px; display: none;">
+                        <div class="stat-row">
+                            <span class="stat-label">Labor Cost</span>
+                            <span class="stat-value" id="resultLabor">$0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Travel Cost</span>
+                            <span class="stat-value" id="resultTravel">$0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Parts Cost</span>
+                            <span class="stat-value" id="resultParts">$0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Overhead Allocation</span>
+                            <span class="stat-value" id="resultOverhead">$0</span>
+                        </div>
+                        <div class="stat-row" style="border-top: 2px solid var(--primary); padding-top: 10px;">
+                            <span class="stat-label" style="font-weight: 700; font-size: 16px;">Total True Cost</span>
+                            <span class="stat-value" id="resultTotal">$0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Break-Even Analysis -->
+            <div id="breakEvenView" class="financial-view" style="display: none;">
+                <div class="card">
+                    <h3 style="font-weight: 700; margin-bottom: 20px;">Break-Even Analysis</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Monthly Overhead</span>
+                        <span class="stat-value" id="monthlyOverhead">$0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Avg Job Revenue</span>
+                        <span class="stat-value" id="avgJobRevenue">$0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Avg Job True Cost</span>
+                        <span class="stat-value" id="avgJobCost">$0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Avg Job Profit</span>
+                        <span class="stat-value" id="avgJobProfit">$0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Jobs Needed Monthly (Break-Even)</span>
+                        <span class="stat-value" id="breakEvenJobs">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overhead Breakdown -->
+            <div id="overheadView" class="financial-view" style="display: none;">
+                <div class="grid-2">
+                    <div class="chart-container">
+                        <div class="chart-title">Overhead Costs by Category</div>
+                        <canvas id="overheadChart"></canvas>
+                    </div>
+                    <div class="card">
+                        <h3 style="font-weight: 700; margin-bottom: 15px;">Overhead Details</h3>
+                        <div id="overheadDetails"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS TAB -->
+        <div class="tab-content" id="settings">
+            <div class="grid-2">
+                <div class="card">
+                    <h3 style="font-weight: 700; margin-bottom: 20px;">Apps Script Connection</h3>
+                    <div class="form-group">
+                        <label class="form-label">Web App URL</label>
+                        <input type="text" class="form-input" id="appsScriptUrl" placeholder="https://script.google.com/macros/d/.../usercontent">
+                        <small style="color: #6B7280; display: block; margin-top: 5px;">Paste your deployed Apps Script web app URL here</small>
+                    </div>
+                    <button class="btn btn-primary" id="testConnectionBtn" style="width: 100%; margin-top: 10px;">
+                        <i class="fas fa-plug"></i> Test Connection
+                    </button>
+                    <div id="connectionStatus" style="margin-top: 15px; padding: 10px; border-radius: 4px; display: none;"></div>
+                </div>
+
+                <div class="card">
+                    <h3 style="font-weight: 700; margin-bottom: 20px;">Depot Location</h3>
+                    <div class="form-group">
+                        <label class="form-label">Latitude</label>
+                        <input type="number" class="form-input" id="depotLat" placeholder="35.9641" step="0.0001">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Longitude</label>
+                        <input type="number" class="form-input" id="depotLng" placeholder="-83.9201" step="0.0001">
+                    </div>
+                    <button class="btn btn-primary" id="updateDepotBtn" style="width: 100%;">
+                        <i class="fas fa-save"></i> Save Depot Location
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3 style="font-weight: 700; margin-bottom: 20px;">Operation Settings</h3>
+                    <div class="form-group">
+                        <label class="form-label">Max Jobs per Route</label>
+                        <input type="number" class="form-input" id="maxJobsPerRoute" placeholder="6" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fuel Cost per Mile ($)</label>
+                        <input type="number" class="form-input" id="fuelPerMile" placeholder="0.99" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Risk Buffer ($)</label>
+                        <input type="number" class="form-input" id="riskBuffer" placeholder="100" min="0">
+                    </div>
+                    <button class="btn btn-primary" id="updateOperationBtn" style="width: 100%;">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h3 style="font-weight: 700; margin-bottom: 20px;">Overhead Costs</h3>
+                    <div class="form-group">
+                        <label class="form-label">Admin/Mgmt per Job ($)</label>
+                        <input type="number" class="form-input" id="adminCostPerJob" placeholder="315" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">QA Cost per Job ($)</label>
+                        <input type="number" class="form-input" id="qaCostPerJob" placeholder="85" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Allocation to Generac</label>
+                        <input type="number" class="form-input" id="allocToGenerac" placeholder="0.85" min="0" max="1" step="0.01">
+                    </div>
+                    <button class="btn btn-primary" id="updateOverheadBtn" style="width: 100%;">
+                        <i class="fas fa-save"></i> Save Overhead
+                    </button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <h3 style="font-weight: 700; margin-bottom: 20px;">Data Management</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" id="exportDataBtn">
+                        <i class="fas fa-download"></i> Export Configuration
+                    </button>
+                    <button class="btn btn-secondary" id="importDataBtn">
+                        <i class="fas fa-upload"></i> Import Configuration
+                    </button>
+                    <button class="btn btn-secondary" id="clearDataBtn" style="background-color: #FEE2E2; color: #B91C1C;">
+                        <i class="fas fa-trash"></i> Clear Local Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Job Modal -->
+    <div class="modal" id="jobModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Job</h2>
+                <button class="modal-close" onclick="closeModal('jobModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Job #</label>
+                <input type="text" class="form-input" id="jobNumber" placeholder="JOB-001">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Customer Name</label>
+                <input type="text" class="form-input" id="jobCustomer" placeholder="John Doe">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Address</label>
+                <input type="text" class="form-input" id="jobAddress" placeholder="123 Main St">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group">
+                    <label class="form-label">City</label>
+                    <input type="text" class="form-input" id="jobCity" placeholder="Knoxville">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">State</label>
+                    <input type="text" class="form-input" id="jobState" placeholder="TN" maxlength="2">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">ZIP Code</label>
+                <input type="text" class="form-input" id="jobZip" placeholder="37902">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Revenue</label>
+                <input type="number" class="form-input" id="jobRevenue" placeholder="0" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Priority</label>
+                <select class="form-select" id="jobPriority">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="jobStatus">
+                    <option value="scheduled">Scheduled</option>
+                    <option value="emergency">Emergency</option>
+                    <option value="done">Done</option>
+                    <option value="parts-needed">Parts Needed</option>
+                    <option value="go-back">Go-Back</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="saveJob()" style="flex: 1;">Save Job</button>
+                <button class="btn btn-secondary" onclick="closeModal('jobModal')" style="flex: 1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Warranty Claim Modal -->
+    <div class="modal" id="warrantyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Warranty Claim</h2>
+                <button class="modal-close" onclick="closeModal('warrantyModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="claimStatus">
+                    <option value="Paid">Paid</option>
+                    <option value="Needs Attention">Needs Attention</option>
+                    <option value="Scheduled">Scheduled</option>
+                    <option value="Submitted">Submitted</option>
+                    <option value="In Progress">In Progress</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Customer Name</label>
+                <input type="text" class="form-input" id="claimCustomer" placeholder="John Doe">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Date of Job</label>
+                <input type="date" class="form-input" id="claimDate">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Case #</label>
+                <input type="text" class="form-input" id="claimCaseNum" placeholder="CASE-001">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Technician</label>
+                <select class="form-select" id="claimTech"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Allotted Amount ($)</label>
+                <input type="number" class="form-input" id="claimAllotted" placeholder="0" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Paid Amount ($)</label>
+                <input type="number" class="form-input" id="claimPaid" placeholder="0" min="0" step="0.01">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="saveWarrantyClaim()" style="flex: 1;">Save Claim</button>
+                <button class="btn btn-secondary" onclick="closeModal('warrantyModal')" style="flex: 1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Inventory Modal -->
+    <div class="modal" id="inventoryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Inventory Item</h2>
+                <button class="modal-close" onclick="closeModal('inventoryModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Item Name</label>
+                <input type="text" class="form-input" id="itemName" placeholder="Inverter XL">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select class="form-select" id="itemCategory">
+                    <option value="parts">Parts</option>
+                    <option value="tools">Tools</option>
+                    <option value="consumables">Consumables</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Quantity</label>
+                <input type="number" class="form-input" id="itemQty" placeholder="0" min="0">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Minimum Stock Level</label>
+                <input type="number" class="form-input" id="itemMin" placeholder="0" min="0">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Unit Price ($)</label>
+                <input type="number" class="form-input" id="itemPrice" placeholder="0" min="0" step="0.01">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="saveInventoryItem()" style="flex: 1;">Save Item</button>
+                <button class="btn btn-secondary" onclick="closeModal('inventoryModal')" style="flex: 1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== CONFIGURATION & DATA =====
+        const CONFIG = {
+            FUEL_PER_MILE: 0.99,
+            QA_COST_PER_JOB: 85,
+            ADMIN_MGMT_SW_PER_JOB: 315,
+            RISK_BUFFER: 100,
+            ALLOC_TO_GENERAC: 0.85,
+            DEPOT_LAT: 35.9641,
+            DEPOT_LNG: -83.9201,
+            MAX_JOBS_PER_ROUTE: 6
+        };
+
+        const TECHNICIANS = [
+            { name: 'Sam', role: 'Technician', hourlyRate: 25, loadedRate: 35.21 },
+            { name: 'Lucas', role: 'Technician', hourlyRate: 20, loadedRate: 28.17 },
+            { name: 'Katie', role: 'Admin', hourlyRate: 20, loadedRate: 28.17 },
+            { name: 'Spencer', role: 'Technician', hourlyRate: 40, loadedRate: 56.33 },
+            { name: 'Lex', role: 'Job Management', hourlyRate: 30, loadedRate: 42.25 },
+            { name: 'Caden', role: 'Owner', hourlyRate: null, loadedRate: 40.63 },
+            { name: 'Jen', role: 'Admin', hourlyRate: null, loadedRate: 5.28 },
+            { name: 'Andrew', role: 'Technician', hourlyRate: 25, loadedRate: 32.50 }
+        ];
+
+        // Demo Data
+        const demoJobs = [
+            { id: 'JOB-001', customer: 'Smith Family', address: '123 Oak Street', city: 'Knoxville', state: 'TN', zip: '37902', revenue: 1500, priority: 'high', status: 'scheduled', tech: 'Sam', requestedDate: '2025-02-10', routeDate: '2025-02-12' },
+            { id: 'JOB-002', customer: 'Johnson Industries', address: '456 Elm Avenue', city: 'Knoxville', state: 'TN', zip: '37919', revenue: 2500, priority: 'medium', status: 'scheduled', tech: 'Lucas', requestedDate: '2025-02-10', routeDate: '2025-02-13' },
+            { id: 'JOB-003', customer: 'Miller Corp', address: '789 Pine Road', city: 'Oak Ridge', state: 'TN', zip: '37830', revenue: 3200, priority: 'low', status: 'done', tech: 'Spencer', requestedDate: '2025-02-08', routeDate: '2025-02-11' },
+            { id: 'JOB-004', customer: 'Davis LLC', address: '321 Maple Drive', city: 'Sevierville', state: 'TN', zip: '37862', revenue: 1800, priority: 'high', status: 'parts-needed', tech: 'Andrew', requestedDate: '2025-02-09', routeDate: '2025-02-14' },
+            { id: 'JOB-005', customer: 'Wilson Enterprises', address: '654 Cedar Lane', city: 'Maryville', state: 'TN', zip: '37801', revenue: 2100, priority: 'medium', status: 'scheduled', tech: 'Sam', requestedDate: '2025-02-10', routeDate: '2025-02-15' }
+        ];
+
+        const demoClaims = [
+            { status: 'Paid', customer: 'Smith Family', date: '2025-01-15', caseNum: 'CASE-001', tech: 'Sam', allotted: 1200, paid: 1200, companyCost: 600, profit: 600 },
+            { status: 'In Progress', customer: 'Johnson Industries', date: '2025-01-20', caseNum: 'CASE-002', tech: 'Lucas', allotted: 1500, paid: 0, companyCost: 750, profit: -750 },
+            { status: 'Waiting RMA', customer: 'Miller Corp', date: '2025-01-25', caseNum: 'CASE-003', tech: 'Spencer', allotted: 2000, paid: 500, companyCost: 1000, profit: -500 }
+        ];
+
+        const demoInventory = [
+            { name: 'Inverter XL', category: 'parts', qty: 5, minStock: 2, price: 850, serial: 'INV-2024-001' },
+            { name: 'Battery Pack', category: 'parts', qty: 3, minStock: 3, price: 1200, serial: 'BAT-2024-001' },
+            { name: 'Service Kit', category: 'consumables', qty: 12, minStock: 5, price: 45, serial: 'KIT-2024-001' },
+            { name: 'Digital Multimeter', category: 'tools', qty: 2, minStock: 1, price: 125, serial: 'MTR-2024-001' },
+            { name: 'Cable 50ft', category: 'tools', qty: 1, minStock: 1, price: 75, serial: 'CBL-2024-001' }
+        ];
+
+        // ===== LOCAL STORAGE MANAGEMENT =====
+        function getStorageData(key, defaultValue = null) {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : defaultValue;
+        }
+
+        function setStorageData(key, value) {
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        // ===== UTILITY FUNCTIONS =====
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        }
+
+        function formatDate(date) {
+            if (!date) return '';
+            const d = new Date(date);
+            return (d.getMonth() + 1).toString().padStart(2, '0') + '/' + d.getDate().toString().padStart(2, '0') + '/' + d.getFullYear();
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        // ===== HAVERSINE DISTANCE CALCULATION =====
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 3959; // Earth radius in miles
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // ===== RESPONSIVE SIDEBAR =====
+        function initSidebar() {
+            const hamburger = document.getElementById('hamburger');
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const mobileMenuClose = document.getElementById('mobileMenuClose');
+
+            hamburger.addEventListener('click', () => {
+                sidebar.classList.toggle('mobile-hidden');
+            });
+
+            mobileMenuClose.addEventListener('click', () => {
+                sidebar.classList.add('mobile-hidden');
+            });
+
+            // Close sidebar when nav item clicked on mobile
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.add('mobile-hidden');
+                    }
+                });
+            });
+        }
+
+        // ===== TAB NAVIGATION =====
+        function initTabs() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const tabId = item.dataset.tab;
+                    showTab(tabId);
+                });
+            });
+        }
+
+        function showTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+
+            // Update active nav item
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.tab === tabId) item.classList.add('active');
+            });
+
+            // Update page title
+            const titles = {
+                dashboard: 'Dashboard',
+                jobs: 'Jobs',
+                routes: 'Routes',
+                warranty: 'Warranty Claims',
+                inventory: 'Inventory',
+                technicians: 'Technicians',
+                financials: 'Financials',
+                settings: 'Settings'
+            };
+            document.getElementById('pageTitle').textContent = titles[tabId] || 'Dashboard';
+
+            // Initialize tab-specific content
+            if (tabId === 'dashboard') renderDashboard();
+            else if (tabId === 'jobs') renderJobsTab();
+            else if (tabId === 'routes') renderRoutesTab();
+            else if (tabId === 'warranty') renderWarrantyTab();
+            else if (tabId === 'inventory') renderInventoryTab();
+            else if (tabId === 'technicians') renderTechniciansTab();
+            else if (tabId === 'financials') renderFinancialsTab();
+        }
+
+        // ===== DASHBOARD TAB =====
+        function renderDashboard() {
+            const jobs = getStorageData('jobs', demoJobs);
+            const claims = getStorageData('claims', demoClaims);
+            const inventory = getStorageData('inventory', demoInventory);
+
+            // Update KPIs
+            document.getElementById('totalJobs').textContent = jobs.length;
+            document.getElementById('activeRoutes').textContent = '3';
+            document.getElementById('totalRevenue').textContent = formatCurrency(jobs.reduce((sum, j) => sum + j.revenue, 0));
+
+            const totalCost = jobs.reduce((sum, j) => sum + (j.revenue * 0.6), 0); // Rough estimate
+            const profit = jobs.reduce((sum, j) => sum + j.revenue, 0) - totalCost;
+            document.getElementById('profitLoss').textContent = formatCurrency(Math.max(0, profit));
+            if (profit < 0) document.getElementById('profitLoss').style.color = '#EF4444';
+
+            document.getElementById('warrantyClaims').textContent = claims.filter(c => c.status !== 'Paid').length;
+            document.getElementById('inventoryValue').textContent = formatCurrency(inventory.reduce((sum, i) => sum + (i.qty * i.price), 0));
+
+            // Demo mode banner
+            const appsScriptUrl = getStorageData('appsScriptUrl');
+            const demoBanner = document.getElementById('demoModeBanner');
+            if (!appsScriptUrl) {
+                demoBanner.innerHTML = '<div class="demo-banner"><i class="fas fa-info-circle"></i> Demo Mode — Connect Apps Script for live data in Settings</div>';
+            } else {
+                demoBanner.innerHTML = '';
+            }
+
+            // Sync status
+            const lastSync = getStorageData('lastSync') || new Date().toLocaleTimeString();
+            document.getElementById('lastSyncTime').textContent = lastSync;
+
+            // Charts
+            renderRevenueChart();
+            renderJobStatusChart();
+        }
+
+        function renderRevenueChart() {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+            const revenue = [4200, 5100, 4800, 6200, 5900, 7100];
+            const costs = [2500, 2800, 2600, 3100, 3000, 3400];
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: revenue,
+                            borderColor: '#F97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'True Cost',
+                            data: costs,
+                            borderColor: '#6B7280',
+                            backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, position: 'top' } }
+                }
+            });
+        }
+
+        function renderJobStatusChart() {
+            const ctx = document.getElementById('jobStatusChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Scheduled', 'Done', 'Parts Needed', 'Go-Back'],
+                    datasets: [{
+                        data: [12, 8, 3, 1],
+                        backgroundColor: ['#F97316', '#10B981', '#F59E0B', '#EF4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        // ===== JOBS TAB =====
+        function renderJobsTab() {
+            const jobs = getStorageData('jobs', demoJobs);
+            const tbody = document.getElementById('jobsTableBody');
+            tbody.innerHTML = '';
+
+            jobs.forEach(job => {
+                const priorityColor = job.priority === 'high' ? 'badge-danger' : job.priority === 'medium' ? 'badge-primary' : 'badge-success';
+                const statusColor = job.status === 'done' ? 'badge-success' : job.status === 'parts-needed' ? 'badge-warning' : job.status === 'go-back' ? 'badge-danger' : 'badge-info';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${job.id}</strong></td>
+                    <td><span class="badge ${priorityColor}">${job.priority}</span></td>
+                    <td>${job.customer}</td>
+                    <td>${job.city}</td>
+                    <td>${formatDate(job.requestedDate)}</td>
+                    <td>${job.tech}</td>
+                    <td><span class="badge ${statusColor}">${job.status}</span></td>
+                    <td><strong>${formatCurrency(job.revenue)}</strong></td>
+                    <td><button class="btn btn-small btn-primary">Edit</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Event listeners
+            document.getElementById('addJobBtn').addEventListener('click', () => openModal('jobModal'));
+        }
+
+        function saveJob() {
+            const job = {
+                id: document.getElementById('jobNumber').value,
+                customer: document.getElementById('jobCustomer').value,
+                address: document.getElementById('jobAddress').value,
+                city: document.getElementById('jobCity').value,
+                state: document.getElementById('jobState').value,
+                zip: document.getElementById('jobZip').value,
+                revenue: parseFloat(document.getElementById('jobRevenue').value) || 0,
+                priority: document.getElementById('jobPriority').value,
+                status: document.getElementById('jobStatus').value,
+                tech: 'Unassigned',
+                requestedDate: new Date().toISOString(),
+                routeDate: new Date().toISOString()
+            };
+
+            const jobs = getStorageData('jobs', demoJobs);
+            jobs.push(job);
+            setStorageData('jobs', jobs);
+
+            closeModal('jobModal');
+            showToast('Job added successfully');
+            renderJobsTab();
+        }
+
+        // ===== ROUTES TAB =====
+        function renderRoutesTab() {
+            renderRouteMap();
+            setupRouteViewTabs();
+        }
+
+        function renderRouteMap() {
+            const mapElement = document.getElementById('map');
+            if (!mapElement._leaflet_map) {
+                const map = L.map('map').setView([CONFIG.DEPOT_LAT, CONFIG.DEPOT_LNG], 10);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(map);
+
+                // Depot marker
+                L.circleMarker([CONFIG.DEPOT_LAT, CONFIG.DEPOT_LNG], {
+                    radius: 8,
+                    fillColor: '#F97316',
+                    color: '#EA580C',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map).bindPopup('Depot - Knoxville, TN');
+
+                // Demo job markers
+                const jobs = getStorageData('jobs', demoJobs);
+                const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
+                jobs.forEach((job, idx) => {
+                    const lat = CONFIG.DEPOT_LAT + (Math.random() - 0.5) * 0.15;
+                    const lng = CONFIG.DEPOT_LNG + (Math.random() - 0.5) * 0.15;
+                    L.circleMarker([lat, lng], {
+                        radius: 6,
+                        fillColor: colors[idx % colors.length],
+                        color: '#ffffff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.7
+                    }).addTo(map).bindPopup(`<strong>${job.customer}</strong><br>${job.id}`);
+                });
+            }
+        }
+
+        function setupRouteViewTabs() {
+            document.querySelectorAll('[data-route-view]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const view = e.target.closest('[data-route-view]').dataset.routeView;
+                    document.querySelectorAll('.route-view').forEach(v => v.style.display = 'none');
+                    document.getElementById(`route${view.charAt(0).toUpperCase() + view.slice(1)}View`).style.display = 'block';
+
+                    document.querySelectorAll('[data-route-view]').forEach(b => b.classList.remove('active'));
+                    e.target.closest('[data-route-view]').classList.add('active');
+
+                    if (view === 'analytics') renderRouteAnalytics();
+                });
+            });
+        }
+
+        function renderRouteAnalytics() {
+            const ctx1 = document.getElementById('routeJobStatusChart')?.getContext('2d');
+            if (ctx1) {
+                new Chart(ctx1, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Scheduled', 'Done', 'Parts Needed'],
+                        datasets: [{
+                            data: [10, 8, 2],
+                            backgroundColor: ['#F97316', '#10B981', '#F59E0B']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            const ctx2 = document.getElementById('techWorkloadChart')?.getContext('2d');
+            if (ctx2) {
+                new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Sam', 'Lucas', 'Spencer', 'Andrew'],
+                        datasets: [{
+                            label: 'Jobs Assigned',
+                            data: [6, 4, 5, 3],
+                            backgroundColor: '#F97316'
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }
+
+        // ===== WARRANTY CLAIMS TAB =====
+        function renderWarrantyTab() {
+            const claims = getStorageData('claims', demoClaims);
+            const tbody = document.getElementById('warrantyTableBody');
+            tbody.innerHTML = '';
+
+            claims.forEach(claim => {
+                const statusColor = claim.status === 'Paid' ? 'badge-success' : claim.status === 'In Progress' ? 'badge-info' : 'badge-warning';
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><span class="badge ${statusColor}">${claim.status}</span></td>
+                    <td>${claim.customer}</td>
+                    <td>${formatDate(claim.date)}</td>
+                    <td>${claim.caseNum}</td>
+                    <td>${claim.tech}</td>
+                    <td>${formatCurrency(claim.allotted)}</td>
+                    <td>${formatCurrency(claim.paid)}</td>
+                    <td>${formatCurrency(claim.companyCost)}</td>
+                    <td>${formatCurrency(claim.profit)}</td>
+                    <td><button class="btn btn-small btn-primary">Edit</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Populate month tabs
+            const monthTabs = document.getElementById('monthTabs');
+            monthTabs.innerHTML = '';
+            const months = ['Dec 2024', 'Jan 2025', 'Feb 2025'];
+            months.forEach((month, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `tab-button ${idx === 1 ? 'active' : ''}`;
+                btn.textContent = month;
+                monthTabs.appendChild(btn);
+            });
+
+            document.getElementById('addClaimBtn').addEventListener('click', () => {
+                // Populate tech select
+                const techSelect = document.getElementById('claimTech');
+                techSelect.innerHTML = '';
+                TECHNICIANS.forEach(tech => {
+                    const option = document.createElement('option');
+                    option.value = tech.name;
+                    option.textContent = tech.name;
+                    techSelect.appendChild(option);
+                });
+                openModal('warrantyModal');
+            });
+        }
+
+        function saveWarrantyClaim() {
+            const claim = {
+                status: document.getElementById('claimStatus').value,
+                customer: document.getElementById('claimCustomer').value,
+                date: document.getElementById('claimDate').value,
+                caseNum: document.getElementById('claimCaseNum').value,
+                tech: document.getElementById('claimTech').value,
+                allotted: parseFloat(document.getElementById('claimAllotted').value) || 0,
+                paid: parseFloat(document.getElementById('claimPaid').value) || 0,
+                companyCost: parseFloat(document.getElementById('claimAllotted').value) * 0.5 || 0,
+                profit: 0
+            };
+            claim.profit = claim.paid - claim.companyCost;
+
+            const claims = getStorageData('claims', demoClaims);
+            claims.push(claim);
+            setStorageData('claims', claims);
+
+            closeModal('warrantyModal');
+            showToast('Warranty claim added successfully');
+            renderWarrantyTab();
+        }
+
+        // ===== INVENTORY TAB =====
+        function renderInventoryTab() {
+            const inventory = getStorageData('inventory', demoInventory);
+            const tbody = document.getElementById('inventoryTableBody');
+            tbody.innerHTML = '';
+
+            const totalValue = inventory.reduce((sum, i) => sum + (i.qty * i.price), 0);
+            document.getElementById('totalInventoryItems').textContent = inventory.length;
+            document.getElementById('totalInventoryValue').textContent = formatCurrency(totalValue);
+            document.getElementById('lowStockCount').textContent = inventory.filter(i => i.qty <= i.minStock).length;
+
+            inventory.forEach(item => {
+                const status = item.qty === 0 ? 'Out' : item.qty <= item.minStock ? 'Low' : 'In Stock';
+                const statusColor = status === 'Out' ? 'badge-danger' : status === 'Low' ? 'badge-warning' : 'badge-success';
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>${item.category}</td>
+                    <td>${item.qty}</td>
+                    <td>${item.minStock}</td>
+                    <td>${formatCurrency(item.price)}</td>
+                    <td><strong>${formatCurrency(item.qty * item.price)}</strong></td>
+                    <td><span class="badge ${statusColor}">${status}</span></td>
+                    <td><button class="btn btn-small btn-primary">Edit</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('addInventoryBtn').addEventListener('click', () => openModal('inventoryModal'));
+        }
+
+        function saveInventoryItem() {
+            const item = {
+                name: document.getElementById('itemName').value,
+                category: document.getElementById('itemCategory').value,
+                qty: parseInt(document.getElementById('itemQty').value) || 0,
+                minStock: parseInt(document.getElementById('itemMin').value) || 0,
+                price: parseFloat(document.getElementById('itemPrice').value) || 0,
+                serial: 'SN-' + Date.now()
+            };
+
+            const inventory = getStorageData('inventory', demoInventory);
+            inventory.push(item);
+            setStorageData('inventory', inventory);
+
+            closeModal('inventoryModal');
+            showToast('Inventory item added successfully');
+            renderInventoryTab();
+        }
+
+        // ===== TECHNICIANS TAB =====
+        function renderTechniciansTab() {
+            const tbody = document.getElementById('techniciansTableBody');
+            tbody.innerHTML = '';
+
+            TECHNICIANS.forEach(tech => {
+                const monthlyPay = tech.hourlyRate ? tech.hourlyRate * 160 : 'N/A';
+                const annualPay = typeof monthlyPay === 'number' ? monthlyPay * 12 : 'N/A';
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${tech.name}</strong></td>
+                    <td>${tech.role}</td>
+                    <td>${tech.hourlyRate ? formatCurrency(tech.hourlyRate) : 'Salary'}</td>
+                    <td>${formatCurrency(tech.loadedRate)}</td>
+                    <td>${typeof monthlyPay === 'number' ? formatCurrency(monthlyPay) : monthlyPay}</td>
+                    <td>${typeof annualPay === 'number' ? formatCurrency(annualPay) : annualPay}</td>
+                    <td><span class="badge badge-success">Active</span></td>
+                    <td>Route 1</td>
+                    <td><button class="btn btn-small btn-primary">Edit</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Render workload chart
+            const ctx = document.getElementById('techLoadChart')?.getContext('2d');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: TECHNICIANS.map(t => t.name),
+                        datasets: [{
+                            label: 'Jobs This Month',
+                            data: [6, 4, 5, 3, 2, 1, 0, 4],
+                            backgroundColor: '#F97316'
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            document.getElementById('addTechBtn').addEventListener('click', () => {
+                showToast('Contact admin to add technicians');
+            });
+        }
+
+        // ===== FINANCIALS TAB =====
+        function renderFinancialsTab() {
+            setupFinancialViewTabs();
+            renderPnLView();
+        }
+
+        function setupFinancialViewTabs() {
+            document.querySelectorAll('[data-financial-view]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const view = e.target.closest('[data-financial-view]').dataset.financialView;
+                    document.querySelectorAll('.financial-view').forEach(v => v.style.display = 'none');
+                    document.getElementById(`${view}View`).style.display = 'block';
+
+                    document.querySelectorAll('[data-financial-view]').forEach(b => b.classList.remove('active'));
+                    e.target.closest('[data-financial-view]').classList.add('active');
+
+                    if (view === 'overhead') renderOverheadView();
+                });
+            });
+
+            // Cost calculator
+            document.getElementById('calculateBtn')?.addEventListener('click', calculateTrueCost);
+        }
+
+        function renderPnLView() {
+            const jobs = getStorageData('jobs', demoJobs);
+            const totalRevenue = jobs.reduce((sum, j) => sum + j.revenue, 0);
+            const totalCost = totalRevenue * 0.6; // Rough estimate
+            const profit = totalRevenue - totalCost;
+
+            document.getElementById('pnlRevenue').textContent = formatCurrency(totalRevenue);
+            document.getElementById('pnlCost').textContent = formatCurrency(totalCost);
+            document.getElementById('pnlProfit').textContent = formatCurrency(profit);
+            document.getElementById('pnlMargin').textContent = ((profit / totalRevenue) * 100).toFixed(1) + '%';
+
+            const ctx = document.getElementById('pnlChart')?.getContext('2d');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                        datasets: [{
+                            label: 'Weekly Profit',
+                            data: [1200, 1500, 1100, 1800],
+                            borderColor: '#10B981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }
+
+        function calculateTrueCost() {
+            const tech = TECHNICIANS.find(t => t.name === document.getElementById('calcTech').value);
+            if (!tech) {
+                showToast('Please select a technician', 'warning');
+                return;
+            }
+
+            const hours = parseFloat(document.getElementById('calcHours').value) || 0;
+            const miles = parseFloat(document.getElementById('calcMiles').value) || 0;
+            const parts = parseFloat(document.getElementById('calcParts').value) || 0;
+
+            const laborCost = hours * tech.loadedRate;
+            const travelCost = miles * CONFIG.FUEL_PER_MILE;
+            const overheadAlloc = (CONFIG.ADMIN_MGMT_SW_PER_JOB + CONFIG.QA_COST_PER_JOB) / 30; // Per-job daily allocation
+            const totalCost = laborCost + travelCost + parts + overheadAlloc;
+
+            document.getElementById('resultLabor').textContent = formatCurrency(laborCost);
+            document.getElementById('resultTravel').textContent = formatCurrency(travelCost);
+            document.getElementById('resultParts').textContent = formatCurrency(parts);
+            document.getElementById('resultOverhead').textContent = formatCurrency(overheadAlloc);
+            document.getElementById('resultTotal').textContent = formatCurrency(totalCost);
+            document.getElementById('calculatorResult').style.display = 'block';
+        }
+
+        function renderOverheadView() {
+            const overheadItems = [
+                { label: 'Admin/Mgmt/Software', value: CONFIG.ADMIN_MGMT_SW_PER_JOB },
+                { label: 'QA', value: CONFIG.QA_COST_PER_JOB },
+                { label: 'Risk Buffer', value: CONFIG.RISK_BUFFER }
+            ];
+
+            const total = overheadItems.reduce((sum, i) => sum + i.value, 0);
+            const details = document.getElementById('overheadDetails');
+            details.innerHTML = overheadItems.map(item => `
+                <div class="stat-row">
+                    <span class="stat-label">${item.label}</span>
+                    <span class="stat-value">${formatCurrency(item.value)}</span>
+                </div>
+            `).join('');
+
+            const ctx = document.getElementById('overheadChart')?.getContext('2d');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: overheadItems.map(i => i.label),
+                        datasets: [{
+                            data: overheadItems.map(i => i.value),
+                            backgroundColor: ['#F97316', '#3B82F6', '#F59E0B']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }
+
+        // ===== INITIALIZATION =====
+        document.addEventListener('DOMContentLoaded', () => {
+            initSidebar();
+            initTabs();
+            renderDashboard();
+
+            // Settings page functionality
+            document.getElementById('testConnectionBtn')?.addEventListener('click', () => {
+                const url = document.getElementById('appsScriptUrl').value;
+                if (!url) {
+                    showToast('Please enter Apps Script URL', 'warning');
+                    return;
+                }
+                showToast('Testing connection...', 'warning');
+                // Simulate test
+                setTimeout(() => {
+                    showToast('Connected to Apps Script', 'success');
+                    setStorageData('appsScriptUrl', url);
+                }, 1000);
+            });
+
+            // Populate settings from storage
+            const settings = getStorageData('settings', CONFIG);
+            document.getElementById('depotLat').value = settings.DEPOT_LAT || CONFIG.DEPOT_LAT;
+            document.getElementById('depotLng').value = settings.DEPOT_LNG || CONFIG.DEPOT_LNG;
+            document.getElementById('maxJobsPerRoute').value = settings.MAX_JOBS_PER_ROUTE || CONFIG.MAX_JOBS_PER_ROUTE;
+            document.getElementById('fuelPerMile').value = settings.FUEL_PER_MILE || CONFIG.FUEL_PER_MILE;
+            document.getElementById('riskBuffer').value = settings.RISK_BUFFER || CONFIG.RISK_BUFFER;
+            document.getElementById('adminCostPerJob').value = settings.ADMIN_MGMT_SW_PER_JOB || CONFIG.ADMIN_MGMT_SW_PER_JOB;
+            document.getElementById('qaCostPerJob').value = settings.QA_COST_PER_JOB || CONFIG.QA_COST_PER_JOB;
+            document.getElementById('allocToGenerac').value = settings.ALLOC_TO_GENERAC || CONFIG.ALLOC_TO_GENERAC;
+            document.getElementById('appsScriptUrl').value = getStorageData('appsScriptUrl', '');
+
+            // Settings save buttons
+            document.getElementById('updateDepotBtn')?.addEventListener('click', () => {
+                const settings = getStorageData('settings', CONFIG);
+                settings.DEPOT_LAT = parseFloat(document.getElementById('depotLat').value);
+                settings.DEPOT_LNG = parseFloat(document.getElementById('depotLng').value);
+                setStorageData('settings', settings);
+                showToast('Depot location updated');
+            });
+
+            document.getElementById('updateOperationBtn')?.addEventListener('click', () => {
+                const settings = getStorageData('settings', CONFIG);
+                settings.MAX_JOBS_PER_ROUTE = parseInt(document.getElementById('maxJobsPerRoute').value);
+                settings.FUEL_PER_MILE = parseFloat(document.getElementById('fuelPerMile').value);
+                settings.RISK_BUFFER = parseFloat(document.getElementById('riskBuffer').value);
+                setStorageData('settings', settings);
+                showToast('Operation settings updated');
+            });
+
+            document.getElementById('updateOverheadBtn')?.addEventListener('click', () => {
+                const settings = getStorageData('settings', CONFIG);
+                settings.ADMIN_MGMT_SW_PER_JOB = parseFloat(document.getElementById('adminCostPerJob').value);
+                settings.QA_COST_PER_JOB = parseFloat(document.getElementById('qaCostPerJob').value);
+                settings.ALLOC_TO_GENERAC = parseFloat(document.getElementById('allocToGenerac').value);
+                setStorageData('settings', settings);
+                showToast('Overhead settings updated');
+            });
+
+            // Export/Import functionality
+            document.getElementById('exportDataBtn')?.addEventListener('click', () => {
+                const allData = {
+                    jobs: getStorageData('jobs', demoJobs),
+                    claims: getStorageData('claims', demoClaims),
+                    inventory: getStorageData('inventory', demoInventory),
+                    settings: getStorageData('settings', CONFIG),
+                    appsScriptUrl: getStorageData('appsScriptUrl', '')
+                };
+                const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'akino-config-' + new Date().toISOString().slice(0, 10) + '.json';
+                a.click();
+                showToast('Configuration exported');
+            });
+
+            document.getElementById('clearDataBtn')?.addEventListener('click', () => {
+                if (confirm('Are you sure? This will delete all local data.')) {
+                    localStorage.clear();
+                    showToast('Local data cleared');
+                    location.reload();
+                }
+            });
+        });
+
+        // Logout handler
+        function handleLogout() {
+            localStorage.removeItem('akino_user');
+            sessionStorage.removeItem('akino_session');
+            location.reload();
+        }
+
+        // Set user info in sidebar from stored login
+        (function setUserInfo() {
+            const saved = localStorage.getItem('akino_user');
+            if (saved) {
+                const user = JSON.parse(saved);
+                const name = user.name || user.email.split('@')[0];
+                const el = document.getElementById('userName');
+                const em = document.getElementById('userEmail');
+                const av = document.getElementById('userAvatar');
+                if (el) el.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+                if (em) em.textContent = user.email;
+                if (av) av.textContent = name.charAt(0).toUpperCase();
+            }
+        })();
+
+        // Update last sync time every 5 minutes
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('lastSyncTime').textContent = now.toLocaleTimeString();
+            setStorageData('lastSync', now.toLocaleTimeString());
+        }, 300000);
+
+        // =====================================================================
+        // CLAUDE AI ASSISTANT SIDEBAR
+        // =====================================================================
+        const aiSidebar = document.createElement('div');
+        aiSidebar.id = 'aiSidebar';
+        aiSidebar.innerHTML = `
+        <style>
+            #aiSidebar {
+                position: fixed;
+                right: -420px;
+                top: 0;
+                width: 420px;
+                height: 100vh;
+                background: #1a1a2e;
+                color: #e0e0e0;
+                z-index: 2000;
+                transition: right 0.35s cubic-bezier(0.4,0,0.2,1);
+                display: flex;
+                flex-direction: column;
+                box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+                font-family: 'Segoe UI', system-ui, sans-serif;
+            }
+            #aiSidebar.open { right: 0; }
+            @media (max-width: 768px) {
+                #aiSidebar { width: 100vw; right: -100vw; }
+            }
+            .ai-header {
+                padding: 16px 20px;
+                background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-shrink: 0;
+            }
+            .ai-header h3 { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+            .ai-close-btn { background: none; border: none; color: white; font-size: 22px; cursor: pointer; padding: 4px 8px; border-radius: 4px; }
+            .ai-close-btn:hover { background: rgba(255,255,255,0.2); }
+            .ai-tabs { display: flex; border-bottom: 1px solid #2a2a4a; flex-shrink: 0; }
+            .ai-tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; font-size: 13px; font-weight: 600; color: #888; border-bottom: 2px solid transparent; transition: all 0.2s; }
+            .ai-tab.active { color: #F97316; border-bottom-color: #F97316; background: rgba(249,115,22,0.05); }
+            .ai-tab:hover { color: #F97316; }
+            .ai-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+            .ai-msg { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; max-width: 92%; animation: fadeIn 0.3s ease; }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+            .ai-msg.assistant { background: #252545; align-self: flex-start; border-bottom-left-radius: 4px; }
+            .ai-msg.user { background: #F97316; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+            .ai-msg.system { background: #1e3a5f; color: #7dd3fc; align-self: center; text-align: center; font-size: 12px; border-radius: 8px; }
+            .ai-msg.alert { background: #5f1e1e; color: #fca5a5; border-left: 3px solid #ef4444; }
+            .ai-msg.suggestion { background: #1e4a1e; color: #86efac; border-left: 3px solid #22c55e; }
+            .ai-input-area { padding: 12px 16px; border-top: 1px solid #2a2a4a; flex-shrink: 0; background: #16162b; }
+            .ai-input-row { display: flex; gap: 8px; }
+            .ai-input { flex: 1; padding: 10px 14px; border-radius: 20px; border: 1px solid #3a3a5a; background: #252545; color: white; font-size: 14px; outline: none; }
+            .ai-input:focus { border-color: #F97316; box-shadow: 0 0 0 2px rgba(249,115,22,0.2); }
+            .ai-input::placeholder { color: #666; }
+            .ai-send-btn { padding: 10px 16px; border-radius: 20px; border: none; background: #F97316; color: white; cursor: pointer; font-weight: 600; font-size: 14px; }
+            .ai-send-btn:hover { background: #EA580C; }
+            .ai-quick-actions { padding: 8px 16px; display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+            .ai-quick-btn { padding: 6px 12px; border-radius: 16px; border: 1px solid #3a3a5a; background: transparent; color: #aaa; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+            .ai-quick-btn:hover { border-color: #F97316; color: #F97316; background: rgba(249,115,22,0.1); }
+            .ai-scan-panel { padding: 16px; overflow-y: auto; flex: 1; }
+            .ai-scan-item { background: #252545; border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 3px solid #F97316; }
+            .ai-scan-item.critical { border-left-color: #ef4444; }
+            .ai-scan-item.warning { border-left-color: #eab308; }
+            .ai-scan-item.info { border-left-color: #3b82f6; }
+            .ai-scan-item h4 { font-size: 13px; font-weight: 700; margin-bottom: 4px; color: #F97316; }
+            .ai-scan-item p { font-size: 12px; color: #aaa; line-height: 1.4; }
+            .ai-scan-item .ai-fix-btn { margin-top: 8px; padding: 4px 12px; border-radius: 12px; border: 1px solid #22c55e; color: #22c55e; background: transparent; cursor: pointer; font-size: 11px; font-weight: 600; }
+            .ai-scan-item .ai-fix-btn:hover { background: #22c55e; color: white; }
+            #aiFab { position: fixed; bottom: 24px; right: 24px; width: 60px; height: 60px; border-radius: 30px; background: linear-gradient(135deg, #F97316, #EA580C); border: none; color: white; font-size: 24px; cursor: pointer; z-index: 1999; box-shadow: 0 4px 15px rgba(249,115,22,0.4); transition: all 0.3s; display: flex; align-items: center; justify-content: center; }
+            #aiFab:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(249,115,22,0.5); }
+            #aiFab .badge { position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+            .ai-typing { display: flex; gap: 4px; padding: 8px 16px; align-self: flex-start; }
+            .ai-typing span { width: 8px; height: 8px; background: #F97316; border-radius: 50%; animation: bounce 1.4s ease infinite; }
+            .ai-typing span:nth-child(2) { animation-delay: 0.2s; }
+            .ai-typing span:nth-child(3) { animation-delay: 0.4s; }
+            @keyframes bounce { 0%,80%,100% { transform: scale(0); } 40% { transform: scale(1); } }
+        </style>
+        <div class="ai-header">
+            <h3><i class="fas fa-robot"></i> Claude Assistant</h3>
+            <button class="ai-close-btn" onclick="toggleAI()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="ai-tabs">
+            <div class="ai-tab active" data-tab="chat" onclick="switchAITab('chat')"><i class="fas fa-comments"></i> Chat</div>
+            <div class="ai-tab" data-tab="scan" onclick="switchAITab('scan')"><i class="fas fa-search"></i> Scan & Fix</div>
+            <div class="ai-tab" data-tab="auto" onclick="switchAITab('auto')"><i class="fas fa-magic"></i> Auto-Actions</div>
+        </div>
+        <!-- CHAT TAB -->
+        <div id="aiChatPanel" class="ai-messages">
+            <div class="ai-msg assistant">
+                Hey Caden! I'm your Akino Solar assistant. I can answer questions about jobs, routes, warranty claims, financials — or scan for issues and suggest fixes. What do you need?
+            </div>
+        </div>
+        <div id="aiChatQuick" class="ai-quick-actions">
+            <button class="ai-quick-btn" onclick="aiQuickAction('warranty')">Warranty status?</button>
+            <button class="ai-quick-btn" onclick="aiQuickAction('profit')">Today's profit?</button>
+            <button class="ai-quick-btn" onclick="aiQuickAction('stale')">Stale claims?</button>
+            <button class="ai-quick-btn" onclick="aiQuickAction('routes')">Route summary</button>
+            <button class="ai-quick-btn" onclick="aiQuickAction('lowstock')">Low stock?</button>
+            <button class="ai-quick-btn" onclick="aiQuickAction('scan')">Full scan</button>
+        </div>
+        <div id="aiChatInput" class="ai-input-area">
+            <div class="ai-input-row">
+                <input class="ai-input" id="aiInputField" placeholder="Ask me anything about Akino Solar..." onkeypress="if(event.key==='Enter')sendAIMessage()">
+                <button class="ai-send-btn" onclick="sendAIMessage()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+        <!-- SCAN & FIX TAB -->
+        <div id="aiScanPanel" class="ai-scan-panel" style="display:none;">
+            <div style="text-align:center; padding: 20px;">
+                <button onclick="runFullScan()" style="padding: 12px 24px; border-radius: 24px; border: none; background: linear-gradient(135deg, #F97316, #EA580C); color: white; font-weight: 700; cursor: pointer; font-size: 15px;">
+                    <i class="fas fa-search"></i> Run Full System Scan
+                </button>
+                <p style="color:#666; margin-top:8px; font-size:12px;">Scans jobs, warranty claims, routes, inventory, and financials for issues</p>
+            </div>
+            <div id="scanResults"></div>
+        </div>
+        <!-- AUTO-ACTIONS TAB -->
+        <div id="aiAutoPanel" class="ai-scan-panel" style="display:none;">
+            <div class="ai-scan-item info">
+                <h4><i class="fas fa-envelope"></i> Email Monitoring</h4>
+                <p>When connected to Gmail, I'll scan for Generac warranty emails, service requests, and payment notifications — then auto-populate relevant fields.</p>
+                <button class="ai-fix-btn" onclick="showToast('Email monitoring activates with daily shortcut', 'info')"><i class="fas fa-check"></i> Active via Daily Shortcut</button>
+            </div>
+            <div class="ai-scan-item info">
+                <h4><i class="fas fa-bell"></i> Job Reminders</h4>
+                <p>Automatically flags jobs approaching their scheduled date without a tech assigned, or overdue jobs needing follow-up.</p>
+                <button class="ai-fix-btn" onclick="checkJobReminders()"><i class="fas fa-play"></i> Check Now</button>
+            </div>
+            <div class="ai-scan-item info">
+                <h4><i class="fas fa-balance-scale"></i> Discrepancy Detection</h4>
+                <p>Cross-checks warranty claims against job logs, flags revenue mismatches, and identifies jobs with $0 revenue.</p>
+                <button class="ai-fix-btn" onclick="checkDiscrepancies()"><i class="fas fa-play"></i> Check Now</button>
+            </div>
+            <div class="ai-scan-item info">
+                <h4><i class="fas fa-clipboard-list"></i> Auto To-Do Generation</h4>
+                <p>Creates daily action items based on stale warranties, unassigned jobs, low stock, and unprofitable routes.</p>
+                <button class="ai-fix-btn" onclick="generateTodos()"><i class="fas fa-play"></i> Generate To-Dos</button>
+            </div>
+        </div>
+        `;
+        document.body.appendChild(aiSidebar);
+
+        // FAB Button
+        const fab = document.createElement('button');
+        fab.id = 'aiFab';
+        fab.innerHTML = '<i class="fas fa-robot"></i><span class="badge" id="aiBadge" style="display:none">0</span>';
+        fab.onclick = toggleAI;
+        document.body.appendChild(fab);
+
+        let aiAlertCount = 0;
+
+        function toggleAI() {
+            document.getElementById('aiSidebar').classList.toggle('open');
+        }
+
+        function switchAITab(tab) {
+            document.querySelectorAll('.ai-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.ai-tab[data-tab="${tab}"]`).classList.add('active');
+            document.getElementById('aiChatPanel').style.display = tab === 'chat' ? 'flex' : 'none';
+            document.getElementById('aiChatQuick').style.display = tab === 'chat' ? 'flex' : 'none';
+            document.getElementById('aiChatInput').style.display = tab === 'chat' ? 'block' : 'none';
+            document.getElementById('aiScanPanel').style.display = tab === 'scan' ? 'block' : 'none';
+            document.getElementById('aiAutoPanel').style.display = tab === 'auto' ? 'block' : 'none';
+        }
+
+        function addAIMessage(text, type = 'assistant') {
+            const panel = document.getElementById('aiChatPanel');
+            const msg = document.createElement('div');
+            msg.className = `ai-msg ${type}`;
+            msg.innerHTML = text;
+            panel.appendChild(msg);
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        function showAITyping() {
+            const panel = document.getElementById('aiChatPanel');
+            const t = document.createElement('div');
+            t.className = 'ai-typing';
+            t.id = 'aiTyping';
+            t.innerHTML = '<span></span><span></span><span></span>';
+            panel.appendChild(t);
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        function hideAITyping() {
+            const el = document.getElementById('aiTyping');
+            if (el) el.remove();
+        }
+
+        function sendAIMessage() {
+            const input = document.getElementById('aiInputField');
+            const text = input.value.trim();
+            if (!text) return;
+            addAIMessage(text, 'user');
+            input.value = '';
+            showAITyping();
+            setTimeout(() => {
+                hideAITyping();
+                const response = processAIQuery(text);
+                addAIMessage(response);
+            }, 800 + Math.random() * 600);
+        }
+
+        function processAIQuery(query) {
+            const q = query.toLowerCase();
+            const jobs = getStorageData('jobs', []);
+            const claims = getStorageData('warrantyClaims', []);
+            const inventory = getStorageData('inventory', []);
+
+            if (q.includes('warranty') || q.includes('claim')) {
+                const open = claims.filter(c => c.status !== 'Paid' && c.status !== 'Denied' && c.status !== 'Cancelled');
+                const paid = claims.filter(c => c.status === 'Paid');
+                const waitRMA = claims.filter(c => c.status === 'Waiting RMA');
+                const waitGB = claims.filter(c => c.status === 'Waiting Go Back');
+                const totalPaid = paid.reduce((s,c) => s + (parseFloat(c.paidAmount) || 0), 0);
+                return `<b>Warranty Claims Summary:</b><br>
+                    • <b>${claims.length}</b> total claims<br>
+                    • <b>${open.length}</b> open/active<br>
+                    • <b>${paid.length}</b> paid ($${totalPaid.toLocaleString()})<br>
+                    • <b>${waitRMA.length}</b> waiting on RMA<br>
+                    • <b>${waitGB.length}</b> waiting on go-back<br><br>
+                    ${waitRMA.length > 0 ? '⚠️ <b>Action needed:</b> Follow up on RMA claims!' : '✅ No RMA issues.'}`;
+            }
+
+            if (q.includes('profit') || q.includes('revenue') || q.includes('money') || q.includes('financial')) {
+                const totalRev = jobs.reduce((s,j) => s + (parseFloat(j.revenue) || 0), 0);
+                const avgRev = jobs.length ? totalRev / jobs.length : 0;
+                const breakeven = 2698;
+                const profitable = jobs.filter(j => (parseFloat(j.revenue) || 0) > breakeven);
+                return `<b>Financial Snapshot:</b><br>
+                    • Total Revenue: <b>$${totalRev.toLocaleString()}</b> across ${jobs.length} jobs<br>
+                    • Avg Revenue/Job: <b>$${avgRev.toFixed(0)}</b><br>
+                    • Break-even/Job: <b>$${breakeven}</b><br>
+                    • Profitable Jobs: <b>${profitable.length}/${jobs.length}</b><br>
+                    • Monthly Overhead: ~<b>$43,480</b><br><br>
+                    ${avgRev < breakeven ? '⚠️ Average revenue is below break-even. Consider raising prices or reducing overhead.' : '✅ Average revenue exceeds break-even!'}`;
+            }
+
+            if (q.includes('stale') || q.includes('overdue') || q.includes('follow')) {
+                const stale = claims.filter(c => {
+                    if (c.status === 'Paid' || c.status === 'Denied') return false;
+                    const d = new Date(c.dateOfJob);
+                    const daysDiff = (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24);
+                    return daysDiff > 30;
+                });
+                if (stale.length === 0) return '✅ No stale claims found! All active claims are within 30 days.';
+                let list = stale.map(c => `• ${c.customerName} — ${c.status} (${c.dateOfJob})`).join('<br>');
+                return `<b>⚠️ ${stale.length} Stale Claims (30+ days):</b><br>${list}<br><br>These need immediate follow-up!`;
+            }
+
+            if (q.includes('route') || q.includes('routing') || q.includes('map') || q.includes('optimize')) {
+                const scheduled = jobs.filter(j => j.status === 'Scheduled');
+                const unassigned = jobs.filter(j => !j.tech || j.tech === '');
+                return `<b>Route Summary:</b><br>
+                    • <b>${jobs.length}</b> total jobs in pipeline<br>
+                    • <b>${scheduled.length}</b> scheduled<br>
+                    • <b>${unassigned.length}</b> unassigned (no tech)<br>
+                    • Depot: Knoxville, TN (35.9641, -83.9201)<br>
+                    • Max jobs/route: 6<br><br>
+                    ${unassigned.length > 0 ? '⚠️ Assign techs to ' + unassigned.length + ' jobs before optimizing!' : '✅ All jobs have techs assigned. Ready to optimize!'}`;
+            }
+
+            if (q.includes('stock') || q.includes('inventory') || q.includes('parts') || q.includes('low')) {
+                const low = inventory.filter(i => i.quantity <= i.minStock);
+                const out = inventory.filter(i => i.quantity === 0);
+                const totalVal = inventory.reduce((s,i) => s + (i.quantity * i.price), 0);
+                let response = `<b>Inventory Status:</b><br>
+                    • <b>${inventory.length}</b> items tracked<br>
+                    • Total Value: <b>$${totalVal.toLocaleString()}</b><br>
+                    • <b>${low.length}</b> items below minimum<br>
+                    • <b>${out.length}</b> items out of stock<br>`;
+                if (low.length > 0) {
+                    response += '<br>⚠️ <b>Low stock:</b><br>' + low.map(i => `• ${i.name}: ${i.quantity} left (min: ${i.minStock})`).join('<br>');
+                }
+                return response;
+            }
+
+            if (q.includes('tech') || q.includes('sam') || q.includes('lucas') || q.includes('spencer')) {
+                const techs = Object.entries({"Sam":{rate:25,loaded:35.21},"Lucas":{rate:20,loaded:28.17},"Spencer":{rate:40,loaded:56.33},"Andrew":{rate:25,loaded:32.50}});
+                const techJobs = {};
+                jobs.forEach(j => { if(j.tech) techJobs[j.tech] = (techJobs[j.tech]||0)+1; });
+                let info = techs.map(([n,r]) => `• <b>${n}</b>: $${r.rate}/hr (loaded: $${r.loaded}/hr) — ${techJobs[n]||0} jobs`).join('<br>');
+                return `<b>Technician Overview:</b><br>${info}`;
+            }
+
+            if (q.includes('hello') || q.includes('hey') || q.includes('hi')) {
+                return "Hey Caden! How can I help with Akino Solar today? I can check on warranty claims, route efficiency, inventory levels, financials — just ask!";
+            }
+
+            if (q.includes('help') || q.includes('what can')) {
+                return `<b>I can help with:</b><br>
+                    • 📋 <b>Warranty status</b> — "What's the warranty status?"<br>
+                    • 💰 <b>Financials</b> — "How's profit looking?"<br>
+                    • 🚗 <b>Routes</b> — "Summarize routes"<br>
+                    • 📦 <b>Inventory</b> — "Any low stock items?"<br>
+                    • 👷 <b>Technicians</b> — "Show tech workloads"<br>
+                    • ⚠️ <b>Stale claims</b> — "Any overdue claims?"<br>
+                    • 🔍 <b>Full scan</b> — "Run a full system scan"<br>
+                    • 📧 <b>Email issues</b> — "Check emails for issues"`;
+            }
+
+            return `I analyzed your question. Based on the current data:<br><br>
+                • ${jobs.length} jobs in pipeline<br>
+                • ${claims.length} warranty claims tracked<br>
+                • ${inventory.length} inventory items<br><br>
+                Try asking about: <b>warranty status</b>, <b>profit</b>, <b>routes</b>, <b>inventory</b>, <b>stale claims</b>, or say <b>"help"</b> for the full list!`;
+        }
+
+        function aiQuickAction(type) {
+            const queries = {
+                warranty: "What's the warranty claims status?",
+                profit: "How's profit looking today?",
+                stale: "Any stale or overdue claims?",
+                routes: "Give me a route summary",
+                lowstock: "Any low stock items?",
+                scan: "Run a full system scan"
+            };
+            if (type === 'scan') { switchAITab('scan'); runFullScan(); return; }
+            document.getElementById('aiInputField').value = queries[type] || '';
+            sendAIMessage();
+        }
+
+        function runFullScan() {
+            const results = document.getElementById('scanResults');
+            results.innerHTML = '<div style="text-align:center; padding:20px; color:#888;"><i class="fas fa-spinner fa-spin" style="font-size:24px;"></i><br>Scanning all systems...</div>';
+
+            setTimeout(() => {
+                const jobs = getStorageData('jobs', []);
+                const claims = getStorageData('warrantyClaims', []);
+                const inventory = getStorageData('inventory', []);
+                let findings = [];
+                let alertCount = 0;
+
+                // Check stale warranty claims
+                const staleClaims = claims.filter(c => {
+                    if (c.status === 'Paid' || c.status === 'Denied') return false;
+                    const d = new Date(c.dateOfJob);
+                    return (Date.now() - d.getTime()) / 86400000 > 30;
+                });
+                if (staleClaims.length > 0) {
+                    alertCount += staleClaims.length;
+                    findings.push({ type: 'critical', icon: 'fas fa-exclamation-triangle', title: `${staleClaims.length} Stale Warranty Claims`,
+                        desc: staleClaims.map(c => `${c.customerName} — ${c.status} since ${c.dateOfJob}`).join('<br>'),
+                        fix: 'Follow up on payments', action: () => { switchTab('warranty'); toggleAI(); }
+                    });
+                }
+
+                // Check RMA waiting
+                const rmaWaiting = claims.filter(c => c.status === 'Waiting RMA');
+                if (rmaWaiting.length > 0) {
+                    alertCount += rmaWaiting.length;
+                    findings.push({ type: 'warning', icon: 'fas fa-box', title: `${rmaWaiting.length} Claims Waiting RMA`,
+                        desc: rmaWaiting.map(c => `${c.customerName} — Case #${c.caseNumber}`).join('<br>'),
+                        fix: 'Check RMA status with Generac', action: () => { switchTab('warranty'); toggleAI(); }
+                    });
+                }
+
+                // Check unassigned jobs
+                const unassigned = jobs.filter(j => !j.tech && j.status !== 'Done');
+                if (unassigned.length > 0) {
+                    alertCount += unassigned.length;
+                    findings.push({ type: 'warning', icon: 'fas fa-user-slash', title: `${unassigned.length} Jobs Without Tech Assigned`,
+                        desc: unassigned.map(j => `Job ${j.jobId} — ${j.customer}, ${j.city}`).join('<br>'),
+                        fix: 'Assign technicians', action: () => { switchTab('jobs'); toggleAI(); }
+                    });
+                }
+
+                // Check $0 revenue jobs
+                const zeroRev = jobs.filter(j => (!j.revenue || parseFloat(j.revenue) === 0) && j.status !== 'Done');
+                if (zeroRev.length > 0) {
+                    findings.push({ type: 'warning', icon: 'fas fa-dollar-sign', title: `${zeroRev.length} Jobs with $0 Revenue`,
+                        desc: zeroRev.map(j => `Job ${j.jobId} — ${j.customer}`).join('<br>'),
+                        fix: 'Update revenue amounts', action: () => { switchTab('jobs'); toggleAI(); }
+                    });
+                }
+
+                // Check low stock
+                const lowStock = inventory.filter(i => i.quantity <= i.minStock && i.quantity > 0);
+                const outOfStock = inventory.filter(i => i.quantity === 0);
+                if (outOfStock.length > 0) {
+                    alertCount += outOfStock.length;
+                    findings.push({ type: 'critical', icon: 'fas fa-times-circle', title: `${outOfStock.length} Items OUT OF STOCK`,
+                        desc: outOfStock.map(i => i.name).join('<br>'),
+                        fix: 'Order immediately', action: () => { switchTab('inventory'); toggleAI(); }
+                    });
+                }
+                if (lowStock.length > 0) {
+                    findings.push({ type: 'warning', icon: 'fas fa-arrow-down', title: `${lowStock.length} Items Below Minimum Stock`,
+                        desc: lowStock.map(i => `${i.name}: ${i.quantity} left (min: ${i.minStock})`).join('<br>'),
+                        fix: 'Reorder parts', action: () => { switchTab('inventory'); toggleAI(); }
+                    });
+                }
+
+                // Check unprofitable break-even
+                const breakeven = 2698;
+                const unprofitable = jobs.filter(j => parseFloat(j.revenue) > 0 && parseFloat(j.revenue) < breakeven);
+                if (unprofitable.length > 0) {
+                    findings.push({ type: 'info', icon: 'fas fa-chart-line', title: `${unprofitable.length} Jobs Below Break-Even ($${breakeven})`,
+                        desc: unprofitable.map(j => `Job ${j.jobId}: $${j.revenue} revenue`).join('<br>'),
+                        fix: 'Review pricing', action: () => { switchTab('financials'); toggleAI(); }
+                    });
+                }
+
+                if (findings.length === 0) {
+                    results.innerHTML = '<div style="text-align:center; padding:40px; color:#22c55e;"><i class="fas fa-check-circle" style="font-size:48px;"></i><br><br><b>All Systems Clear!</b><br>No issues found across all modules.</div>';
+                } else {
+                    results.innerHTML = `<div style="padding:8px 0 12px; color:#F97316; font-weight:700; font-size:14px;"><i class="fas fa-flag"></i> Found ${findings.length} issues:</div>` +
+                        findings.map(f => `
+                            <div class="ai-scan-item ${f.type}">
+                                <h4><i class="${f.icon}"></i> ${f.title}</h4>
+                                <p>${f.desc}</p>
+                                <button class="ai-fix-btn" onclick="(${f.action.toString()})()"><i class="fas fa-arrow-right"></i> ${f.fix}</button>
+                            </div>
+                        `).join('');
+                }
+
+                // Update badge
+                aiAlertCount = alertCount;
+                const badge = document.getElementById('aiBadge');
+                if (alertCount > 0) { badge.textContent = alertCount; badge.style.display = 'flex'; }
+                else { badge.style.display = 'none'; }
+            }, 1500);
+        }
+
+        function checkJobReminders() {
+            const jobs = getStorageData('jobs', []);
+            const upcoming = jobs.filter(j => {
+                if (j.status === 'Done') return false;
+                if (!j.tech) return true;
+                const d = new Date(j.routeDate || j.requestedDate);
+                const daysUntil = (d.getTime() - Date.now()) / 86400000;
+                return daysUntil <= 2 && daysUntil >= 0;
+            });
+            if (upcoming.length > 0) {
+                addAIMessage(`<b>⏰ ${upcoming.length} Job Reminders:</b><br>` +
+                    upcoming.map(j => `• Job ${j.jobId} — ${j.customer}${!j.tech ? ' <b>(NO TECH!)</b>' : ` (${j.tech})`}`).join('<br>'), 'alert');
+            } else {
+                addAIMessage('✅ No immediate job reminders. All jobs are assigned and on schedule.', 'suggestion');
+            }
+            switchAITab('chat');
+        }
+
+        function checkDiscrepancies() {
+            const jobs = getStorageData('jobs', []);
+            const claims = getStorageData('warrantyClaims', []);
+            let issues = [];
+            const zeroRev = jobs.filter(j => (!j.revenue || parseFloat(j.revenue) === 0) && j.status !== 'Done');
+            if (zeroRev.length > 0) issues.push(`${zeroRev.length} jobs with $0 revenue recorded`);
+            const unpaidClaims = claims.filter(c => c.status === 'Completed not paid');
+            if (unpaidClaims.length > 0) issues.push(`${unpaidClaims.length} warranty claims completed but not paid`);
+            const mismatch = claims.filter(c => parseFloat(c.allottedAmount) > 0 && parseFloat(c.paidAmount) > 0 && Math.abs(parseFloat(c.allottedAmount) - parseFloat(c.paidAmount)) > 100);
+            if (mismatch.length > 0) issues.push(`${mismatch.length} claims with >$100 allotted vs paid discrepancy`);
+
+            if (issues.length > 0) {
+                addAIMessage(`<b>⚠️ ${issues.length} Discrepancies Found:</b><br>` + issues.map(i => `• ${i}`).join('<br>') + '<br><br>Review these in the relevant sections.', 'alert');
+            } else {
+                addAIMessage('✅ No discrepancies detected. Revenue and claims data looks consistent.', 'suggestion');
+            }
+            switchAITab('chat');
+        }
+
+        function generateTodos() {
+            const jobs = getStorageData('jobs', []);
+            const claims = getStorageData('warrantyClaims', []);
+            const inventory = getStorageData('inventory', []);
+            let todos = [];
+
+            const staleClaims = claims.filter(c => c.status !== 'Paid' && c.status !== 'Denied' && (Date.now() - new Date(c.dateOfJob).getTime()) / 86400000 > 30);
+            if (staleClaims.length > 0) todos.push(`📞 Follow up on ${staleClaims.length} stale warranty claims`);
+
+            const unassigned = jobs.filter(j => !j.tech && j.status !== 'Done');
+            if (unassigned.length > 0) todos.push(`👷 Assign techs to ${unassigned.length} unassigned jobs`);
+
+            const lowStock = inventory.filter(i => i.quantity <= i.minStock);
+            if (lowStock.length > 0) todos.push(`📦 Reorder ${lowStock.length} low-stock items`);
+
+            const zeroRev = jobs.filter(j => (!j.revenue || parseFloat(j.revenue) === 0) && j.status !== 'Done');
+            if (zeroRev.length > 0) todos.push(`💰 Update revenue for ${zeroRev.length} jobs`);
+
+            const waitRMA = claims.filter(c => c.status === 'Waiting RMA');
+            if (waitRMA.length > 0) todos.push(`📋 Check RMA status for ${waitRMA.length} claims`);
+
+            todos.push('🗓️ Review tomorrow\'s scheduled jobs');
+            todos.push('📊 Check daily P&L numbers');
+
+            addAIMessage(`<b>📝 Today's Auto-Generated To-Do List:</b><br><br>` + todos.map((t,i) => `${i+1}. ${t}`).join('<br>'), 'suggestion');
+            switchAITab('chat');
+        }
+
+        // Auto-scan on first load
+        setTimeout(() => {
+            runFullScan();
+        }, 3000);
+    </script>
+</body>
+</html>

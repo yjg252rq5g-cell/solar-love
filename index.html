@@ -1,0 +1,4686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Akino Solar Command Center - Fleet routing, job management, and warranty tracking">
+  <title>Akino Solar Command Center v3</title>
+
+  <!-- CDN IMPORTS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    /* ============ BASE STYLES ============ */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background-color: #f0f2f5;
+      color: #1a1a2e;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* ============ LAYOUT ============ */
+    .app-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 260px;
+      background: white;
+      border-right: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+      position: relative;
+      z-index: 40;
+    }
+
+    .sidebar.mobile-hidden {
+      transform: translateX(-100%);
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100vh;
+      z-index: 50;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar.mobile-hidden.active {
+      transform: translateX(0);
+    }
+
+    .sidebar-header {
+      padding: 20px 16px;
+      background: #1F4E79;
+      color: white;
+      border-bottom: 1px solid #16396b;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .sidebar-logo-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .sidebar-logo-text h2 {
+      font-size: 14px;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: 0.5px;
+    }
+
+    .sidebar-logo-text p {
+      font-size: 10px;
+      margin: 2px 0 0;
+      opacity: 0.85;
+    }
+
+    .sidebar-rate {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.3px;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      color: #6b7280;
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 2px 0;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .nav-item:hover {
+      background: #eff6ff;
+      color: #1F4E79;
+    }
+
+    .nav-item.active {
+      background: #dbeafe;
+      color: #2563EB;
+      font-weight: 600;
+    }
+
+    .nav-item i {
+      width: 18px;
+      text-align: center;
+    }
+
+    .sidebar-footer {
+      padding: 12px 8px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .content-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: white;
+      border-bottom: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .top-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .hamburger-menu {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #6b7280;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    #currentTabName {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1F4E79;
+      margin: 0;
+    }
+
+    .top-bar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #f9fafb;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1F4E79, #2563EB);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 0;
+      overflow-y: auto;
+    }
+
+    /* ============ CARDS & KPI ============ */
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .kpi-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      border-left: 4px solid #1F4E79;
+      transition: all 0.2s ease;
+    }
+
+    .kpi-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      border-left-color: #2563EB;
+    }
+
+    .kpi-value {
+      font-size: 24px;
+      font-weight: 800;
+      color: #1a1a2e;
+      line-height: 1.2;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+
+    .kpi-change {
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+
+    .kpi-change.positive {
+      color: #16a34a;
+    }
+
+    .kpi-change.negative {
+      color: #dc2626;
+    }
+
+    /* ============ TABLES ============ */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: white;
+    }
+
+    thead {
+      background: #1F4E79;
+      color: white;
+    }
+
+    th {
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f3f4f6;
+      color: #374151;
+    }
+
+    tr:nth-child(even) {
+      background: #f9fafb;
+    }
+
+    tr:hover {
+      background: #eff6ff;
+    }
+
+    tbody tr:hover {
+      background-color: #eff6ff;
+    }
+
+    /* ============ FORMS ============ */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b7280;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      background: white;
+      color: #1a1a2e;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+      border-color: #2563EB;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .form-input:disabled {
+      background: #f9fafb;
+      color: #6b7280;
+      cursor: not-allowed;
+    }
+
+    select.form-input {
+      cursor: pointer;
+    }
+
+    textarea.form-input {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    /* ============ BUTTONS ============ */
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      outline: none;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: #2563EB;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+
+    .btn-secondary:hover {
+      background: #f9fafb;
+      border-color: #9ca3af;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #b91c1c;
+    }
+
+    .btn-success {
+      background: #16a34a;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #15803d;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-warning:hover {
+      background: #d97706;
+    }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    .btn-xs {
+      padding: 2px 8px;
+      font-size: 11px;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ============ BADGES ============ */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* WARRANTY STATUS BADGES */
+    .badge-paid {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-needs-attention {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-scheduled {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge-submitted {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+
+    .badge-completed-not-paid {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-waiting-rma {
+      background: #fce7f3;
+      color: #9d174d;
+    }
+
+    .badge-waiting-go-back {
+      background: #fae8ff;
+      color: #86198f;
+    }
+
+    .badge-parts-ordered {
+      background: #f0fdf4;
+      color: #14532d;
+    }
+
+    .badge-rma-approved {
+      background: #ccfbf1;
+      color: #134e4a;
+    }
+
+    .badge-rma-denied {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-go-back-scheduled {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    .badge-go-back-complete {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .badge-in-progress {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge-pending-review {
+      background: #fff7ed;
+      color: #9a3412;
+    }
+
+    .badge-denied {
+      background: #fecaca;
+      color: #991b1b;
+    }
+
+    .badge-cancelled {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .badge-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-profitable {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-marginal {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-loss {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge-neutral {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    /* ============ VERDICT BOX ============ */
+    .verdict-box {
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .verdict-box.accept {
+      background: #f0fdf4;
+      border: 2px solid #16a34a;
+    }
+
+    .verdict-box.reject {
+      background: #fef2f2;
+      border: 2px solid #dc2626;
+    }
+
+    .verdict-text {
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      line-height: 1;
+    }
+
+    .verdict-box.accept .verdict-text {
+      color: #16a34a;
+    }
+
+    .verdict-box.reject .verdict-text {
+      color: #dc2626;
+    }
+
+    /* ============ COST BREAKDOWN ============ */
+    .cost-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 14px;
+    }
+
+    .cost-row:last-child {
+      border-bottom: none;
+    }
+
+    .cost-row .clabel {
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .cost-row .cval {
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .cost-row.total {
+      border-top: 2px solid #1F4E79;
+      border-bottom: none;
+      font-weight: 700;
+      color: #1F4E79;
+      margin-top: 8px;
+      padding-top: 12px;
+    }
+
+    .min-price {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 10px;
+      padding: 16px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #92400e;
+      font-weight: 600;
+    }
+
+    /* ============ ALERTS ============ */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .alert-warn {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      color: #92400e;
+    }
+
+    .alert-danger {
+      background: #fee2e2;
+      border: 1px solid #dc2626;
+      color: #991b1b;
+    }
+
+    .alert-success {
+      background: #dcfce7;
+      border: 1px solid #16a34a;
+      color: #166534;
+    }
+
+    .alert-info {
+      background: #dbeafe;
+      border: 1px solid #2563EB;
+      color: #1e40af;
+    }
+
+    .alert i {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* ============ MODAL ============ */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 16px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      animation: modalSlideIn 0.3s ease;
+    }
+
+    @keyframes modalSlideIn {
+      from {
+        transform: scale(0.95);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1F4E79;
+      margin: 0;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: #6b7280;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .modal-close:hover {
+      background: #f3f4f6;
+      color: #1a1a2e;
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* ============ TAB CONTENT ============ */
+    .tab-content {
+      display: none;
+      padding: 24px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* ============ SECTION TITLES ============ */
+    .section-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #1F4E79;
+      margin: 0 0 16px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .subsection-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #374151;
+      margin: 16px 0 12px 0;
+    }
+
+    /* ============ CLAUDE AI SIDEBAR ============ */
+    .claude-fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #2563EB;
+      color: white;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      z-index: 900;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .claude-fab:hover {
+      background: #1d4ed8;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+      transform: scale(1.05);
+    }
+
+    .claude-sidebar {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 380px;
+      height: 100vh;
+      background: white;
+      box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      transition: right 0.3s ease;
+    }
+
+    .claude-sidebar.active {
+      right: 0;
+    }
+
+    .claude-header {
+      padding: 16px 20px;
+      background: #1F4E79;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .claude-header h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .claude-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: background 0.2s ease;
+    }
+
+    .claude-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .claude-tabs {
+      display: flex;
+      border-bottom: 1px solid #e5e7eb;
+      background: #f9fafb;
+    }
+
+    .claude-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      color: #6b7280;
+      transition: all 0.2s ease;
+    }
+
+    .claude-tab:hover {
+      color: #374151;
+    }
+
+    .claude-tab.active {
+      color: #2563EB;
+      border-bottom-color: #2563EB;
+    }
+
+    .claude-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .claude-message {
+      margin-bottom: 12px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #f9fafb;
+      color: #374151;
+    }
+
+    .claude-message.assistant {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .claude-input {
+      display: flex;
+      padding: 12px;
+      border-top: 1px solid #e5e7eb;
+      gap: 8px;
+    }
+
+    .claude-input input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .claude-input input:focus {
+      border-color: #2563EB;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .claude-send {
+      background: #2563EB;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+
+    .claude-send:hover {
+      background: #1d4ed8;
+    }
+
+    /* ============ TOAST ============ */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 300px;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .toast.success {
+      border-left: 4px solid #16a34a;
+    }
+
+    .toast.error {
+      border-left: 4px solid #dc2626;
+    }
+
+    .toast.warning {
+      border-left: 4px solid #f59e0b;
+    }
+
+    .toast.info {
+      border-left: 4px solid #2563EB;
+    }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 100%;
+      }
+
+      .sidebar.mobile-hidden {
+        transform: translateX(-100%);
+      }
+
+      .hamburger-menu {
+        display: block;
+      }
+
+      .app-container {
+        flex-direction: column;
+      }
+
+      .content-wrapper {
+        flex: 1;
+        width: 100%;
+      }
+
+      .claude-sidebar {
+        width: 100%;
+        right: -100%;
+      }
+
+      .claude-fab {
+        bottom: 20px;
+        right: 20px;
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+      }
+
+      .tab-content {
+        padding: 16px;
+      }
+
+      .card {
+        padding: 16px;
+      }
+
+      #currentTabName {
+        font-size: 18px;
+      }
+
+      .top-bar {
+        padding: 12px 16px;
+      }
+
+      .table-container {
+        font-size: 12px;
+      }
+
+      th, td {
+        padding: 8px 10px;
+      }
+
+      .user-info {
+        display: none;
+      }
+
+      .modal {
+        width: 95%;
+      }
+
+      .toast {
+        min-width: 250px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .sidebar-logo-text h2 {
+        font-size: 13px;
+      }
+
+      .sidebar-logo-text p {
+        font-size: 9px;
+      }
+
+      #currentTabName {
+        font-size: 16px;
+      }
+
+      .kpi-value {
+        font-size: 20px;
+      }
+
+      .toast {
+        min-width: 220px;
+        font-size: 12px;
+      }
+    }
+
+    /* ============ UTILITIES ============ */
+    .hidden {
+      display: none !important;
+    }
+
+    .mt-0 { margin-top: 0; }
+    .mt-2 { margin-top: 8px; }
+    .mt-4 { margin-top: 16px; }
+    .mt-6 { margin-top: 24px; }
+
+    .mb-0 { margin-bottom: 0; }
+    .mb-2 { margin-bottom: 8px; }
+    .mb-4 { margin-bottom: 16px; }
+    .mb-6 { margin-bottom: 24px; }
+
+    .gap-2 { gap: 8px; }
+    .gap-4 { gap: 16px; }
+    .gap-6 { gap: 24px; }
+
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .justify-center { justify-content: center; }
+
+    .w-full { width: 100%; }
+    .max-w-2xl { max-width: 672px; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+
+    .text-muted {
+      color: #6b7280;
+    }
+
+    .text-light {
+      color: #9ca3af;
+    }
+
+    .font-bold {
+      font-weight: 700;
+    }
+
+    .font-semibold {
+      font-weight: 600;
+    }
+
+    .border-top {
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .border-bottom {
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .rounded {
+      border-radius: 8px;
+    }
+
+    .rounded-lg {
+      border-radius: 12px;
+    }
+
+    .shadow {
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .shadow-lg {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN PAGE -->
+  <div id="loginContainer" style="position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#1F4E79,#2563EB);display:flex;align-items:center;justify-content:center;z-index:9999;">
+    <div style="background:white;border-radius:16px;padding:40px;width:380px;max-width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:64px;height:64px;background:linear-gradient(135deg,#1F4E79,#2563EB);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px;font-weight:800;color:white;">A</div>
+        <h1 style="font-size:24px;font-weight:800;color:#1F4E79;margin:0;">AKINO SOLAR</h1>
+        <p style="color:#6b7280;font-size:13px;margin-top:4px;">Command Center</p>
+      </div>
+      <form id="loginForm">
+        <div style="margin-bottom:16px;">
+          <label class="form-label">Email</label>
+          <input type="email" id="loginEmail" class="form-input" placeholder="caden@akinosolar.com" value="caden@akinosolar.com">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label class="form-label">Password</label>
+          <input type="password" id="loginPassword" class="form-input" placeholder="Enter password">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+          <input type="checkbox" id="rememberMe">
+          <label for="rememberMe" style="font-size:13px;color:#6b7280;cursor:pointer;">Remember me</label>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;padding:12px;">Sign In</button>
+      </form>
+      <div style="text-align:center;margin-top:16px;">
+        <button id="demoModeBtn" class="btn btn-secondary" style="width:100%;">Quick Demo Mode</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP CONTAINER (initially hidden until login) -->
+  <div class="app-container" id="appContainer" style="display:none;">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="navSidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <div class="sidebar-logo-icon">A</div>
+          <div class="sidebar-logo-text">
+            <h2>AKINO SOLAR</h2>
+            <p>Command Center</p>
+          </div>
+        </div>
+        <div class="sidebar-rate" id="sidebarOverheadRate">$43,480/mo overhead</div>
+      </div>
+
+      <div class="sidebar-nav">
+        <div class="nav-item active" data-tab="dashboard">
+          <i class="fas fa-chart-line"></i>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-tab="jobs">
+          <i class="fas fa-briefcase"></i>
+          <span>Jobs</span>
+        </div>
+        <div class="nav-item" data-tab="routes">
+          <i class="fas fa-route"></i>
+          <span>Routes</span>
+        </div>
+        <div class="nav-item" data-tab="warranty">
+          <i class="fas fa-shield-halved"></i>
+          <span>Warranty</span>
+        </div>
+        <div class="nav-item" data-tab="reconciliation">
+          <i class="fas fa-scale-balanced"></i>
+          <span>Reconciliation</span>
+        </div>
+        <div class="nav-item" data-tab="inventory">
+          <i class="fas fa-warehouse"></i>
+          <span>Inventory</span>
+        </div>
+        <div class="nav-item" data-tab="technicians">
+          <i class="fas fa-users"></i>
+          <span>Technicians</span>
+        </div>
+        <div class="nav-item" data-tab="financials">
+          <i class="fas fa-dollar-sign"></i>
+          <span>Financials</span>
+        </div>
+        <div class="nav-item" data-tab="email-monitor">
+          <i class="fas fa-envelope"></i>
+          <span>Email Monitor</span>
+        </div>
+        <div class="nav-item" data-tab="settings">
+          <i class="fas fa-gear"></i>
+          <span>Settings</span>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button id="logoutBtn" class="btn btn-secondary" style="width:100%;padding:8px;font-size:13px;">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT AREA -->
+    <div style="flex:1;display:flex;flex-direction:column;">
+      <!-- TOP BAR -->
+      <div class="top-bar">
+        <div class="top-bar-left">
+          <button class="hamburger-menu" id="hamburgerMenu">
+            <i class="fas fa-bars"></i>
+          </button>
+          <h2 id="currentTabName">Dashboard</h2>
+        </div>
+        <div class="top-bar-right">
+          <div class="user-info">
+            <div class="user-avatar">C</div>
+            <div>
+              <div style="font-weight:600;color:#1a1a2e;">Caden Montgomery</div>
+              <div style="font-size:12px;">caden@akinosolar.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTENT WRAPPER (Tab content goes here) -->
+      <div class="content-wrapper" id="contentWrapper">
+
+<!-- TAB 1: DASHBOARD -->
+<div id="tab-dashboard" class="tab-content active">
+  <h2 class="section-title">Business Dashboard</h2>
+
+  <div id="kpiContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;">
+    <!-- JS fills KPI cards -->
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">Revenue Trend</h3>
+      <canvas id="revenueChart" style="max-height:300px;"></canvas>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">Job Status Distribution</h3>
+      <canvas id="jobStatusChart" style="max-height:300px;"></canvas>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">System Alerts</h3>
+      <div id="dashboardAlerts" style="min-height:150px;">
+        <!-- JS fills alerts -->
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">Activity Feed</h3>
+      <div id="activityFeed" style="min-height:150px;">
+        <!-- JS fills activity -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: JOBS -->
+<div id="tab-jobs" class="tab-content" style="display:none;">
+  <h2 class="section-title">Job Management</h2>
+
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+    <select id="jobStatusFilter" class="form-input" style="flex:0 0 150px;">
+      <option value="">All Statuses</option>
+      <option value="Pending">Pending</option>
+      <option value="Scheduled">Scheduled</option>
+      <option value="In Progress">In Progress</option>
+      <option value="Completed">Completed</option>
+      <option value="Done">Done</option>
+    </select>
+
+    <select id="jobTechFilter" class="form-input" style="flex:0 0 150px;">
+      <option value="">All Technicians</option>
+      <option value="Sam">Sam</option>
+      <option value="Lucas">Lucas</option>
+      <option value="Katie">Katie</option>
+      <option value="Spencer">Spencer</option>
+      <option value="Lex">Lex</option>
+      <option value="Caden">Caden</option>
+      <option value="Jen">Jen</option>
+      <option value="Andrew">Andrew</option>
+    </select>
+
+    <input type="text" id="jobSearchInput" class="form-input" placeholder="Search customer, city, etc..." style="flex:1;min-width:200px;">
+
+    <button id="addJobBtn" class="btn btn-primary">Add Job</button>
+    <button id="importCsvBtn" class="btn btn-secondary">Import CSV</button>
+    <button id="archivePaidBtn" class="btn btn-warning"><i class="fas fa-box-archive"></i> Archive Paid</button>
+  </div>
+
+  <div class="card" style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;">
+      <thead style="background-color:#1F4E79;color:white;">
+        <tr>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Job#</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Priority</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Customer</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">City</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">State</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Zip</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Requested</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Route Date</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Tech</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Tags</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Revenue</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Notes</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Flags</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Route</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="jobsTableBody">
+        <!-- JS fills rows -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- CSV IMPORT MODAL -->
+  <div id="csvModal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Import Jobs from CSV</h3>
+        <button class="modal-close" id="csvModalClose" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="csvDropZone" style="border:2px dashed #2563EB;border-radius:8px;padding:40px;text-align:center;background:#f0f2f5;cursor:pointer;margin-bottom:20px;">
+          <p style="color:#6b7280;">Drag and drop CSV file here or click to browse</p>
+          <input type="file" id="csvFileInput" accept=".csv" style="display:none;">
+        </div>
+        <div id="csvPreview" style="max-height:300px;overflow-y:auto;">
+          <!-- JS fills preview -->
+        </div>
+        <div id="columnMapping" style="margin-top:20px;">
+          <!-- JS fills mapping interface -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="csvCancelBtn" class="btn btn-secondary">Cancel</button>
+        <button id="csvImportBtn" class="btn btn-primary">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOB MODAL -->
+  <div id="jobModal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Job Details</h3>
+        <button class="modal-close" id="jobModalClose" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Customer Name</label>
+            <input type="text" id="jobModalCustomer" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input type="text" id="jobModalCity" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">State</label>
+            <select id="jobModalState" class="form-input">
+              <option value="">Select State</option>
+              <option value="TN">TN</option>
+              <option value="GA">GA</option>
+              <option value="KY">KY</option>
+              <option value="VA">VA</option>
+              <option value="NC">NC</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Technician</label>
+            <select id="jobModalTech" class="form-input">
+              <option value="">Unassigned</option>
+              <option value="Sam">Sam</option>
+              <option value="Lucas">Lucas</option>
+              <option value="Katie">Katie</option>
+              <option value="Spencer">Spencer</option>
+              <option value="Lex">Lex</option>
+              <option value="Caden">Caden</option>
+              <option value="Jen">Jen</option>
+              <option value="Andrew">Andrew</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="jobModalStatus" class="form-input">
+              <option value="Pending">Pending</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Done">Done</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Service Type</label>
+            <input type="text" id="jobModalService" class="form-input" placeholder="e.g., Installation, Maintenance">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expected Revenue</label>
+            <input type="number" id="jobModalRevenue" class="form-input" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Scheduled Date</label>
+            <input type="date" id="jobModalScheduled" class="form-input">
+          </div>
+          <div class="form-group" style="grid-column:1/-1;">
+            <label class="form-label">Notes</label>
+            <textarea id="jobModalNotes" class="form-input" rows="3" placeholder="Any additional notes..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelJobBtn" class="btn btn-secondary">Cancel</button>
+        <button id="saveJobBtn" class="btn btn-primary">Save Job</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: ROUTES -->
+<div id="tab-routes" class="tab-content" style="display:none;">
+  <h2 class="section-title">Route Optimization</h2>
+
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+    <button id="routeMapViewBtn" class="btn btn-primary" data-view="map">Map View</button>
+    <button id="routeListViewBtn" class="btn btn-secondary" data-view="list">List View</button>
+    <button id="routeAnalyticsViewBtn" class="btn btn-secondary" data-view="analytics">Analytics</button>
+    <input type="date" id="routeStartDate" class="form-input" style="flex:0 0 150px;">
+    <input type="date" id="routeEndDate" class="form-input" style="flex:0 0 150px;">
+    <button id="optimizeRoutesBtn" class="btn btn-primary">Optimize Routes</button>
+    <button id="exportPdfsBtn" class="btn btn-secondary"><i class="fas fa-file-pdf"></i> Fleet PDF</button>
+    <button id="geocodeBacklogBtn" class="btn btn-secondary"><i class="fas fa-map-pin"></i> Geocode Backlog</button>
+    <button id="archiveRoutesBtn" class="btn btn-secondary">Archive Routes</button>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;color:#1F4E79;">Weather Widget</h3>
+    <div id="weatherWidget" style="display:flex;gap:16px;align-items:center;padding:16px;background:#f0f2f5;border-radius:8px;">
+      <div style="font-size:48px;">🌤️</div>
+      <div>
+        <p style="margin:0;font-size:24px;font-weight:bold;">72°F</p>
+        <p style="margin:0;color:#6b7280;">Clear • Wind 8 mph</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="routeMap" style="height:500px;border-radius:12px;background:#e5e7eb;margin-bottom:20px;display:flex;align-items:center;justify-content:center;color:#6b7280;">
+    <p>Map will load here (Requires Google Maps API)</p>
+  </div>
+
+  <div id="routeList" style="display:grid;gap:16px;">
+    <!-- JS fills route cards -->
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;color:#1F4E79;">Find Best Fit for Job</h3>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:flex-end;">
+      <div class="form-group">
+        <label class="form-label">Job Address</label>
+        <input type="text" id="bestFitAddress" class="form-input" placeholder="Enter customer address...">
+      </div>
+      <button id="findBestFitBtn" class="btn btn-primary">Find Best Fit</button>
+    </div>
+    <div id="bestFitResult" style="margin-top:16px;display:none;padding:16px;background:#f0f2f5;border-radius:8px;border-left:4px solid #2563EB;">
+      <!-- JS fills result -->
+    </div>
+  </div>
+
+  <div id="analyticsSection" style="display:none;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin-top:24px;">
+      <div class="card">
+        <h3 style="margin-top:0;color:#1F4E79;">Route Overview</h3>
+        <canvas id="routeOverviewChart" style="max-height:300px;"></canvas>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:#1F4E79;">Tech Performance</h3>
+        <canvas id="techPerformanceChart" style="max-height:300px;"></canvas>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:#1F4E79;">Route Comparison</h3>
+        <canvas id="routeCompareChart" style="max-height:300px;"></canvas>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:#1F4E79;">Geographic Heatmap</h3>
+        <canvas id="geoHeatChart" style="max-height:300px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: WARRANTY -->
+<div id="tab-warranty" class="tab-content" style="display:none;">
+  <h2 class="section-title">Warranty Claims</h2>
+
+  <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;overflow-x:auto;padding-bottom:8px;">
+    <div id="warrantyMonthBtns" style="display:flex;gap:8px;width:100%;">
+      <button class="btn btn-primary" data-month="all">All Claims</button>
+      <button class="btn btn-secondary" data-month="2026-01">January 2026</button>
+      <button class="btn btn-secondary" data-month="2025-12">December 2025</button>
+      <button class="btn btn-secondary" data-month="2025-11">November 2025</button>
+      <button class="btn btn-secondary" data-month="2025-10">October 2025</button>
+      <button class="btn btn-secondary" data-month="2025-09">September 2025</button>
+      <button class="btn btn-secondary" data-month="2025-08">August 2025</button>
+      <button class="btn btn-secondary" data-month="2025-07">July 2025</button>
+      <button class="btn btn-secondary" data-month="2025-06">June 2025</button>
+      <button class="btn btn-secondary" data-month="2025-05">May 2025</button>
+      <button class="btn btn-secondary" data-month="2025-04">April 2025</button>
+      <button class="btn btn-secondary" data-month="2025-03">March 2025</button>
+      <button class="btn btn-secondary" data-month="2025-02">February 2025</button>
+      <button class="btn btn-secondary" data-month="2025-01">January 2025</button>
+      <button class="btn btn-secondary" data-month="2024-12">December 2024</button>
+      <button class="btn btn-secondary" data-month="2024-11">November 2024</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:24px;">
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Total Claims</div>
+      <div style="font-size:28px;font-weight:bold;color:#1F4E79;"><span id="warrantySummaryTotalClaims">0</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Allotted $</div>
+      <div style="font-size:28px;font-weight:bold;color:#1F4E79;">$<span id="warrantySummaryAllotted">0</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Paid $</div>
+      <div style="font-size:28px;font-weight:bold;color:#16a34a;">$<span id="warrantySummaryPaid">0</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Outstanding $</div>
+      <div style="font-size:28px;font-weight:bold;color:#dc2626;">$<span id="warrantySummaryOutstanding">0</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Waiting RMA</div>
+      <div style="font-size:28px;font-weight:bold;color:#f59e0b;"><span id="warrantySummaryRma">0</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Waiting Go Back</div>
+      <div style="font-size:28px;font-weight:bold;color:#f59e0b;"><span id="warrantySummaryGoBack">0</span></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+    <select id="warrantyStatusFilter" class="form-input" style="flex:0 0 160px;">
+      <option value="">All Statuses</option>
+      <option value="Paid">Paid</option>
+      <option value="Needs Attention">Needs Attention</option>
+      <option value="Scheduled">Scheduled</option>
+      <option value="Submitted">Submitted</option>
+      <option value="Completed not paid">Completed not paid</option>
+      <option value="Waiting RMA">Waiting RMA</option>
+      <option value="Waiting Go Back">Waiting Go Back</option>
+      <option value="Parts Ordered">Parts Ordered</option>
+      <option value="RMA Approved">RMA Approved</option>
+      <option value="RMA Denied">RMA Denied</option>
+      <option value="Go Back Scheduled">Go Back Scheduled</option>
+      <option value="Go Back Complete">Go Back Complete</option>
+      <option value="In Progress">In Progress</option>
+      <option value="Pending Review">Pending Review</option>
+      <option value="Denied">Denied</option>
+      <option value="Cancelled">Cancelled</option>
+    </select>
+
+    <select id="warrantyTechFilter" class="form-input" style="flex:0 0 140px;">
+      <option value="">All Techs</option>
+      <option value="Sam">Sam</option>
+      <option value="Lucas">Lucas</option>
+      <option value="Katie">Katie</option>
+      <option value="Spencer">Spencer</option>
+      <option value="Lex">Lex</option>
+      <option value="Caden">Caden</option>
+      <option value="Jen">Jen</option>
+      <option value="Andrew">Andrew</option>
+    </select>
+
+    <input type="date" id="warrantyStartDate" class="form-input" style="flex:0 0 140px;">
+    <input type="date" id="warrantyEndDate" class="form-input" style="flex:0 0 140px;">
+
+    <button id="addClaimBtn" class="btn btn-primary">Add Claim</button>
+  </div>
+
+  <div class="card" style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead style="background-color:#1F4E79;color:white;">
+        <tr>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">STATUS</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">CUSTOMER</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">DATE OF JOB</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">CASE#</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">TECH</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">ALLOT TRAVEL</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">ACT TRAVEL</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">DIST MI</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">ACT MI</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">ALLOT HR</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">ACT HR</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">ALLOT $</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">ADJ $</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">PAID $</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">CHECK DATE</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">SVN#</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">COST</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">PROFIT</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">LOSS</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">NOTES</th>
+        </tr>
+      </thead>
+      <tbody id="warrantyTableBody">
+        <!-- JS fills rows -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- WARRANTY MODAL -->
+  <div id="warrantyModal" class="modal-overlay" style="display:none;">
+    <div class="modal" style="max-height:90vh;overflow-y:auto;">
+      <div class="modal-header">
+        <h3 class="modal-title">Warranty Claim Details</h3>
+        <button class="modal-close" id="warrantyModalClose" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="wStatus" class="form-input">
+              <option value="Paid">Paid</option>
+              <option value="Needs Attention">Needs Attention</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="Submitted">Submitted</option>
+              <option value="Completed not paid">Completed not paid</option>
+              <option value="Waiting RMA">Waiting RMA</option>
+              <option value="Waiting Go Back">Waiting Go Back</option>
+              <option value="Parts Ordered">Parts Ordered</option>
+              <option value="RMA Approved">RMA Approved</option>
+              <option value="RMA Denied">RMA Denied</option>
+              <option value="Go Back Scheduled">Go Back Scheduled</option>
+              <option value="Go Back Complete">Go Back Complete</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Pending Review">Pending Review</option>
+              <option value="Denied">Denied</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Customer Name</label>
+            <input type="text" id="wCustomer" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date of Job</label>
+            <input type="date" id="wDateOfJob" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Case #</label>
+            <input type="text" id="wCaseNum" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Technician</label>
+            <select id="wTech" class="form-input">
+              <option value="">Select Tech</option>
+              <option value="Sam">Sam</option>
+              <option value="Lucas">Lucas</option>
+              <option value="Katie">Katie</option>
+              <option value="Spencer">Spencer</option>
+              <option value="Lex">Lex</option>
+              <option value="Caden">Caden</option>
+              <option value="Jen">Jen</option>
+              <option value="Andrew">Andrew</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Allotted Travel (hrs)</label>
+            <input type="number" id="wAllottedTravel" class="form-input" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Actual Travel Time (hrs)</label>
+            <input type="number" id="wActualTravel" class="form-input" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Distance Miles</label>
+            <input type="number" id="wDistanceMiles" class="form-input" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Actual Miles</label>
+            <input type="number" id="wActualMiles" class="form-input" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Allotted Tech Time (hrs)</label>
+            <input type="number" id="wAllottedTechTime" class="form-input" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Actual Tech Time (hrs)</label>
+            <input type="number" id="wActualTechTime" class="form-input" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Allotted Amount ($)</label>
+            <input type="number" id="wAllottedAmount" class="form-input" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Adjusted Amount ($)</label>
+            <input type="number" id="wAdjustedAmount" class="form-input" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Paid Amount ($)</label>
+            <input type="number" id="wPaidAmount" class="form-input" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date Check Cut</label>
+            <input type="date" id="wDateCheckCut" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">SVN#</label>
+            <input type="text" id="wSvn" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Company Cost ($)</label>
+            <input type="number" id="wCompanyCost" class="form-input" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Profit Amount ($)</label>
+            <input type="number" id="wProfitAmount" class="form-input" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Loss Amount ($)</label>
+            <input type="number" id="wLossAmount" class="form-input" step="0.01">
+          </div>
+          <div class="form-group" style="grid-column:1/-1;">
+            <label class="form-label">Notes</label>
+            <textarea id="wNotes" class="form-input" rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelClaimBtn" class="btn btn-secondary">Cancel</button>
+        <button id="saveClaimBtn" class="btn btn-primary">Save Claim</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 5: INVENTORY -->
+<div id="tab-inventory" class="tab-content" style="display:none;">
+  <h2 class="section-title">Inventory & Parts</h2>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:24px;">
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Total Items</div>
+      <div style="font-size:28px;font-weight:bold;color:#1F4E79;"><span id="invTotalItems">0</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">In Stock</div>
+      <div style="font-size:28px;font-weight:bold;color:#16a34a;"><span id="invInStock">0</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Low Stock</div>
+      <div style="font-size:28px;font-weight:bold;color:#f59e0b;"><span id="invLowStock">0</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Out of Stock</div>
+      <div style="font-size:28px;font-weight:bold;color:#dc2626;"><span id="invOutOfStock">0</span></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+    <input type="text" id="invSearchInput" class="form-input" placeholder="Search part name, SKU, etc..." style="flex:1;min-width:200px;">
+
+    <select id="invCategoryFilter" class="form-input" style="flex:0 0 160px;">
+      <option value="">All Categories</option>
+      <option value="Generators">Generators</option>
+      <option value="Parts">Parts</option>
+      <option value="Consumables">Consumables</option>
+      <option value="Tools">Tools</option>
+      <option value="Batteries">Batteries</option>
+      <option value="Components">Components</option>
+      <option value="Accessories">Accessories</option>
+    </select>
+
+    <button id="addItemBtn" class="btn btn-primary">Add Item</button>
+    <button id="rmaTrackingBtn" class="btn btn-secondary">RMA Tracking</button>
+  </div>
+
+  <div class="card" style="overflow-x:auto;margin-bottom:24px;">
+    <h3 style="margin-top:0;color:#1F4E79;">Inventory Items</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead style="background-color:#1F4E79;color:white;">
+        <tr>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Part #</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Name</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Category</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Supplier</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Qty</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Min Stock</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Status</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Unit Cost</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Total Value</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="inventoryTableBody">
+        <!-- JS fills rows -->
+      </tbody>
+    </table>
+  </div>
+
+  <div id="rmaSection" style="display:none;">
+    <div class="card" style="overflow-x:auto;margin-bottom:24px;">
+      <h3 style="margin-top:0;color:#1F4E79;">RMA Tracking</h3>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead style="background-color:#1F4E79;color:white;">
+          <tr>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">RMA #</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Part</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Status</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Submitted</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Expected Return</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Notes</th>
+          </tr>
+        </thead>
+        <tbody id="rmaTableBody">
+          <!-- JS fills rows -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="overflow-x:auto;">
+      <h3 style="margin-top:0;color:#1F4E79;">Technician Checkout</h3>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead style="background-color:#1F4E79;color:white;">
+          <tr>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Technician</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Item</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Serial #</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Qty</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Date Out</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Expected Return</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Status</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="checkoutTableBody">
+          <!-- JS fills rows -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CHECKOUT MODAL -->
+  <div id="checkoutModal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Checkout Item</h3>
+        <button class="modal-close" id="checkoutModalClose" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Item Name</label>
+            <input type="text" id="checkoutItemName" class="form-input" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Technician</label>
+            <select id="checkoutTech" class="form-input">
+              <option value="">Select Tech</option>
+              <option value="Sam">Sam</option>
+              <option value="Lucas">Lucas</option>
+              <option value="Katie">Katie</option>
+              <option value="Spencer">Spencer</option>
+              <option value="Lex">Lex</option>
+              <option value="Caden">Caden</option>
+              <option value="Jen">Jen</option>
+              <option value="Andrew">Andrew</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Quantity</label>
+            <input type="number" id="checkoutQty" class="form-input" min="1" value="1">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="checkoutCancelBtn" class="btn btn-secondary">Cancel</button>
+        <button id="saveCheckoutBtn" class="btn btn-primary">Checkout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 6: TECHNICIANS -->
+<div id="tab-technicians" class="tab-content" style="display:none;">
+  <h2 class="section-title">Team Management</h2>
+
+  <div id="techCardsContainer" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px;">
+    <!-- JS generates tech cards -->
+  </div>
+
+  <div class="card" style="overflow-x:auto;margin-bottom:24px;">
+    <h3 style="margin-top:0;color:#1F4E79;">Personnel & Rates</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead style="background-color:#1F4E79;color:white;">
+        <tr>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Name</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Role</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Hourly Rate</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Loaded Rate</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Monthly Pay</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Annual Pay</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Status</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Jobs (Month)</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Efficiency %</th>
+        </tr>
+      </thead>
+      <tbody id="personnelTableBody">
+        <!-- JS fills rows -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;color:#1F4E79;">Workload Distribution</h3>
+    <canvas id="workloadChart" style="max-height:300px;"></canvas>
+  </div>
+
+  <div class="card" style="margin-top:24px;">
+    <h3 style="margin-top:0;color:#1F4E79;">Technician Availability</h3>
+    <div id="techCalendar" style="min-height:400px;background:#f0f2f5;border-radius:8px;padding:16px;">
+      <!-- JS fills calendar -->
+    </div>
+  </div>
+</div>
+
+<!-- TAB 7: FINANCIALS -->
+<div id="tab-financials" class="tab-content" style="display:none;">
+  <h2 class="section-title">Financial Overview</h2>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px;">
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Monthly Revenue</div>
+      <div style="font-size:28px;font-weight:bold;color:#1F4E79;">$<span id="finMonthlyRevenue">0</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Monthly Overhead</div>
+      <div style="font-size:28px;font-weight:bold;color:#1F4E79;">$<span id="finMonthlyOverhead">43,480</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Breakeven/Job</div>
+      <div style="font-size:28px;font-weight:bold;color:#1F4E79;">$<span id="finBreakevenJob">2,698</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Cost/Hour</div>
+      <div style="font-size:28px;font-weight:bold;color:#1F4E79;">$<span id="finCostHour">250.85</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Monthly Profit</div>
+      <div style="font-size:28px;font-weight:bold;color:#16a34a;">$<span id="finMonthlyProfit">0</span></div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Profit Margin</div>
+      <div style="font-size:28px;font-weight:bold;color:#16a34a;"><span id="finProfitMargin">0</span>%</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:24px;">
+    <h3 style="margin-top:0;color:#1F4E79;">Job Pricing Calculator</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <!-- LEFT: FORM -->
+      <div>
+        <div style="display:grid;grid-template-columns:1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Technician</label>
+            <select id="calcTech" class="form-input">
+              <option value="">Select Tech</option>
+              <option value="Sam" data-rate="35.21">Sam ($35.21/hr)</option>
+              <option value="Lucas" data-rate="28.17">Lucas ($28.17/hr)</option>
+              <option value="Katie" data-rate="28.17">Katie ($28.17/hr)</option>
+              <option value="Spencer" data-rate="56.33">Spencer ($56.33/hr)</option>
+              <option value="Lex" data-rate="42.25">Lex ($42.25/hr)</option>
+              <option value="Caden" data-rate="40.63">Caden ($40.63/hr)</option>
+              <option value="Jen" data-rate="5.28">Jen ($5.28/hr)</option>
+              <option value="Andrew" data-rate="32.50">Andrew ($32.50/hr)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Onsite Time (hours)</label>
+            <input type="number" id="calcOnsite" class="form-input" step="0.5" placeholder="0.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Travel Time (hours)</label>
+            <input type="number" id="calcTravel" class="form-input" step="0.5" placeholder="0.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Miles</label>
+            <input type="number" id="calcMiles" class="form-input" step="0.1" placeholder="0.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Parts Cost ($)</label>
+            <input type="number" id="calcParts" class="form-input" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Consumables ($)</label>
+            <input type="number" id="calcConsumables" class="form-input" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expected Revenue ($)</label>
+            <input type="number" id="calcRevenue" class="form-input" step="0.01" placeholder="0.00">
+          </div>
+          <button id="calculateBtn" class="btn btn-primary" style="width:100%;">Calculate True Cost</button>
+        </div>
+      </div>
+
+      <!-- RIGHT: VERDICT & RESULTS -->
+      <div>
+        <div id="calcVerdict" class="verdict-box" style="min-height:200px;padding:16px;background:#f0f2f5;border-radius:8px;margin-bottom:16px;">
+          <p style="color:#6b7280;text-align:center;margin:0;">Enter data and click Calculate</p>
+        </div>
+        <div id="calcResults" style="background:#f0f2f5;border-radius:8px;padding:16px;">
+          <!-- JS fills breakdown -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUOTING ENGINE -->
+  <div class="card" style="margin-bottom:24px;">
+    <h3 style="margin-top:0;color:#1F4E79;">Quoting Engine</h3>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:16px;">Survival-based pricing: enter job details to get a suggested quote with risk buffer and target margin.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Technician</label>
+            <select id="quoteTech" class="form-input">
+              <option value="Sam">Sam ($32.50/hr)</option>
+              <option value="Lucas" selected>Lucas ($26.00/hr)</option>
+              <option value="Katie">Katie ($26.00/hr)</option>
+              <option value="Spencer">Spencer ($52.00/hr)</option>
+              <option value="Lex">Lex ($39.00/hr)</option>
+              <option value="Caden">Caden ($37.51/hr)</option>
+              <option value="Andrew">Andrew ($32.50/hr)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Estimated Hours</label>
+            <input type="number" id="quoteHours" class="form-input" step="0.5" value="2" placeholder="0.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">One-Way Miles</label>
+            <input type="number" id="quoteMiles" class="form-input" step="1" value="100" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Parts Cost ($)</label>
+            <input type="number" id="quoteParts" class="form-input" step="0.01" value="0" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Proposed Revenue ($)</label>
+            <input type="number" id="quoteRevenue" class="form-input" step="0.01" value="0" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Job Days</label>
+            <select id="quoteJobDays" class="form-input" onchange="document.getElementById('hotelSection').style.display=this.value>1?'block':'none'">
+              <option value="1">1 Day</option>
+              <option value="2">2 Days</option>
+              <option value="3">3 Days</option>
+            </select>
+          </div>
+          <div class="form-group" id="hotelSection" style="display:none;">
+            <label class="form-label">Hotel Per Night ($)</label>
+            <input type="number" id="quoteHotel" class="form-input" step="1" value="125" min="100" max="175" placeholder="100-175">
+            <span style="font-size:11px;color:#6b7280;">Budget: $100–$175/night</span>
+          </div>
+        </div>
+        <button id="generateQuoteBtn" class="btn btn-primary" style="width:100%;margin-top:8px;">Generate Quote</button>
+      </div>
+      <div id="quoteResult" style="background:#f9fafb;border-radius:8px;padding:20px;display:flex;align-items:center;justify-content:center;">
+        <p style="color:#6b7280;text-align:center;margin:0;">Enter job details and click Generate Quote</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">Overhead Breakdown</h3>
+      <canvas id="overheadChart" style="max-height:300px;"></canvas>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">Monthly P&L Trend</h3>
+      <canvas id="pnlChart" style="max-height:300px;"></canvas>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:24px;">
+    <h3 style="margin-top:0;color:#1F4E79;">Tech Performance Summary</h3>
+    <div id="techPerfTable" style="overflow-x:auto;">
+      <!-- JS fills tech performance table -->
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:24px;">
+    <h3 style="margin-top:0;color:#1F4E79;">Break-Even Analysis</h3>
+    <div id="breakevenScenarioTable" style="overflow-x:auto;margin-bottom:20px;">
+      <!-- JS fills expanded break-even scenarios -->
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+      <thead style="background-color:#1F4E79;color:white;">
+        <tr>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Jobs/Week</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Jobs/Month</th>
+          <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Required Revenue</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:12px;">3</td>
+          <td style="padding:12px;">12</td>
+          <td style="padding:12px;">$32,376</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:12px;">4</td>
+          <td style="padding:12px;">16</td>
+          <td style="padding:12px;">$43,168</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f3f4f6;background-color:#d4e8f0;">
+          <td style="padding:12px;"><strong>5</strong></td>
+          <td style="padding:12px;"><strong>20</strong></td>
+          <td style="padding:12px;"><strong>$53,960</strong></td>
+        </tr>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:12px;">6</td>
+          <td style="padding:12px;">24</td>
+          <td style="padding:12px;">$64,752</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:12px;">7</td>
+          <td style="padding:12px;">28</td>
+          <td style="padding:12px;">$75,544</td>
+        </tr>
+      </tbody>
+    </table>
+    <canvas id="breakevenChart" style="max-height:300px;"></canvas>
+  </div>
+</div>
+
+<!-- TAB 8: EMAIL MONITOR -->
+<div id="tab-email-monitor" class="tab-content" style="display:none;">
+  <h2 class="section-title">Email Monitor</h2>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;">
+    <div class="card">
+      <div style="font-size:14px;font-weight:600;color:#1F4E79;margin-bottom:4px;">Generac Inbox</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">generac@akinosolar.com</div>
+      <div style="font-size:24px;font-weight:bold;color:#2563EB;"><span id="emailGenCount">0</span></div>
+      <div style="font-size:12px;color:#6b7280;">unread messages</div>
+    </div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:600;color:#1F4E79;margin-bottom:4px;">Info Inbox</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">info@akinosolar.com</div>
+      <div style="font-size:24px;font-weight:bold;color:#2563EB;"><span id="emailInfoCount">0</span></div>
+      <div style="font-size:12px;color:#6b7280;">unread messages</div>
+    </div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:600;color:#1F4E79;margin-bottom:4px;">Customer Support</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">customersupport@akinosolar.com</div>
+      <div style="font-size:24px;font-weight:bold;color:#2563EB;"><span id="emailSupportCount">0</span></div>
+      <div style="font-size:12px;color:#6b7280;">unread messages</div>
+    </div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:600;color:#1F4E79;margin-bottom:4px;">Caden Direct</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:12px;">caden@akinosolar.com</div>
+      <div style="font-size:24px;font-weight:bold;color:#2563EB;"><span id="emailCadenCount">0</span></div>
+      <div style="font-size:12px;color:#6b7280;">unread messages</div>
+    </div>
+  </div>
+
+  <div class="card alert alert-danger" style="border-left:4px solid #dc2626;margin-bottom:24px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <i class="fas fa-exclamation-circle" style="font-size:20px;color:#dc2626;animation:pulse 1.5s infinite;"></i>
+      <h3 style="margin:0;color:#dc2626;">CRITICAL: Unanswered Customer Emails</h3>
+    </div>
+    <div id="unansweredList">
+      <!-- JS fills unanswered emails -->
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+    <input type="date" id="emailStartDate" class="form-input" style="flex:0 0 140px;">
+    <input type="date" id="emailEndDate" class="form-input" style="flex:0 0 140px;">
+
+    <select id="emailSourceFilter" class="form-input" style="flex:0 0 140px;">
+      <option value="">All Sources</option>
+      <option value="generac">Generac</option>
+      <option value="info">Info</option>
+      <option value="customersupport">Customer Support</option>
+      <option value="caden">Caden Direct</option>
+    </select>
+
+    <select id="emailTypeFilter" class="form-input" style="flex:0 0 140px;">
+      <option value="">All Types</option>
+      <option value="warranty">Warranty</option>
+      <option value="customer">Customer Inquiry</option>
+      <option value="invoice">Invoice</option>
+      <option value="rma">RMA</option>
+    </select>
+  </div>
+
+  <div class="card" style="margin-bottom:24px;">
+    <h3 style="margin-top:0;color:#1F4E79;">Email Feed</h3>
+    <div id="emailFeed" style="max-height:500px;overflow-y:auto;">
+      <!-- JS fills email list -->
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;color:#1F4E79;">Auto-Action Log</h3>
+    <div id="autoActionLog" style="max-height:300px;overflow-y:auto;">
+      <!-- JS fills auto action log -->
+    </div>
+  </div>
+</div>
+
+<!-- TAB 9: SETTINGS -->
+<div id="tab-settings" class="tab-content" style="display:none;">
+  <h2 class="section-title">Settings</h2>
+
+  <div style="display:grid;grid-template-columns:1fr;gap:24px;max-width:600px;">
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">API Configuration</h3>
+      <div class="form-group">
+        <label class="form-label">Apps Script Web App URL</label>
+        <input type="text" id="appsScriptUrl" class="form-input" placeholder="https://script.google.com/...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Google Maps API Key</label>
+        <input type="text" id="mapsApiKey" class="form-input" value="AIzaSyDV9WNls0mPZPcuCZSEkyeJ9wiedU8Q2HY">
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <button id="testConnectionBtn" class="btn btn-secondary">Test Connection</button>
+        <span id="connectionStatus" style="font-size:14px;color:#6b7280;"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">Depot Location</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div class="form-group">
+          <label class="form-label">Latitude</label>
+          <input type="number" id="settDepotLat" class="form-input" step="0.000001" value="35.9641189">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Longitude</label>
+          <input type="number" id="settDepotLng" class="form-input" step="0.000001" value="-83.9201656">
+        </div>
+      </div>
+      <p style="margin:0;color:#6b7280;font-size:14px;">📍 Knoxville, TN 37931</p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">Operations</h3>
+      <div class="form-group">
+        <label class="form-label">Max Jobs per Route</label>
+        <input type="number" id="settMaxJobs" class="form-input" value="4" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Service Duration (min)</label>
+        <input type="number" id="settServiceDuration" class="form-input" value="30" min="15">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Workday Start Time</label>
+        <input type="time" id="settWorkdayStart" class="form-input" value="08:00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fuel Cost per Mile</label>
+        <input type="number" id="settFuelCost" class="form-input" step="0.01" value="0.99">
+      </div>
+      <div class="form-group">
+        <label class="form-label">QA Cost per Job</label>
+        <input type="number" id="settQaCost" class="form-input" step="0.01" value="85">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Admin/Mgmt Cost per Job</label>
+        <input type="number" id="settAdminCost" class="form-input" step="0.01" value="315">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Risk Buffer per Job</label>
+        <input type="number" id="settRiskBuffer" class="form-input" step="0.01" value="100">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Overhead Allocation %</label>
+        <input type="number" id="settOverheadAlloc" class="form-input" min="0" max="100" value="85">
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">Email Monitoring</h3>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="emailGenerac" checked style="width:18px;height:18px;cursor:pointer;">
+          <span>Monitor generac@akinosolar.com</span>
+        </label>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="emailInfo" checked style="width:18px;height:18px;cursor:pointer;">
+          <span>Monitor info@akinosolar.com</span>
+        </label>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="emailCustomerSupport" checked style="width:18px;height:18px;cursor:pointer;">
+          <span>Monitor customersupport@akinosolar.com</span>
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Scan Frequency</label>
+        <select id="settScanFrequency" class="form-input">
+          <option value="15">Every 15 minutes</option>
+          <option value="30" selected>Every 30 minutes</option>
+          <option value="60">Every 1 hour</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Unanswered Email Threshold (hours)</label>
+        <input type="number" id="settUnansweredThreshold" class="form-input" value="4" min="1">
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;color:#1F4E79;">System Diagnostics</h3>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:16px;">Run system health checks, repair dashboard linkage, and clean orphan records.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <button id="runDiagnosticsBtn" class="btn btn-secondary"><i class="fas fa-stethoscope"></i> Run Full Audit</button>
+        <button id="repairDashboardBtn" class="btn btn-secondary"><i class="fas fa-wrench"></i> Repair Dashboard</button>
+        <button id="cleanOverheadBtn" class="btn btn-secondary"><i class="fas fa-broom"></i> Clean Overhead Orphans</button>
+      </div>
+      <div id="diagnosticsResult" style="margin-top:16px;display:none;padding:16px;background:#f0f2f5;border-radius:8px;font-size:13px;white-space:pre-wrap;">
+      </div>
+    </div>
+
+    <button id="saveSettingsBtn" class="btn btn-primary" style="width:100%;padding:16px;font-size:16px;">Save All Settings</button>
+  </div>
+</div>
+
+</div>
+</div>
+
+<!-- TAB 10: RECONCILIATION -->
+<div id="tab-reconciliation" class="tab-content" style="display:none;">
+  <h2 class="section-title">Payment Reconciliation</h2>
+
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+    <button id="reconImportBtn" class="btn btn-primary"><i class="fas fa-file-import"></i> Import Unreconciled</button>
+    <button id="reconAutoMatchBtn" class="btn btn-success"><i class="fas fa-check-double"></i> Auto-Match</button>
+    <button id="reconForceMatchBtn" class="btn btn-warning"><i class="fas fa-link"></i> Force Match Selected</button>
+    <select id="reconStatusFilter" class="form-input" style="flex:0 0 160px;">
+      <option value="">All Statuses</option>
+      <option value="Pending">Pending</option>
+      <option value="Matched">Matched</option>
+      <option value="Force Matched">Force Matched</option>
+      <option value="Variance">Variance</option>
+    </select>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px;">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Records</div>
+      <div class="kpi-value" id="reconTotal">0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Matched</div>
+      <div class="kpi-value" style="color:#16a34a;" id="reconMatched">0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Pending</div>
+      <div class="kpi-value" style="color:#f59e0b;" id="reconPending">0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Variance</div>
+      <div class="kpi-value" style="color:#dc2626;" id="reconVariance">0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total HCP</div>
+      <div class="kpi-value" id="reconTotalHcp">$0</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Bank</div>
+      <div class="kpi-value" id="reconTotalBank">$0</div>
+    </div>
+  </div>
+
+  <div class="card" style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;">
+      <thead style="background-color:#1F4E79;color:white;">
+        <tr>
+          <th style="padding:10px 12px;text-align:left;">Recon ID</th>
+          <th style="padding:10px 12px;text-align:left;">Job</th>
+          <th style="padding:10px 12px;text-align:right;">HCP Amount</th>
+          <th style="padding:10px 12px;text-align:left;">HCP Date</th>
+          <th style="padding:10px 12px;text-align:right;">Bank Amount</th>
+          <th style="padding:10px 12px;text-align:left;">Bank Date</th>
+          <th style="padding:10px 12px;text-align:right;">Variance</th>
+          <th style="padding:10px 12px;text-align:center;">Status</th>
+          <th style="padding:10px 12px;text-align:left;">Notes</th>
+          <th style="padding:10px 12px;text-align:center;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="reconTableBody">
+        <!-- JS fills rows -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+      </div>  <!-- end contentWrapper -->
+    </div>  <!-- end main-content -->
+  </div>  <!-- end appContainer -->
+
+
+<!-- CLAUDE AI SIDEBAR -->
+<button class="claude-fab" id="claudeFab" title="Claude AI" style="position:fixed;bottom:24px;right:24px;width:60px;height:60px;border-radius:50%;background:#1F4E79;border:none;color:white;font-size:24px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:998;display:flex;align-items:center;justify-content:center;">
+  <i class="fas fa-brain"></i>
+</button>
+
+<div class="claude-sidebar" id="claudeSidebar" style="position:fixed;right:-400px;top:0;width:400px;height:100vh;background:white;box-shadow:-2px 0 8px rgba(0,0,0,0.1);z-index:999;transition:right 0.3s ease;display:flex;flex-direction:column;">
+  <div class="claude-header" style="background:#1F4E79;color:white;padding:16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <i class="fas fa-brain"></i> Claude AI
+    </div>
+    <button id="claudeClose" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+
+  <div class="claude-tabs" style="display:flex;border-bottom:1px solid #e5e7eb;background:#f0f2f5;">
+    <button class="claude-tab active" id="claudeChatTab" data-ctab="chat" style="flex:1;padding:12px;border:none;background:transparent;cursor:pointer;border-bottom:2px solid #1F4E79;color:#1F4E79;font-weight:600;">Chat</button>
+    <button class="claude-tab" id="claudeScanTab" data-ctab="scan" style="flex:1;padding:12px;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;color:#6b7280;">Scan</button>
+    <button class="claude-tab" id="claudeAutoTab" data-ctab="auto" style="flex:1;padding:12px;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;color:#6b7280;">Auto</button>
+  </div>
+
+  <div class="claude-content" style="flex:1;overflow-y:auto;padding:16px;">
+    <div id="claudeChat" style="min-height:200px;"></div>
+  </div>
+
+  <div class="claude-input" style="border-top:1px solid #e5e7eb;padding:16px;display:flex;gap:8px;align-items:center;">
+    <input type="text" id="claudeInput" class="form-input" placeholder="Ask Claude anything..." style="flex:1;margin:0;">
+    <button id="claudeSend" class="btn btn-primary" style="padding:8px 16px;margin:0;">
+      <i class="fas fa-paper-plane"></i>
+    </button>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer" style="position:fixed;top:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:12px;pointer-events:none;"></div>
+
+    <script>
+// ============================================================================
+// Akino Solar Command Center v3 — Complete JavaScript Engine
+// ============================================================================
+// All element IDs, features, calculations, and integrations included
+// No external dependencies beyond Chart.js and Leaflet
+
+// ============================================================================
+// CONFIGURATION & CONSTANTS
+// ============================================================================
+
+const CONFIG = {
+  DEPOT: { lat: 35.9641, lng: -83.9201, name: 'Akino Solar HQ (Knoxville, TN)' },
+  MONTHLY_OVERHEAD: 43480,
+  FUEL_PER_MILE: 0.99,
+  QA_PER_JOB: 85,
+  ADMIN_PER_JOB: 315,
+  RISK_BUFFER: 100,
+  EMPLOYER_BURDEN: 0.30,
+  JOBS_PER_WEEK: 5,
+  WEEKS_PER_YEAR: 52,
+  HOURS_PER_MONTH: 173.33,
+  MAX_JOBS_PER_ROUTE: 4,
+  REGIONS: ['TN', 'GA', 'KY', 'VA', 'NC'],
+  HOURS_PER_WEEK: 40,
+  WORK_HOURS_PER_DAY: 8,
+  AVG_MPH: 55,
+  HOTEL_BUDGET_MIN: 100,
+  HOTEL_BUDGET_MAX: 175,
+};
+
+// Derived constants (computed once)
+CONFIG.JOBS_PER_MONTH = CONFIG.JOBS_PER_WEEK * CONFIG.WEEKS_PER_YEAR / 12;
+CONFIG.OVERHEAD_PER_JOB = CONFIG.MONTHLY_OVERHEAD / CONFIG.JOBS_PER_MONTH;
+CONFIG.BREAKEVEN_PER_JOB = CONFIG.OVERHEAD_PER_JOB + CONFIG.RISK_BUFFER;
+CONFIG.COST_PER_HOUR = CONFIG.MONTHLY_OVERHEAD / CONFIG.HOURS_PER_MONTH;
+
+// Personnel rates synced with Apps Script backend (hourly * (1 + EMPLOYER_BURDEN))
+const PERSONNEL = [
+  { name: 'Sam', role: 'Technician', hourly: 25, loaded: 32.50 },
+  { name: 'Lucas', role: 'Technician', hourly: 20, loaded: 26.00 },
+  { name: 'Katie', role: 'Technician', hourly: 20, loaded: 26.00 },
+  { name: 'Spencer', role: 'Lead Tech', hourly: 40, loaded: 52.00 },
+  { name: 'Lex', role: 'Technician', hourly: 30, loaded: 39.00 },
+  { name: 'Caden', role: 'Manager', hourly: 28.85, loaded: 37.51 },
+  { name: 'Jen', role: 'Admin', hourly: 15, loaded: 19.50 },
+  { name: 'Andrew', role: 'Technician', hourly: 25, loaded: 32.50 },
+  { name: 'QA', role: 'QA Lead', hourly: 13.54, loaded: 17.60 },
+];
+
+const WARRANTY_STATUSES = [
+  'Paid', 'Needs Attention', 'Scheduled', 'Submitted', 'Completed not paid',
+  'Waiting RMA', 'Waiting Go Back', 'Parts Ordered', 'RMA Approved', 'RMA Denied',
+  'Go Back Scheduled', 'Go Back Complete', 'In Progress', 'Pending Review', 'Denied', 'Cancelled'
+];
+
+const WARRANTY_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Overhead categories scaled to match CONFIG.MONTHLY_OVERHEAD ($43,480)
+const OVERHEAD_CATEGORIES = {
+  'People & Payroll': 23732,
+  'Software & Subscriptions': 1293,
+  'Storage & Facilities': 639,
+  'Fleet & Vehicles': 1675,
+  'Miscellaneous': 2514,
+  'Debt Service': 5395,
+  'Reserves': 5908,
+  'Depreciation': 912,
+  'Variable Costs': 1412,
+};
+
+const ROUTES_DATA = [
+  { id: 'R1', jobs: 4, miles: 372.56, min: 640, val: 400 },
+  { id: 'R2', jobs: 4, miles: 382.10, min: 655, val: 150 },
+  { id: 'R3', jobs: 4, miles: 501.72, min: 860, val: 1433.82 },
+  { id: 'R4', jobs: 4, miles: 229.25, min: 393, val: 1407.88 },
+  { id: 'R5', jobs: 4, miles: 156.84, min: 269, val: 1050.00 },
+  { id: 'R6', jobs: 3, miles: 334.11, min: 572, val: 925.50 },
+  { id: 'R7', jobs: 4, miles: 445.00, min: 763, val: 2741.62 },
+  { id: 'R8', jobs: 4, miles: 761.00, min: 1304, val: 649.50 },
+  { id: 'R9', jobs: 3, miles: 420.65, min: 721, val: 1100.00 },
+  { id: 'R10', jobs: 2, miles: 470.00, min: 806, val: 3713.62 },
+  { id: 'R11', jobs: 4, miles: 390.50, min: 669, val: 1200.00 },
+  { id: 'R12', jobs: 4, miles: 512.33, min: 879, val: 850.00 },
+  { id: 'R13', jobs: 3, miles: 281.40, min: 482, val: 1550.00 },
+  { id: 'R14', jobs: 4, miles: 346.50, min: 594, val: 895.13 },
+  { id: 'R15', jobs: 4, miles: 428.75, min: 735, val: 1200.00 },
+  { id: 'R16', jobs: 3, miles: 295.20, min: 506, val: 980.00 },
+  { id: 'R17', jobs: 4, miles: 510.60, min: 876, val: 1450.00 },
+  { id: 'R18', jobs: 4, miles: 389.90, min: 669, val: 1100.00 },
+];
+
+// ============================================================================
+// DATA STORE & PERSISTENCE
+// ============================================================================
+
+const DataStore = {
+  jobs: [
+    { date: '2026-01-05', id: '435804', customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', zip: '', priority: 'Medium', tech: 'Lucas', type: 'Both', onsite: 1, travel: 4, miles: 234, parts: 0, consumables: 0, revenue: 150, wcase: '435804', wstatus: 'Completed not paid', notes: 'Warranty + service', flags: [], status: 'completed', route: 'R7', routeDate: '2026-01-05', requested: '2025-12-28' },
+    { date: '2026-01-06', id: '439295', customer: 'Krista Hogan', city: '', state: 'TN', zip: '', priority: 'Medium', tech: 'Lucas', type: 'Warranty', onsite: 2.5, travel: 1, miles: 28, parts: 0, consumables: 0, revenue: 450, wcase: '439295', wstatus: 'Completed not paid', notes: 'Warranty claim', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-03' },
+    { date: '2026-02-11', id: '597', customer: 'Barbara Arledge', city: 'Portland', state: 'TN', zip: '', priority: 'High', tech: 'Lucas', type: 'Service', onsite: 3, travel: 2, miles: 470, parts: 0, consumables: 0, revenue: 3713.62, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R10', routeDate: '2026-02-11', requested: '2026-02-08' },
+    { date: '2026-02-10', id: '628', customer: 'Martha Berry', city: 'Nashville', state: 'TN', zip: '', priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 1.5, miles: 445, parts: 0, consumables: 0, revenue: 1404.20, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R7', routeDate: '2026-02-10', requested: '2026-02-05' },
+    { date: '2026-02-17', id: '649', customer: 'Peter Tran', city: 'Ellijay', state: 'TN', zip: '', priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 2, miles: 500, parts: 0, consumables: 0, revenue: 740.82, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R3', routeDate: '2026-02-17', requested: '2026-02-12' },
+    { date: '2026-02-11', id: '464', customer: 'Mary Leffell', city: 'Louisville', state: 'KY', zip: '', priority: 'Medium', tech: 'Sam', type: 'Service', onsite: 1, travel: 1, miles: 46, parts: 0, consumables: 0, revenue: 394.63, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R14', routeDate: '2026-02-11', requested: '2026-02-09' },
+    { date: '2026-02-19', id: '638', customer: 'Erica Drvoldelic', city: 'Grovetown', state: 'GA', zip: '', priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 3, miles: 501, parts: 0, consumables: 0, revenue: 343.50, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R3', routeDate: '2026-02-19', requested: '2026-02-14' },
+    { date: '2026-02-11', id: '645', customer: 'Jason Wirth', city: 'Fairview', state: 'TN', zip: '', priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 3, travel: 2, miles: 445, parts: 0, consumables: 0, revenue: 2191, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R7', routeDate: '2026-02-11', requested: '2026-02-06' },
+    { date: '2026-02-11', id: '666', customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', zip: '', priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 1, travel: 1.5, miles: 333, parts: 0, consumables: 0, revenue: 75, wcase: '', wstatus: '', notes: 'Troubleshoot', flags: [], status: 'scheduled', route: 'R7', routeDate: '2026-02-11', requested: '2026-02-10' },
+    { date: '2026-01-15', id: '200', customer: 'Jon', city: 'Knoxville', state: 'TN', zip: '', priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 2, travel: 1, miles: 98, parts: 0, consumables: 0, revenue: 676, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-10' },
+    { date: '2026-01-20', id: '100', customer: 'Heidi', city: '', state: 'TN', zip: '', priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 7, travel: 1, miles: 100, parts: 0, consumables: 0, revenue: 900, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-15' },
+    { date: '2026-01-25', id: '500', customer: 'Bane', city: '', state: 'TN', zip: '', priority: 'High', tech: 'Lucas', type: 'Service', onsite: 8, travel: 4, miles: 510, parts: 0, consumables: 0, revenue: 675, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-18' },
+    { date: '2025-12-21', id: '410', customer: 'Rivera', city: 'Atlanta', state: 'GA', zip: '', priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 1, travel: 2, miles: 372, parts: 0, consumables: 0, revenue: 400, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R1', routeDate: '2025-12-21', requested: '2025-12-15' },
+    { date: '2026-02-11', id: '616', customer: 'Robert Makowski', city: 'Adamsville', state: 'TN', zip: '', priority: 'High', tech: 'Lucas', type: 'Service', onsite: 2, travel: 3, miles: 761, parts: 0, consumables: 0, revenue: 649.50, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R8', routeDate: '2026-02-11', requested: '2026-02-07' },
+    { date: '2026-01-05', id: '999', customer: 'Anna Testa', city: '', state: 'TN', zip: '', priority: 'Low', tech: '', type: 'Warranty', onsite: 0, travel: 0, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: 'Submitted', notes: 'Pending', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '2026-01-02' },
+  ],
+  warranty: [],
+  reconciliation: [],
+  inventory: [],
+  routes: [],
+  settings: {
+    appsScriptUrl: '',
+    mapsApiKey: '',
+    depot: { lat: 35.9641, lng: -83.9201 },
+    maxJobsPerRoute: 4,
+    serviceDuration: 2,
+    workdayStart: 8,
+    fuelCost: 0.99,
+    qaCost: 85,
+    adminCost: 315,
+    riskBuffer: 100,
+    overheadAlloc: 100,
+    emailGenerac: 'generac@akinosolar.com',
+    emailInfo: 'info@akinosolar.com',
+    emailCustomerSupport: 'customersupport@akinosolar.com',
+    scanFrequency: 60,
+    unansweredThreshold: 24,
+  },
+};
+
+// ============================================================================
+// DATA PERSISTENCE (localStorage)
+// ============================================================================
+
+function persistData() {
+  try {
+    localStorage.setItem('akino_solar_data', JSON.stringify({
+      jobs: DataStore.jobs,
+      warranty: DataStore.warranty,
+      inventory: DataStore.inventory,
+      reconciliation: DataStore.reconciliation,
+      settings: DataStore.settings,
+    }));
+  } catch (e) {
+    console.warn('Failed to persist data:', e);
+  }
+}
+
+function loadPersistedData() {
+  try {
+    const saved = localStorage.getItem('akino_solar_data');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.jobs) DataStore.jobs = parsed.jobs;
+      if (parsed.warranty) DataStore.warranty = parsed.warranty;
+      if (parsed.inventory) DataStore.inventory = parsed.inventory;
+      if (parsed.reconciliation) DataStore.reconciliation = parsed.reconciliation;
+      if (parsed.settings) Object.assign(DataStore.settings, parsed.settings);
+      return true;
+    }
+  } catch (e) {
+    console.warn('Failed to load persisted data:', e);
+  }
+  return false;
+}
+
+// ============================================================================
+// APPS SCRIPT BACKEND CONNECTION
+// ============================================================================
+
+async function fetchFromBackend(action, params = {}) {
+  const url = DataStore.settings.appsScriptUrl;
+  if (!url) return null;
+
+  try {
+    const query = new URLSearchParams({ action, ...params });
+    const res = await fetch(`${url}?${query}`);
+    const data = await res.json();
+    if (data.error) {
+      console.error('Backend error:', data.error);
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.error('Backend fetch failed:', e);
+    return null;
+  }
+}
+
+async function postToBackend(action, payload = {}) {
+  const url = DataStore.settings.appsScriptUrl;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('Backend post failed:', e);
+    return null;
+  }
+}
+
+async function syncWithBackend() {
+  if (!DataStore.settings.appsScriptUrl) {
+    toast('Set Apps Script URL in Settings to enable sync', 'warning');
+    return;
+  }
+
+  toast('Syncing with backend...', 'info');
+
+  const [jobs, warranty, personnel, routes] = await Promise.all([
+    fetchFromBackend('jobs'),
+    fetchFromBackend('warranty'),
+    fetchFromBackend('personnel'),
+    fetchFromBackend('routes'),
+  ]);
+
+  if (jobs) DataStore.jobs = jobs.map(j => ({
+    date: j.routeDate || '',
+    id: String(j.jobId || ''),
+    customer: j.customer || '',
+    city: j.city || '',
+    state: j.state || '',
+    zip: j.zip || '',
+    priority: j.priority || 'Medium',
+    tech: j.tech || '',
+    type: 'Service',
+    onsite: 2,
+    travel: 1,
+    miles: 0,
+    parts: 0,
+    consumables: 0,
+    revenue: j.revenue || 0,
+    wcase: '',
+    wstatus: '',
+    notes: j.notes || '',
+    flags: [],
+    status: 'scheduled',
+    route: '',
+    routeDate: j.routeDate || '',
+    requested: j.requestedDate || '',
+  }));
+
+  if (warranty) DataStore.warranty = warranty;
+
+  persistData();
+  toast('Sync complete!', 'success');
+  switchTab('dashboard');
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+function fmt(value) {
+  if (value === undefined || value === null) return '$0.00';
+  const num = parseFloat(value);
+  if (isNaN(num)) return '$0.00';
+  const sign = num < 0 ? '-' : '';
+  const abs = Math.abs(num);
+  return sign + '$' + abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function pct(value, decimals = 1) {
+  if (value === undefined || value === null) return '0.0%';
+  const num = parseFloat(value);
+  if (isNaN(num)) return '0.0%';
+  return (num * 100).toFixed(decimals) + '%';
+}
+
+function getPersonnelByName(name) {
+  return PERSONNEL.find(p => p.name === name);
+}
+
+function toDate(dateStr) {
+  return new Date(dateStr + 'T00:00:00Z');
+}
+
+function dateStr(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toISOString().split('T')[0];
+}
+
+function toast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.style.cssText = `
+    padding: 12px 16px;
+    margin: 8px;
+    border-radius: 6px;
+    color: white;
+    font-weight: 500;
+    background: ${type === 'success' ? '#16a34a' : type === 'error' ? '#dc2626' : '#3b82f6'};
+    animation: slideIn 0.3s ease-out;
+  `;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function showModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+  }
+}
+
+function hideModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.style.display = 'none';
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// ============================================================================
+// JOB COST CALCULATION
+// ============================================================================
+
+function calcJobCost(job) {
+  const rate = getPersonnelByName(job.tech)?.loaded || 30;
+  const labor = (job.onsite + job.travel) * rate;
+  const travelCost = (job.miles || 0) * CONFIG.FUEL_PER_MILE;
+  const parts = job.parts || 0;
+  const consumables = job.consumables || 0;
+  const overhead = CONFIG.OVERHEAD_PER_JOB;
+
+  const total = labor + travelCost + parts + consumables + CONFIG.QA_PER_JOB + CONFIG.ADMIN_PER_JOB + CONFIG.RISK_BUFFER + overhead;
+  const profit = (job.revenue || 0) - total;
+  const margin = job.revenue > 0 ? profit / job.revenue : -1;
+
+  return {
+    labor,
+    travelCost,
+    parts,
+    consumables,
+    qa: CONFIG.QA_PER_JOB,
+    admin: CONFIG.ADMIN_PER_JOB,
+    risk: CONFIG.RISK_BUFFER,
+    overhead,
+    total,
+    profit,
+    margin,
+  };
+}
+
+// ============================================================================
+// CHARTS MANAGEMENT
+// ============================================================================
+
+const charts = {};
+
+function destroyChart(chartId) {
+  if (charts[chartId]) {
+    charts[chartId].destroy();
+    delete charts[chartId];
+  }
+}
+
+// ============================================================================
+// TAB MANAGEMENT & NAVIGATION
+// ============================================================================
+
+function switchTab(tabName) {
+  // Hide all tab contents
+  document.querySelectorAll('.tab-content').forEach(el => {
+    el.style.display = 'none';
+    el.classList.remove('active');
+  });
+
+  // Deactivate all nav items
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.remove('active');
+  });
+
+  // Show selected tab
+  const tabContent = document.getElementById(`tab-${tabName}`);
+  if (tabContent) {
+    tabContent.style.display = 'block';
+    tabContent.classList.add('active');
+  }
+
+  // Activate nav item
+  const navItem = document.querySelector(`.nav-item[data-tab="${tabName}"]`);
+  if (navItem) {
+    navItem.classList.add('active');
+  }
+
+  // Update current tab name
+  const nameEl = document.getElementById('currentTabName');
+  if (nameEl) {
+    const labels = {
+      dashboard: 'Dashboard',
+      jobs: 'Jobs',
+      routes: 'Routes',
+      warranty: 'Warranty',
+      reconciliation: 'Reconciliation',
+      inventory: 'Inventory',
+      technicians: 'Technicians',
+      financials: 'Financials',
+      'email-monitor': 'Email Monitor',
+      settings: 'Settings',
+    };
+    nameEl.textContent = labels[tabName] || tabName;
+  }
+
+  // Render tab-specific content
+  const renderers = {
+    dashboard: renderDashboard,
+    jobs: renderJobs,
+    routes: renderRoutes,
+    warranty: renderWarranty,
+    reconciliation: renderReconciliation,
+    inventory: renderInventory,
+    technicians: renderTechnicians,
+    financials: renderFinancials,
+    'email-monitor': renderEmail,
+    settings: renderSettings,
+  };
+  if (renderers[tabName]) renderers[tabName]();
+}
+
+// ============================================================================
+// DASHBOARD RENDERING
+// ============================================================================
+
+function renderDashboard() {
+  const kpiContainer = document.getElementById('kpiContainer');
+  if (!kpiContainer) return;
+
+  // Calculate KPIs
+  const todayJobs = DataStore.jobs.filter(j => j.date === dateStr(new Date()));
+  const allRevenue = DataStore.jobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
+  const allCosts = DataStore.jobs.reduce((sum, j) => sum + calcJobCost(j).total, 0);
+  const profitMargin = allRevenue > 0 ? ((allRevenue - allCosts) / allRevenue) * 100 : 0;
+  const completedCount = DataStore.jobs.filter(j => j.status === 'completed').length;
+
+  kpiContainer.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;">
+      <div style="padding:16px;background:#f0f9ff;border-radius:8px;border-left:4px solid #2563eb;">
+        <div style="font-size:12px;color:#666;font-weight:500;text-transform:uppercase;">Today's Jobs</div>
+        <div style="font-size:28px;font-weight:700;color:#1a1a2e;margin-top:4px;">${todayJobs.length}</div>
+      </div>
+      <div style="padding:16px;background:#f0fdf4;border-radius:8px;border-left:4px solid #16a34a;">
+        <div style="font-size:12px;color:#666;font-weight:500;text-transform:uppercase;">Total Revenue</div>
+        <div style="font-size:28px;font-weight:700;color:#1a1a2e;margin-top:4px;">${fmt(allRevenue)}</div>
+      </div>
+      <div style="padding:16px;background:#fef2f2;border-radius:8px;border-left:4px solid #dc2626;">
+        <div style="font-size:12px;color:#666;font-weight:500;text-transform:uppercase;">Total Cost</div>
+        <div style="font-size:28px;font-weight:700;color:#1a1a2e;margin-top:4px;">${fmt(allCosts)}</div>
+      </div>
+      <div style="padding:16px;background:#fffbeb;border-radius:8px;border-left:4px solid #f59e0b;">
+        <div style="font-size:12px;color:#666;font-weight:500;text-transform:uppercase;">Profit Margin</div>
+        <div style="font-size:28px;font-weight:700;color:#1a1a2e;margin-top:4px;">${pct(profitMargin / 100, 1)}</div>
+      </div>
+      <div style="padding:16px;background:#f3e8ff;border-radius:8px;border-left:4px solid #a855f7;">
+        <div style="font-size:12px;color:#666;font-weight:500;text-transform:uppercase;">Completed Jobs</div>
+        <div style="font-size:28px;font-weight:700;color:#1a1a2e;margin-top:4px;">${completedCount}</div>
+      </div>
+      <div style="padding:16px;background:#f5f3ff;border-radius:8px;border-left:4px solid #6366f1;">
+        <div style="font-size:12px;color:#666;font-weight:500;text-transform:uppercase;">Net Profit</div>
+        <div style="font-size:28px;font-weight:700;color:${allRevenue - allCosts >= 0 ? '#16a34a' : '#dc2626'};margin-top:4px;">${fmt(allRevenue - allCosts)}</div>
+      </div>
+    </div>
+  `;
+
+  // Render charts
+  renderDashboardCharts();
+
+  // Activity feed
+  const activityFeed = document.getElementById('activityFeed');
+  if (activityFeed) {
+    const recent = DataStore.jobs.slice(-5).reverse();
+    activityFeed.innerHTML = recent.map(job => `
+      <div style="padding:12px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:600;color:#1a1a2e;">${job.customer}</div>
+          <div style="font-size:12px;color:#666;">${job.date} • ${job.city}${job.city ? ',' : ''} ${job.state}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="color:#2563eb;font-weight:600;">${fmt(job.revenue)}</div>
+          <div style="font-size:11px;color:#666;text-transform:uppercase;">${job.status}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function renderDashboardCharts() {
+  // Revenue by Tech
+  const revenueByTech = {};
+  DataStore.jobs.forEach(job => {
+    if (job.tech) {
+      revenueByTech[job.tech] = (revenueByTech[job.tech] || 0) + (job.revenue || 0);
+    }
+  });
+
+  const revenueCtx = document.getElementById('revenueChart');
+  if (revenueCtx && Object.keys(revenueByTech).length > 0) {
+    destroyChart('revenueChart');
+    charts.revenueChart = new Chart(revenueCtx, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(revenueByTech),
+        datasets: [{
+          label: 'Revenue',
+          data: Object.values(revenueByTech),
+          backgroundColor: '#2563eb',
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } },
+      },
+    });
+  }
+
+  // Job Status Distribution
+  const statusCounts = { 'in-progress': 0, 'scheduled': 0, 'completed': 0 };
+  DataStore.jobs.forEach(job => {
+    statusCounts[job.status || 'scheduled'] = (statusCounts[job.status || 'scheduled'] || 0) + 1;
+  });
+
+  const statusCtx = document.getElementById('jobStatusChart');
+  if (statusCtx) {
+    destroyChart('jobStatusChart');
+    charts.jobStatusChart = new Chart(statusCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['In Progress', 'Scheduled', 'Completed'],
+        datasets: [{
+          data: [statusCounts['in-progress'], statusCounts['scheduled'], statusCounts['completed']],
+          backgroundColor: ['#f59e0b', '#3b82f6', '#16a34a'],
+        }],
+      },
+      options: { responsive: true },
+    });
+  }
+}
+
+// ============================================================================
+// JOBS RENDERING
+// ============================================================================
+
+function renderJobs() {
+  const jobsTableBody = document.getElementById('jobsTableBody');
+  if (!jobsTableBody) return;
+
+  let jobs = [...DataStore.jobs];
+
+  // Apply filters
+  const statusFilter = document.getElementById('jobStatusFilter');
+  if (statusFilter && statusFilter.value) {
+    jobs = jobs.filter(j => j.status === statusFilter.value);
+  }
+
+  const techFilter = document.getElementById('jobTechFilter');
+  if (techFilter && techFilter.value) {
+    jobs = jobs.filter(j => j.tech === techFilter.value);
+  }
+
+  const searchInput = document.getElementById('jobSearchInput');
+  if (searchInput && searchInput.value) {
+    const search = searchInput.value.toLowerCase();
+    jobs = jobs.filter(j =>
+      j.customer.toLowerCase().includes(search) ||
+      j.id.toLowerCase().includes(search) ||
+      j.city.toLowerCase().includes(search)
+    );
+  }
+
+  // Render rows
+  jobsTableBody.innerHTML = jobs.map(job => {
+    const cost = calcJobCost(job);
+    const verdict = cost.profit >= 0 ? 'ACCEPT' : 'REJECT';
+    const verdictColor = cost.profit >= 0 ? '#16a34a' : '#dc2626';
+
+    return `
+      <tr style="border-bottom:1px solid #e5e7eb;hover-background:#f9fafb;">
+        <td style="padding:12px;border-right:1px solid #e5e7eb;">${job.date}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-family:monospace;font-weight:600;">${job.id}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-weight:500;">${job.customer}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-size:13px;">${job.city}${job.city ? ',' : ''} ${job.state}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-size:13px;">${job.tech}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-size:12px;"><span class="badge badge-${job.type.toLowerCase()}">${job.type}</span></td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;font-size:13px;">${(job.onsite + job.travel).toFixed(1)}h</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;font-size:13px;">${job.miles}mi</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;color:#2563eb;font-weight:600;">${fmt(job.revenue)}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;font-size:13px;">${fmt(cost.total)}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;color:${cost.profit >= 0 ? '#16a34a' : '#dc2626'};font-weight:600;">${fmt(cost.profit)}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;font-size:13px;">${pct(cost.margin, 1)}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:center;">
+          <span style="display:inline-block;padding:4px 8px;border-radius:4px;background:${verdictColor === '#16a34a' ? '#f0fdf4' : '#fef2f2'};color:${verdictColor};font-weight:700;font-size:11px;">${verdict}</span>
+        </td>
+        <td style="padding:12px;text-align:center;">
+          <button class="btn btn-sm" onclick="editJob('${job.id}')" style="margin-right:4px;">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteJob('${job.id}')">Delete</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Populate tech filter
+  if (techFilter) {
+    const techs = [...new Set(DataStore.jobs.map(j => j.tech).filter(Boolean))];
+    techFilter.innerHTML = '<option value="">All Technicians</option>' +
+      techs.map(t => `<option value="${t}">${t}</option>`).join('');
+  }
+}
+
+function editJob(jobId) {
+  const job = DataStore.jobs.find(j => j.id === jobId);
+  if (!job) return;
+
+  const modal = document.getElementById('jobModal');
+  if (!modal) return;
+
+  const fields = {
+    customer: 'jobModalCustomer',
+    city: 'jobModalCity',
+    state: 'jobModalState',
+    tech: 'jobModalTech',
+    status: 'jobModalStatus',
+    type: 'jobModalService',
+    revenue: 'jobModalRevenue',
+    routeDate: 'jobModalScheduled',
+    notes: 'jobModalNotes',
+  };
+
+  Object.entries(fields).forEach(([key, fieldId]) => {
+    const el = document.getElementById(fieldId);
+    if (el) el.value = job[key] || '';
+  });
+
+  modal.dataset.editingId = jobId;
+  showModal('jobModal');
+}
+
+function deleteJob(jobId) {
+  if (!confirm('Delete this job?')) return;
+  DataStore.jobs = DataStore.jobs.filter(j => j.id !== jobId);
+  persistData();
+  toast('Job deleted', 'success');
+  renderJobs();
+}
+
+function saveJob() {
+  const modal = document.getElementById('jobModal');
+  if (!modal) return;
+
+  const jobId = modal.dataset.editingId;
+  const fields = {
+    customer: 'jobModalCustomer',
+    city: 'jobModalCity',
+    state: 'jobModalState',
+    tech: 'jobModalTech',
+    status: 'jobModalStatus',
+    type: 'jobModalService',
+    revenue: 'jobModalRevenue',
+    routeDate: 'jobModalScheduled',
+    notes: 'jobModalNotes',
+  };
+
+  if (jobId) {
+    // Edit existing job
+    const job = DataStore.jobs.find(j => j.id === jobId);
+    if (!job) return;
+    Object.entries(fields).forEach(([key, fieldId]) => {
+      const el = document.getElementById(fieldId);
+      if (el) {
+        job[key] = key === 'revenue' ? parseFloat(el.value) || 0 : el.value;
+      }
+    });
+    toast('Job updated', 'success');
+  } else {
+    // Create new job
+    const newJob = {
+      date: dateStr(new Date()),
+      id: String(Date.now()).slice(-6),
+      priority: 'Medium',
+      onsite: 2,
+      travel: 1,
+      miles: 0,
+      parts: 0,
+      consumables: 0,
+      wcase: '',
+      wstatus: '',
+      flags: [],
+      route: '',
+      requested: dateStr(new Date()),
+    };
+    Object.entries(fields).forEach(([key, fieldId]) => {
+      const el = document.getElementById(fieldId);
+      if (el) {
+        newJob[key] = key === 'revenue' ? parseFloat(el.value) || 0 : el.value;
+      }
+    });
+    newJob.status = newJob.status || 'scheduled';
+    newJob.type = newJob.type || 'Service';
+    DataStore.jobs.push(newJob);
+    toast('Job created', 'success');
+  }
+
+  persistData();
+  hideModal('jobModal');
+  renderJobs();
+}
+
+// ============================================================================
+// ROUTES RENDERING & MAP
+// ============================================================================
+
+let map;
+
+function initMap() {
+  const routeMap = document.getElementById('routeMap');
+  if (!routeMap || typeof L === 'undefined') return;
+
+  map = L.map('routeMap').setView([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], 7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  L.marker([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], {
+    icon: L.icon({
+      iconUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%231F4E79" width="32" height="32"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>',
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+    }),
+  }).addTo(map).bindPopup('<b>Akino Solar HQ</b><br>Knoxville, TN');
+
+  // Plot job locations
+  DataStore.jobs.forEach((job, idx) => {
+    if (job.route) {
+      const route = ROUTES_DATA.find(r => r.id === job.route);
+      if (route) {
+        const lat = CONFIG.DEPOT.lat + (Math.random() - 0.5) * 2;
+        const lng = CONFIG.DEPOT.lng + (Math.random() - 0.5) * 2;
+        L.marker([lat, lng], {
+          icon: L.icon({
+            iconUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%232563eb" width="24" height="24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 24],
+          }),
+        }).addTo(map).bindPopup(`<b>${job.customer}</b><br>${job.city}, ${job.state}<br>${fmt(job.revenue)}`);
+      }
+    }
+  });
+}
+
+function renderRoutes() {
+  // Initialize map
+  setTimeout(initMap, 100);
+
+  const routeList = document.getElementById('routeList');
+  if (!routeList) return;
+
+  // Render route list
+  routeList.innerHTML = ROUTES_DATA.map(route => {
+    const routeJobs = DataStore.jobs.filter(j => j.route === route.id);
+    const totalRevenue = routeJobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
+    const totalCost = routeJobs.reduce((sum, j) => sum + calcJobCost(j).total, 0);
+    const profit = totalRevenue - totalCost;
+
+    return `
+      <div style="padding:16px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+          <div>
+            <div style="font-weight:700;font-size:16px;color:#1a1a2e;">${route.id}</div>
+            <div style="font-size:12px;color:#666;margin-top:2px;">${routeJobs.length} jobs • ${route.miles.toFixed(1)} miles</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="color:#16a34a;font-weight:700;">${fmt(profit)}</div>
+            <div style="font-size:12px;color:#666;">profit</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+          <div><span style="color:#666;">Revenue:</span> <span style="color:#2563eb;font-weight:600;">${fmt(totalRevenue)}</span></div>
+          <div><span style="color:#666;">Cost:</span> <span style="color:#dc2626;font-weight:600;">${fmt(totalCost)}</span></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // View toggle buttons
+  const mapBtn = document.getElementById('routeMapViewBtn');
+  const listBtn = document.getElementById('routeListViewBtn');
+  const analyticsBtn = document.getElementById('routeAnalyticsViewBtn');
+
+  if (mapBtn) mapBtn.addEventListener('click', () => {
+    const map = document.getElementById('routeMap');
+    const list = document.getElementById('routeList');
+    const analytics = document.getElementById('analyticsSection');
+    if (map) map.style.display = 'block';
+    if (list) list.style.display = 'none';
+    if (analytics) analytics.style.display = 'none';
+  });
+
+  if (listBtn) listBtn.addEventListener('click', () => {
+    const map = document.getElementById('routeMap');
+    const list = document.getElementById('routeList');
+    const analytics = document.getElementById('analyticsSection');
+    if (map) map.style.display = 'none';
+    if (list) list.style.display = 'block';
+    if (analytics) analytics.style.display = 'none';
+  });
+
+  if (analyticsBtn) analyticsBtn.addEventListener('click', () => {
+    const map = document.getElementById('routeMap');
+    const list = document.getElementById('routeList');
+    const analytics = document.getElementById('analyticsSection');
+    if (map) map.style.display = 'none';
+    if (list) list.style.display = 'none';
+    if (analytics) analytics.style.display = 'block';
+    renderRouteAnalytics();
+  });
+
+  // Weather widget
+  fetchWeather();
+}
+
+function renderRouteAnalytics() {
+  // Route performance overview chart
+  const overviewCtx = document.getElementById('routeOverviewChart');
+  if (overviewCtx) {
+    destroyChart('routeOverviewChart');
+    const routeRevenue = ROUTES_DATA.slice(0, 6).map(r => {
+      const jobs = DataStore.jobs.filter(j => j.route === r.id);
+      return jobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
+    });
+    charts.routeOverviewChart = new Chart(overviewCtx, {
+      type: 'bar',
+      data: {
+        labels: ROUTES_DATA.slice(0, 6).map(r => r.id),
+        datasets: [{
+          label: 'Route Revenue',
+          data: routeRevenue,
+          backgroundColor: '#2563eb',
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } },
+      },
+    });
+  }
+}
+
+async function fetchWeather() {
+  try {
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.DEPOT.lat}&longitude=${CONFIG.DEPOT.lng}&current=temperature_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit`);
+    const data = await res.json();
+    const current = data.current;
+
+    const weatherWidget = document.getElementById('weatherWidget');
+    if (weatherWidget) {
+      weatherWidget.innerHTML = `
+        <div style="padding:12px;background:#f0f9ff;border-radius:8px;border-left:4px solid #2563eb;">
+          <div style="font-size:12px;color:#666;text-transform:uppercase;font-weight:500;">Weather at HQ</div>
+          <div style="font-size:24px;font-weight:700;color:#1a1a2e;margin-top:4px;">${Math.round(current.temperature_2m)}°F</div>
+          <div style="font-size:12px;color:#666;margin-top:4px;">Wind: ${Math.round(current.wind_speed_10m)} mph</div>
+        </div>
+      `;
+    }
+  } catch (e) {
+    console.error('Weather fetch failed:', e);
+  }
+}
+
+// ============================================================================
+// WARRANTY RENDERING
+// ============================================================================
+
+function renderWarranty() {
+  const warrantyTableBody = document.getElementById('warrantyTableBody');
+  if (!warrantyTableBody) return;
+
+  // Placeholder warranty data
+  warrantyTableBody.innerHTML = `
+    <tr style="border-bottom:1px solid #e5e7eb;">
+      <td colspan="20" style="padding:24px;text-align:center;color:#666;">
+        No warranty claims yet. Click "Add Claim" to get started.
+      </td>
+    </tr>
+  `;
+
+  // Summary cards
+  const summaryEl = document.getElementById('warrantySummaryTotalClaims');
+  if (summaryEl) {
+    summaryEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;">
+        <div style="padding:12px;background:#f0f9ff;border-radius:6px;text-align:center;">
+          <div style="font-size:28px;font-weight:700;color:#2563eb;">0</div>
+          <div style="font-size:12px;color:#666;margin-top:4px;">Total Claims</div>
+        </div>
+        <div style="padding:12px;background:#f0fdf4;border-radius:6px;text-align:center;">
+          <div style="font-size:28px;font-weight:700;color:#16a34a;">$0.00</div>
+          <div style="font-size:12px;color:#666;margin-top:4px;">Paid</div>
+        </div>
+        <div style="padding:12px;background:#fef2f2;border-radius:6px;text-align:center;">
+          <div style="font-size:28px;font-weight:700;color:#dc2626;">$0.00</div>
+          <div style="font-size:12px;color:#666;margin-top:4px;">Outstanding</div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// ============================================================================
+// INVENTORY RENDERING
+// ============================================================================
+
+function renderInventory() {
+  const inventoryTableBody = document.getElementById('inventoryTableBody');
+  if (!inventoryTableBody) return;
+
+  inventoryTableBody.innerHTML = `
+    <tr style="border-bottom:1px solid #e5e7eb;">
+      <td colspan="6" style="padding:24px;text-align:center;color:#666;">
+        No inventory items yet.
+      </td>
+    </tr>
+  `;
+}
+
+// ============================================================================
+// TECHNICIANS RENDERING
+// ============================================================================
+
+function renderTechnicians() {
+  const techCardsContainer = document.getElementById('techCardsContainer');
+  const personnelTableBody = document.getElementById('personnelTableBody');
+
+  if (techCardsContainer) {
+    techCardsContainer.innerHTML = PERSONNEL.filter(p => p.role !== 'Admin').map(person => {
+      const personJobs = DataStore.jobs.filter(j => j.tech === person.name);
+      const personRevenue = personJobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
+      const personCost = personJobs.reduce((sum, j) => sum + calcJobCost(j).total, 0);
+      const personProfit = personRevenue - personCost;
+
+      return `
+        <div style="padding:16px;background:white;border:1px solid #e5e7eb;border-radius:8px;">
+          <div style="font-weight:700;font-size:16px;color:#1a1a2e;">${person.name}</div>
+          <div style="font-size:12px;color:#666;margin-top:2px;">${person.role}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;font-size:12px;">
+            <div><span style="color:#666;">Jobs:</span> <strong>${personJobs.length}</strong></div>
+            <div><span style="color:#666;">Revenue:</span> <strong style="color:#2563eb;">${fmt(personRevenue)}</strong></div>
+            <div><span style="color:#666;">Profit:</span> <strong style="color:${personProfit >= 0 ? '#16a34a' : '#dc2626'};">${fmt(personProfit)}</strong></div>
+            <div><span style="color:#666;">Rate:</span> <strong>${fmt(person.loaded)}/hr</strong></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  if (personnelTableBody) {
+    personnelTableBody.innerHTML = PERSONNEL.map(person => `
+      <tr style="border-bottom:1px solid #e5e7eb;">
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-weight:600;">${person.name}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;">${person.role}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-weight:600;color:#2563eb;">${fmt(person.loaded)}/hr</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:center;">${DataStore.jobs.filter(j => j.tech === person.name).length}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+// ============================================================================
+// FINANCIALS RENDERING
+// ============================================================================
+
+function renderFinancials() {
+  const allRevenue = DataStore.jobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
+  const allCost = DataStore.jobs.reduce((sum, j) => sum + calcJobCost(j).total, 0);
+  const profit = allRevenue - allCost;
+  const margin = allRevenue > 0 ? (profit / allRevenue) * 100 : 0;
+
+  // Update KPI cards
+  const cards = [
+    { id: 'finMonthlyRevenue', label: 'Monthly Revenue', value: fmt(allRevenue) },
+    { id: 'finMonthlyOverhead', label: 'Monthly Overhead', value: fmt(CONFIG.MONTHLY_OVERHEAD) },
+    { id: 'finBreakevenJob', label: 'Breakeven/Job', value: fmt(CONFIG.BREAKEVEN_PER_JOB) },
+    { id: 'finCostHour', label: 'Cost/Hour', value: fmt(CONFIG.COST_PER_HOUR) },
+    { id: 'finMonthlyProfit', label: 'Net Profit', value: fmt(profit) },
+    { id: 'finProfitMargin', label: 'Profit Margin', value: pct(margin / 100, 1) },
+  ];
+
+  cards.forEach(card => {
+    const el = document.getElementById(card.id);
+    if (el) {
+      el.innerHTML = `
+        <div style="padding:12px;background:#f9fafb;border-radius:6px;">
+          <div style="font-size:12px;color:#666;text-transform:uppercase;font-weight:500;">${card.label}</div>
+          <div style="font-size:20px;font-weight:700;color:#1a1a2e;margin-top:4px;">${card.value}</div>
+        </div>
+      `;
+    }
+  });
+
+  // Render True Cost Calculator
+  renderTrueCostCalculator();
+
+  // Tech Performance table
+  renderTechPerformanceTable();
+
+  // Breakeven scenario table
+  renderBreakevenScenarios();
+
+  // Charts
+  renderFinancialCharts();
+}
+
+function renderTrueCostCalculator() {
+  // Auto-calculate on input change
+  ['calcTech', 'calcOnsite', 'calcTravel', 'calcMiles', 'calcParts', 'calcConsumables', 'calcRevenue'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', calculateTrueCost);
+      el.addEventListener('change', calculateTrueCost);
+    }
+  });
+}
+
+function calculateTrueCost() {
+  const techEl = document.getElementById('calcTech');
+  const onsiteEl = document.getElementById('calcOnsite');
+  const travelEl = document.getElementById('calcTravel');
+  const milesEl = document.getElementById('calcMiles');
+  const partsEl = document.getElementById('calcParts');
+  const consumablesEl = document.getElementById('calcConsumables');
+  const revenueEl = document.getElementById('calcRevenue');
+  const resultsEl = document.getElementById('calcResults');
+  const verdictEl = document.getElementById('calcVerdict');
+
+  if (!resultsEl) return;
+
+  const tech = techEl?.value || 'Lucas';
+  const onsite = parseFloat(onsiteEl?.value || 0);
+  const travel = parseFloat(travelEl?.value || 0);
+  const miles = parseFloat(milesEl?.value || 0);
+  const parts = parseFloat(partsEl?.value || 0);
+  const consumables = parseFloat(consumablesEl?.value || 0);
+  const revenue = parseFloat(revenueEl?.value || 0);
+
+  const rate = getPersonnelByName(tech)?.loaded || 30;
+  const labor = (onsite + travel) * rate;
+  const travelCost = miles * CONFIG.FUEL_PER_MILE;
+  const overhead = CONFIG.OVERHEAD_PER_JOB;
+
+  const costs = {
+    labor,
+    travel: travelCost,
+    parts,
+    consumables,
+    qa: CONFIG.QA_PER_JOB,
+    admin: CONFIG.ADMIN_PER_JOB,
+    risk: CONFIG.RISK_BUFFER,
+    overhead,
+  };
+
+  const total = Object.values(costs).reduce((a, b) => a + b, 0);
+  const profit = revenue - total;
+  const minPrice = total * 1.1;
+
+  // Render results
+  resultsEl.innerHTML = `
+    <div style="margin-top:16px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;">
+      <div style="font-weight:700;margin-bottom:12px;color:#1a1a2e;">Cost Breakdown</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+        <div><span style="color:#666;">Labor:</span> <strong>${fmt(costs.labor)}</strong></div>
+        <div><span style="color:#666;">Travel:</span> <strong>${fmt(costs.travel)}</strong></div>
+        <div><span style="color:#666;">Parts:</span> <strong>${fmt(costs.parts)}</strong></div>
+        <div><span style="color:#666;">Consumables:</span> <strong>${fmt(costs.consumables)}</strong></div>
+        <div><span style="color:#666;">QA:</span> <strong>${fmt(costs.qa)}</strong></div>
+        <div><span style="color:#666;">Admin/Mgmt:</span> <strong>${fmt(costs.admin)}</strong></div>
+        <div><span style="color:#666;">Risk Buffer:</span> <strong>${fmt(costs.risk)}</strong></div>
+        <div><span style="color:#666;">Overhead:</span> <strong>${fmt(costs.overhead)}</strong></div>
+      </div>
+      <div style="border-top:1px solid #d1d5db;margin-top:12px;padding-top:12px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;font-weight:700;">
+          <span>True Cost:</span>
+          <span>${fmt(total)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;color:#2563eb;font-weight:600;margin-top:4px;">
+          <span>Revenue:</span>
+          <span>${fmt(revenue)}</span>
+        </div>
+      </div>
+      <div style="border-top:1px solid #d1d5db;padding-top:12px;">
+        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:14px;margin-bottom:8px;">
+          <span>Net Profit:</span>
+          <span style="color:${profit >= 0 ? '#16a34a' : '#dc2626'};">${fmt(profit)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#666;">
+          <span>Minimum Price (cost × 1.1):</span>
+          <span>${fmt(minPrice)}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Verdict
+  if (verdictEl) {
+    verdictEl.innerHTML = profit >= 0
+      ? `<div style="font-size:36px;font-weight:900;color:#16a34a;">ACCEPT</div><div style="margin-top:8px;color:#374151;">This job is profitable</div>`
+      : `<div style="font-size:36px;font-weight:900;color:#dc2626;">REJECT</div><div style="margin-top:8px;color:#374151;">This job loses money</div>`;
+    verdictEl.style.background = profit >= 0 ? '#f0fdf4' : '#fef2f2';
+    verdictEl.style.border = profit >= 0 ? '2px solid #16a34a' : '2px solid #dc2626';
+    verdictEl.style.padding = '16px';
+    verdictEl.style.borderRadius = '8px';
+    verdictEl.style.textAlign = 'center';
+  }
+}
+
+function renderTechPerformanceTable() {
+  // Find the techPerfTable element or create one in the financials section
+  let table = document.getElementById('techPerfTable');
+  const contentWrapper = document.querySelector('[data-tab-content="financials"]');
+
+  if (!table && contentWrapper) {
+    const div = document.createElement('div');
+    div.id = 'techPerfTable';
+    div.style.marginTop = '24px';
+    contentWrapper.appendChild(div);
+    table = div;
+  }
+
+  if (!table) return;
+
+  const techPerformance = {};
+
+  DataStore.jobs.forEach(job => {
+    if (!job.tech) return;
+    if (!techPerformance[job.tech]) {
+      techPerformance[job.tech] = {
+        name: job.tech,
+        jobs: 0,
+        revenue: 0,
+        cost: 0,
+      };
+    }
+    techPerformance[job.tech].jobs += 1;
+    techPerformance[job.tech].revenue += job.revenue || 0;
+    techPerformance[job.tech].cost += calcJobCost(job).total;
+  });
+
+  const rows = Object.values(techPerformance).map(tech => {
+    const profit = tech.revenue - tech.cost;
+    const margin = tech.revenue > 0 ? (profit / tech.revenue) * 100 : 0;
+
+    return `
+      <tr style="border-bottom:1px solid #e5e7eb;">
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-weight:600;">${tech.name}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:center;">${tech.jobs}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;color:#2563eb;font-weight:600;">${fmt(tech.revenue)}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;">${fmt(tech.cost)}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;color:${profit >= 0 ? '#16a34a' : '#dc2626'};font-weight:600;">${fmt(profit)}</td>
+        <td style="padding:12px;text-align:right;">${pct(margin / 100, 1)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  table.innerHTML = `
+    <div style="margin-bottom:12px;">
+      <h3 style="margin:0;color:#1a1a2e;font-size:16px;">Technician Performance</h3>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;background:white;border:1px solid #e5e7eb;border-radius:6px;">
+        <thead style="background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+          <tr>
+            <th style="padding:12px;border-right:1px solid #e5e7eb;text-align:left;font-weight:700;font-size:13px;">Tech</th>
+            <th style="padding:12px;border-right:1px solid #e5e7eb;text-align:center;font-weight:700;font-size:13px;">Jobs</th>
+            <th style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;font-weight:700;font-size:13px;">Revenue</th>
+            <th style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;font-weight:700;font-size:13px;">Cost</th>
+            <th style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;font-weight:700;font-size:13px;">Profit</th>
+            <th style="padding:12px;text-align:right;font-weight:700;font-size:13px;">Margin</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderBreakevenScenarios() {
+  let table = document.getElementById('breakevenScenarioTable');
+  const contentWrapper = document.querySelector('[data-tab-content="financials"]');
+
+  if (!table && contentWrapper) {
+    const div = document.createElement('div');
+    div.id = 'breakevenScenarioTable';
+    div.style.marginTop = '24px';
+    contentWrapper.appendChild(div);
+    table = div;
+  }
+
+  if (!table) return;
+
+  const scenarios = Array.from({ length: 15 }, (_, i) => {
+    const jpw = i + 1;
+    const jpm = jpw * (52 / 12);
+    const perJob = CONFIG.MONTHLY_OVERHEAD / jpm;
+    const be = perJob + CONFIG.RISK_BUFFER;
+    const cph = CONFIG.MONTHLY_OVERHEAD / 173.33;
+
+    return {
+      jpw,
+      jpm: jpm.toFixed(1),
+      perJob: perJob.toFixed(2),
+      be: be.toFixed(2),
+      cph: cph.toFixed(2),
+      isCurrent: jpw === CONFIG.JOBS_PER_WEEK,
+    };
+  });
+
+  const rows = scenarios.map(s => `
+    <tr style="border-bottom:1px solid #e5e7eb;${s.isCurrent ? 'background:#f0f9ff;font-weight:700;' : ''}">
+      <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:center;">${s.jpw}</td>
+      <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:center;">${s.jpm}</td>
+      <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;">${fmt(parseFloat(s.perJob))}</td>
+      <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;">${fmt(parseFloat(s.be))}</td>
+      <td style="padding:12px;text-align:right;">${fmt(parseFloat(s.cph))}</td>
+    </tr>
+  `).join('');
+
+  table.innerHTML = `
+    <div style="margin-bottom:12px;">
+      <h3 style="margin:0;color:#1a1a2e;font-size:16px;">Breakeven Analysis (1-15 jobs/week)</h3>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;background:white;border:1px solid #e5e7eb;border-radius:6px;">
+        <thead style="background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+          <tr>
+            <th style="padding:12px;border-right:1px solid #e5e7eb;text-align:center;font-weight:700;font-size:13px;">Jobs/Week</th>
+            <th style="padding:12px;border-right:1px solid #e5e7eb;text-align:center;font-weight:700;font-size:13px;">Jobs/Month</th>
+            <th style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;font-weight:700;font-size:13px;">Overhead/Job</th>
+            <th style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;font-weight:700;font-size:13px;">Breakeven</th>
+            <th style="padding:12px;text-align:right;font-weight:700;font-size:13px;">Cost/Hour</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:#666;">Current scenario (${CONFIG.JOBS_PER_WEEK} jobs/week) is highlighted in blue.</div>
+  `;
+}
+
+function renderFinancialCharts() {
+  // Profit/Loss by Tech
+  const techPnl = {};
+  DataStore.jobs.forEach(job => {
+    if (job.tech) {
+      const cost = calcJobCost(job);
+      if (!techPnl[job.tech]) techPnl[job.tech] = { revenue: 0, cost: 0 };
+      techPnl[job.tech].revenue += job.revenue || 0;
+      techPnl[job.tech].cost += cost.total;
+    }
+  });
+
+  const pnlCtx = document.getElementById('pnlChart');
+  if (pnlCtx) {
+    destroyChart('pnlChart');
+    const labels = Object.keys(techPnl);
+    const profits = labels.map(t => techPnl[t].revenue - techPnl[t].cost);
+    charts.pnlChart = new Chart(pnlCtx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Profit/Loss',
+          data: profits,
+          backgroundColor: profits.map(p => p >= 0 ? '#16a34a' : '#dc2626'),
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } },
+      },
+    });
+  }
+
+  // Overhead Categories (real data from Master workbook)
+  const overheadCtx = document.getElementById('overheadChart');
+  if (overheadCtx) {
+    destroyChart('overheadChart');
+    charts.overheadChart = new Chart(overheadCtx, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(OVERHEAD_CATEGORIES),
+        datasets: [{
+          data: Object.values(OVERHEAD_CATEGORIES),
+          backgroundColor: ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe', '#16a34a', '#10b981', '#34d399', '#6ee7b7'],
+        }],
+      },
+      options: { responsive: true },
+    });
+  }
+}
+
+// ============================================================================
+// RECONCILIATION RENDERING
+// ============================================================================
+
+function renderReconciliation() {
+  const recon = DataStore.reconciliation || [];
+  const filterStatus = document.getElementById('reconStatusFilter')?.value || '';
+
+  // Update KPIs
+  const matched = recon.filter(r => r.status === 'Matched' || r.status === 'Force Matched').length;
+  const pending = recon.filter(r => r.status === 'Pending').length;
+  const variance = recon.filter(r => r.status === 'Variance').length;
+  const totalHcp = recon.reduce((s, r) => s + (r.hcpAmount || 0), 0);
+  const totalBank = recon.reduce((s, r) => s + (r.bankAmount || 0), 0);
+
+  const setKpi = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setKpi('reconTotal', recon.length);
+  setKpi('reconMatched', matched);
+  setKpi('reconPending', pending);
+  setKpi('reconVariance', variance);
+  setKpi('reconTotalHcp', fmt(totalHcp));
+  setKpi('reconTotalBank', fmt(totalBank));
+
+  // Filter
+  const filtered = filterStatus ? recon.filter(r => r.status === filterStatus) : recon;
+
+  const tbody = document.getElementById('reconTableBody');
+  if (!tbody) return;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="padding:24px;text-align:center;color:#666;">No reconciliation records. Click "Import Unreconciled" to pull jobs from the system.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((r, i) => {
+    const varianceAmt = (r.bankAmount || 0) - (r.hcpAmount || 0);
+    const statusClass = r.status === 'Matched' || r.status === 'Force Matched' ? 'badge-paid' : r.status === 'Variance' ? 'badge-needs-attention' : 'badge-pending';
+    return `<tr style="border-bottom:1px solid #f3f4f6;">
+      <td style="padding:10px 12px;font-weight:600;">${r.reconId || 'R-' + (i+1)}</td>
+      <td style="padding:10px 12px;">${r.jobName || ''}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:600;">${fmt(r.hcpAmount || 0)}</td>
+      <td style="padding:10px 12px;">${r.hcpDate || ''}</td>
+      <td style="padding:10px 12px;text-align:right;">
+        <input type="number" step="0.01" value="${r.bankAmount || ''}" data-recon-idx="${i}" data-field="bankAmount" class="form-input" style="width:110px;padding:4px 8px;font-size:13px;" onchange="updateReconField(this)">
+      </td>
+      <td style="padding:10px 12px;">
+        <input type="date" value="${r.bankDate || ''}" data-recon-idx="${i}" data-field="bankDate" class="form-input" style="width:130px;padding:4px 8px;font-size:13px;" onchange="updateReconField(this)">
+      </td>
+      <td style="padding:10px 12px;text-align:right;color:${varianceAmt === 0 ? '#16a34a' : '#dc2626'};font-weight:600;">${r.bankAmount ? fmt(varianceAmt) : '-'}</td>
+      <td style="padding:10px 12px;text-align:center;"><span class="badge ${statusClass}">${r.status}</span></td>
+      <td style="padding:10px 12px;">
+        <input type="text" value="${r.notes || ''}" data-recon-idx="${i}" data-field="notes" class="form-input" style="width:120px;padding:4px 8px;font-size:13px;" onchange="updateReconField(this)" placeholder="Notes...">
+      </td>
+      <td style="padding:10px 12px;text-align:center;">
+        <button class="btn btn-xs btn-secondary" onclick="forceMatchRecon(${i})">Force</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function updateReconField(el) {
+  const idx = parseInt(el.dataset.reconIdx);
+  const field = el.dataset.field;
+  if (field === 'bankAmount') {
+    DataStore.reconciliation[idx].bankAmount = parseFloat(el.value) || 0;
+  } else {
+    DataStore.reconciliation[idx][field] = el.value;
+  }
+  persistData();
+}
+
+function importUnreconciled() {
+  const jobs = DataStore.jobs.filter(j => j.revenue > 0 && j.status !== 'archived');
+  const existingIds = new Set(DataStore.reconciliation.map(r => r.jobId));
+  let imported = 0;
+
+  jobs.forEach(j => {
+    if (!existingIds.has(j.id)) {
+      DataStore.reconciliation.push({
+        reconId: 'R-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + j.id,
+        jobId: j.id,
+        jobName: j.customer + ' (#' + j.id + ')',
+        hcpAmount: j.revenue || 0,
+        hcpDate: j.date || '',
+        bankAmount: 0,
+        bankDate: '',
+        status: 'Pending',
+        matchedDate: '',
+        notes: '',
+      });
+      imported++;
+    }
+  });
+
+  persistData();
+  toast(imported + ' job(s) imported for reconciliation', 'success');
+  renderReconciliation();
+}
+
+function autoMatchRecon() {
+  let matched = 0;
+  DataStore.reconciliation.forEach(r => {
+    if (r.status === 'Pending' && r.bankAmount > 0) {
+      const variance = Math.abs(r.bankAmount - r.hcpAmount);
+      if (variance <= 0.01) {
+        r.status = 'Matched';
+        r.matchedDate = new Date().toISOString().slice(0, 10);
+        matched++;
+      } else {
+        r.status = 'Variance';
+      }
+    }
+  });
+
+  persistData();
+  toast(matched + ' exact match(es) found', matched > 0 ? 'success' : 'info');
+  renderReconciliation();
+}
+
+function forceMatchRecon(idx) {
+  const r = DataStore.reconciliation[idx];
+  if (!r) return;
+  r.status = 'Force Matched';
+  r.matchedDate = new Date().toISOString().slice(0, 10);
+  persistData();
+  toast('Force matched: ' + r.jobName, 'success');
+  renderReconciliation();
+}
+
+// ============================================================================
+// QUOTING ENGINE
+// ============================================================================
+
+function generateQuote() {
+  const tech = document.getElementById('quoteTech')?.value || 'Lucas';
+  const hours = parseFloat(document.getElementById('quoteHours')?.value) || 0;
+  const miles = parseFloat(document.getElementById('quoteMiles')?.value) || 0;
+  const parts = parseFloat(document.getElementById('quoteParts')?.value) || 0;
+  const proposedRev = parseFloat(document.getElementById('quoteRevenue')?.value) || 0;
+  const jobDays = parseInt(document.getElementById('quoteJobDays')?.value) || 1;
+  const hotelPerNight = parseFloat(document.getElementById('quoteHotel')?.value) || 125;
+
+  const rate = getPersonnelByName(tech)?.loaded || 30;
+  const laborCost = hours * rate;
+  const travelCost = miles * CONFIG.FUEL_PER_MILE;
+  const overheadCost = CONFIG.OVERHEAD_PER_JOB;
+
+  // Hotel vs drive-back savings (for multi-day jobs)
+  const AVG_MPH = 55;
+  const overnights = jobDays > 1 ? jobDays - 1 : 0;
+  let hotelCost = 0;
+  let driveBackCost = 0;
+  let hotelSavings = 0;
+  let hotelHtml = '';
+
+  if (overnights > 0) {
+    hotelCost = overnights * hotelPerNight;
+
+    // Drive-back cost = extra round trips: mileage + labor for drive time each way
+    const driveTimeOneWay = miles / AVG_MPH; // hours
+    const extraRoundTrips = overnights; // each overnight avoided = 1 round trip saved
+    const extraMileageCost = extraRoundTrips * (miles * 2) * CONFIG.FUEL_PER_MILE;
+    const extraLaborCost = extraRoundTrips * (driveTimeOneWay * 2) * rate;
+    driveBackCost = extraMileageCost + extraLaborCost;
+    hotelSavings = driveBackCost - hotelCost;
+
+    hotelHtml = `
+      <div style="margin-top:12px;border-top:2px solid #1F4E79;padding-top:12px;">
+        <div style="font-weight:600;color:#1F4E79;margin-bottom:8px;">Hotel vs Drive-Back Analysis (${overnights} night${overnights > 1 ? 's' : ''})</div>
+        <div class="cost-row"><span class="clabel">Hotel Cost (${overnights} x ${fmt(hotelPerNight)})</span><span class="cval">${fmt(hotelCost)}</span></div>
+        <div class="cost-row"><span class="clabel">Drive-Back Cost (${overnights} round trip${overnights > 1 ? 's' : ''})</span><span class="cval">${fmt(driveBackCost)}</span></div>
+        <div style="font-size:11px;color:#6b7280;margin-left:8px;margin-bottom:4px;">
+          Mileage: ${overnights} x ${miles * 2}mi x $0.99 = ${fmt(extraRoundTrips * miles * 2 * CONFIG.FUEL_PER_MILE)}<br>
+          Labor: ${overnights} x ${(driveTimeOneWay * 2).toFixed(1)}h x ${fmt(rate)}/hr = ${fmt(extraRoundTrips * driveTimeOneWay * 2 * rate)}
+        </div>
+        <div class="cost-row" style="font-weight:700;">
+          <span class="clabel">${hotelSavings >= 0 ? 'Savings by Staying' : 'Extra Cost to Stay'}</span>
+          <span class="cval" style="color:${hotelSavings >= 0 ? '#16a34a' : '#dc2626'};">${fmt(Math.abs(hotelSavings))}</span>
+        </div>
+        <div style="margin-top:6px;padding:8px;border-radius:6px;font-size:12px;font-weight:600;text-align:center;background:${hotelSavings >= 0 ? '#dcfce7;color:#166534' : '#fee2e2;color:#991b1b'}">
+          ${hotelSavings >= 0 ? 'STAY OVERNIGHT — saves ' + fmt(hotelSavings) + ' vs driving back' : 'DRIVE BACK — cheaper by ' + fmt(Math.abs(hotelSavings))}
+        </div>
+      </div>`;
+  }
+
+  // Total job cost includes hotel if staying
+  const baseCost = laborCost + travelCost + parts + CONFIG.QA_PER_JOB + CONFIG.ADMIN_PER_JOB + CONFIG.RISK_BUFFER + overheadCost;
+  const totalHotelAdded = (overnights > 0 && hotelSavings >= 0) ? hotelCost : 0;
+  const breakeven = baseCost + totalHotelAdded;
+  const riskPrice = breakeven * 1.10;
+  const suggested = riskPrice / 0.85;
+  const isProfitable = proposedRev >= breakeven;
+  const profit = proposedRev - breakeven;
+
+  const resultEl = document.getElementById('quoteResult');
+  if (!resultEl) return;
+
+  resultEl.innerHTML = `
+    <div style="width:100%;">
+      <div class="verdict-box ${isProfitable ? 'accept' : 'reject'}" style="margin-bottom:16px;">
+        <div class="verdict-text">${isProfitable ? 'PROFITABLE' : 'LOSS'}</div>
+        <div style="font-size:14px;margin-top:8px;color:${isProfitable ? '#16a34a' : '#dc2626'};">${proposedRev > 0 ? 'Proposed: ' + fmt(proposedRev) + ' | Profit: ' + fmt(profit) : 'Enter revenue to see verdict'}</div>
+      </div>
+      <div class="cost-row"><span class="clabel">Breakeven Price${totalHotelAdded > 0 ? ' (incl. hotel)' : ''}</span><span class="cval" style="color:#dc2626;">${fmt(breakeven)}</span></div>
+      <div class="cost-row"><span class="clabel">Suggested Quote (15% margin)</span><span class="cval" style="color:#2563eb;">${fmt(suggested)}</span></div>
+      <div class="cost-row"><span class="clabel">Risk Price (+10%)</span><span class="cval">${fmt(riskPrice)}</span></div>
+      <div style="margin-top:12px;border-top:1px solid #e5e7eb;padding-top:12px;">
+        <div class="cost-row"><span class="clabel">Labor (${hours}h x ${fmt(rate)}/hr)</span><span class="cval">${fmt(laborCost)}</span></div>
+        <div class="cost-row"><span class="clabel">Travel (${miles}mi x $0.99)</span><span class="cval">${fmt(travelCost)}</span></div>
+        <div class="cost-row"><span class="clabel">Parts</span><span class="cval">${fmt(parts)}</span></div>
+        ${totalHotelAdded > 0 ? `<div class="cost-row"><span class="clabel">Hotel (${overnights} night${overnights > 1 ? 's' : ''})</span><span class="cval">${fmt(hotelCost)}</span></div>` : ''}
+        <div class="cost-row"><span class="clabel">QA + Admin + Risk</span><span class="cval">${fmt(CONFIG.QA_PER_JOB + CONFIG.ADMIN_PER_JOB + CONFIG.RISK_BUFFER)}</span></div>
+        <div class="cost-row"><span class="clabel">Overhead Allocation</span><span class="cval">${fmt(overheadCost)}</span></div>
+      </div>
+      ${hotelHtml}
+    </div>
+  `;
+}
+
+// ============================================================================
+// JOB ARCHIVING
+// ============================================================================
+
+function archivePaidJobs() {
+  const before = DataStore.jobs.length;
+  const archived = DataStore.jobs.filter(j => j.status === 'completed' && j.revenue > 0);
+  DataStore.jobs = DataStore.jobs.filter(j => !(j.status === 'completed' && j.revenue > 0));
+
+  // Store archived jobs in localStorage for record-keeping
+  const existingArchive = JSON.parse(localStorage.getItem('akino_archived_jobs') || '[]');
+  archived.forEach(j => { j.archivedDate = new Date().toISOString(); j.status = 'archived'; });
+  localStorage.setItem('akino_archived_jobs', JSON.stringify([...existingArchive, ...archived]));
+
+  persistData();
+  const count = before - DataStore.jobs.length;
+  toast(count + ' completed job(s) archived', count > 0 ? 'success' : 'info');
+  renderJobs();
+}
+
+// ============================================================================
+// FLEET PDF EXPORT (browser-side)
+// ============================================================================
+
+function exportFleetPDF() {
+  const routes = {};
+  DataStore.jobs.forEach(j => {
+    if (j.route) {
+      if (!routes[j.route]) routes[j.route] = [];
+      routes[j.route].push(j);
+    }
+  });
+
+  if (Object.keys(routes).length === 0) {
+    toast('No routed jobs to export', 'warning');
+    return;
+  }
+
+  let html = '<html><head><title>Fleet Manifest</title><style>body{font-family:Arial,sans-serif;padding:20px}h1{text-align:center;color:#1F4E79}h2{color:#1F4E79;border-bottom:2px solid #1F4E79;padding-bottom:4px}table{width:100%;border-collapse:collapse;margin-bottom:24px}th{background:#1F4E79;color:white;padding:8px;text-align:left}td{padding:8px;border-bottom:1px solid #ddd}</style></head><body>';
+  html += '<h1>AKINO SOLAR - DAILY FLEET MANIFEST</h1>';
+  html += '<p style="text-align:center;color:#666;">' + new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) + '</p><hr>';
+
+  Object.entries(routes).forEach(([routeId, jobs]) => {
+    const tech = jobs[0]?.tech || 'Unassigned';
+    const totalRev = jobs.reduce((s, j) => s + (j.revenue || 0), 0);
+    html += '<h2>' + routeId + ' - ' + tech + ' (' + jobs.length + ' stops, ' + fmt(totalRev) + ' revenue)</h2>';
+    html += '<table><tr><th>#</th><th>Customer</th><th>City</th><th>State</th><th>Revenue</th><th>Notes</th></tr>';
+    jobs.forEach((j, i) => {
+      html += '<tr><td>' + (i+1) + '</td><td>' + j.customer + '</td><td>' + (j.city || '') + '</td><td>' + (j.state || '') + '</td><td>' + fmt(j.revenue || 0) + '</td><td>' + (j.notes || '') + '</td></tr>';
+    });
+    html += '</table>';
+  });
+
+  html += '</body></html>';
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.print();
+}
+
+// ============================================================================
+// GEOCODE BACKLOG (uses browser geocoding placeholder)
+// ============================================================================
+
+function geocodeBacklog() {
+  const missing = DataStore.jobs.filter(j => j.city && !j.lat);
+  if (missing.length === 0) {
+    toast('All jobs with addresses already have coordinates', 'info');
+    return;
+  }
+  toast(missing.length + ' jobs need geocoding. Connect to Google Maps API in Settings to resolve.', 'warning');
+}
+
+// ============================================================================
+// SYSTEM DIAGNOSTICS
+// ============================================================================
+
+function runDiagnostics() {
+  const issues = [];
+  const today = new Date();
+
+  // Check for jobs with no revenue
+  const noRevJobs = DataStore.jobs.filter(j => !j.revenue || j.revenue === 0);
+  if (noRevJobs.length > 0) issues.push('WARNING: ' + noRevJobs.length + ' job(s) with $0 revenue.');
+
+  // Check for unassigned jobs
+  const unassigned = DataStore.jobs.filter(j => !j.tech && j.status !== 'archived');
+  if (unassigned.length > 0) issues.push('WARNING: ' + unassigned.length + ' job(s) with no technician assigned.');
+
+  // Check for stale jobs (>30 days old and not completed)
+  const stale = DataStore.jobs.filter(j => {
+    if (!j.date || j.status === 'completed' || j.status === 'archived') return false;
+    const diff = (today - new Date(j.date)) / (1000 * 60 * 60 * 24);
+    return diff > 30;
+  });
+  if (stale.length > 0) issues.push('AGING ALERT: ' + stale.length + ' job(s) are >30 days old and not completed.');
+
+  // Check unreconciled payments
+  const unrecon = DataStore.reconciliation.filter(r => r.status === 'Pending');
+  if (unrecon.length > 0) issues.push('RECON: ' + unrecon.length + ' payment(s) pending reconciliation.');
+
+  // Check overhead matches
+  const catSum = Object.values(OVERHEAD_CATEGORIES).reduce((a, b) => a + b, 0);
+  if (Math.abs(catSum - CONFIG.MONTHLY_OVERHEAD) > 10) {
+    issues.push('MISMATCH: Overhead categories sum (' + fmt(catSum) + ') != CONFIG.MONTHLY_OVERHEAD (' + fmt(CONFIG.MONTHLY_OVERHEAD) + ')');
+  }
+
+  const result = issues.length === 0 ? 'SYSTEM HEALTHY - All checks passed.' : 'ISSUES FOUND:\n\n' + issues.join('\n');
+
+  const el = document.getElementById('diagnosticsResult');
+  if (el) {
+    el.style.display = 'block';
+    el.style.borderLeft = issues.length === 0 ? '4px solid #16a34a' : '4px solid #dc2626';
+    el.textContent = result;
+  }
+  toast(issues.length === 0 ? 'System healthy' : issues.length + ' issue(s) found', issues.length === 0 ? 'success' : 'warning');
+}
+
+// ============================================================================
+// EMAIL RENDERING (enhanced)
+// ============================================================================
+
+function renderEmail() {
+  const unansweredList = document.getElementById('unansweredList');
+  const emailFeed = document.getElementById('emailFeed');
+  const autoActionLog = document.getElementById('autoActionLog');
+
+  if (DataStore.settings.appsScriptUrl) {
+    if (unansweredList) {
+      unansweredList.innerHTML = '<div style="padding:12px;color:#666;font-size:13px;">Checking for unanswered emails... Configure Apps Script triggers for automatic monitoring.</div>';
+    }
+    if (emailFeed) {
+      emailFeed.innerHTML = '<div style="padding:24px;text-align:center;color:#666;">Email feed will populate when Apps Script email monitoring is active.<br><br><button class="btn btn-primary btn-sm" onclick="syncWithBackend()">Sync Now</button></div>';
+    }
+  } else {
+    if (unansweredList) {
+      unansweredList.innerHTML = '<div style="padding:12px;color:#666;font-size:13px;">No Apps Script URL configured. Go to <strong>Settings</strong> to connect your backend for email monitoring.</div>';
+    }
+    if (emailFeed) {
+      emailFeed.innerHTML = '<div style="padding:24px;text-align:center;color:#666;">Connect your Apps Script URL in Settings to enable email monitoring across all inboxes.</div>';
+    }
+  }
+
+  if (autoActionLog) {
+    autoActionLog.innerHTML = '<div style="padding:16px;color:#666;font-size:13px;">Auto-actions (warranty auto-routing, invoice auto-tagging) will appear here when email monitoring is active.</div>';
+  }
+}
+
+// ============================================================================
+// INVENTORY RENDERING (enhanced)
+// ============================================================================
+
+function renderInventory() {
+  const inventoryTableBody = document.getElementById('inventoryTableBody');
+  if (!inventoryTableBody) return;
+
+  const inventory = DataStore.inventory || [];
+
+  if (inventory.length === 0) {
+    inventoryTableBody.innerHTML = `
+      <tr><td colspan="6" style="padding:24px;text-align:center;color:#666;">
+        No inventory items. <button class="btn btn-sm btn-primary" onclick="addInventoryItem()">Add First Item</button>
+      </td></tr>`;
+    return;
+  }
+
+  inventoryTableBody.innerHTML = inventory.map((item, i) => {
+    const lowStock = item.quantity <= (item.reorderPoint || 5);
+    return `<tr style="border-bottom:1px solid #e5e7eb;${lowStock ? 'background:#fef2f2;' : ''}">
+      <td style="padding:10px 12px;font-weight:600;">${item.name}</td>
+      <td style="padding:10px 12px;">${item.category || 'General'}</td>
+      <td style="padding:10px 12px;text-align:center;${lowStock ? 'color:#dc2626;font-weight:700;' : ''}">${item.quantity}</td>
+      <td style="padding:10px 12px;text-align:right;">${fmt(item.unitCost || 0)}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:600;">${fmt((item.quantity || 0) * (item.unitCost || 0))}</td>
+      <td style="padding:10px 12px;text-align:center;">
+        <button class="btn btn-xs btn-secondary" onclick="editInventoryItem(${i})">Edit</button>
+        <button class="btn btn-xs btn-danger" onclick="deleteInventoryItem(${i})">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function addInventoryItem() {
+  const name = prompt('Item name:');
+  if (!name) return;
+  const category = prompt('Category (e.g., Parts, Consumables, Tools):', 'Parts');
+  const quantity = parseInt(prompt('Quantity:', '10')) || 0;
+  const unitCost = parseFloat(prompt('Unit cost ($):', '0')) || 0;
+
+  if (!DataStore.inventory) DataStore.inventory = [];
+  DataStore.inventory.push({ name, category, quantity, unitCost, reorderPoint: 5 });
+  persistData();
+  toast('Added: ' + name, 'success');
+  renderInventory();
+}
+
+function editInventoryItem(idx) {
+  const item = DataStore.inventory[idx];
+  if (!item) return;
+  const qty = parseInt(prompt('New quantity for ' + item.name + ':', item.quantity));
+  if (isNaN(qty)) return;
+  item.quantity = qty;
+  persistData();
+  toast('Updated: ' + item.name, 'success');
+  renderInventory();
+}
+
+function deleteInventoryItem(idx) {
+  const item = DataStore.inventory[idx];
+  if (!item || !confirm('Delete ' + item.name + '?')) return;
+  DataStore.inventory.splice(idx, 1);
+  persistData();
+  toast('Deleted: ' + item.name, 'success');
+  renderInventory();
+}
+
+// ============================================================================
+// SETTINGS RENDERING
+// ============================================================================
+
+function renderSettings() {
+  const settings = DataStore.settings;
+
+  const fields = {
+    appsScriptUrl: settings.appsScriptUrl,
+    mapsApiKey: settings.mapsApiKey || '',
+    settDepotLat: settings.depot.lat,
+    settDepotLng: settings.depot.lng,
+    settMaxJobs: settings.maxJobsPerRoute,
+    settServiceDuration: settings.serviceDuration,
+    settWorkdayStart: settings.workdayStart,
+    settFuelCost: settings.fuelCost,
+    settQaCost: settings.qaCost,
+    settAdminCost: settings.adminCost,
+    settRiskBuffer: settings.riskBuffer,
+    settOverheadAlloc: settings.overheadAlloc,
+    emailGenerac: settings.emailGenerac,
+    emailInfo: settings.emailInfo,
+    emailCustomerSupport: settings.emailCustomerSupport,
+    settScanFrequency: settings.scanFrequency,
+    settUnansweredThreshold: settings.unansweredThreshold,
+  };
+
+  Object.entries(fields).forEach(([fieldId, value]) => {
+    const el = document.getElementById(fieldId);
+    if (el) el.value = value;
+  });
+}
+
+function saveSettings() {
+  const settings = DataStore.settings;
+
+  const fields = {
+    appsScriptUrl: 'appsScriptUrl',
+    mapsApiKey: 'mapsApiKey',
+    settDepotLat: ['depot', 'lat'],
+    settDepotLng: ['depot', 'lng'],
+    settMaxJobs: 'maxJobsPerRoute',
+    settServiceDuration: 'serviceDuration',
+    settWorkdayStart: 'workdayStart',
+    settFuelCost: 'fuelCost',
+    settQaCost: 'qaCost',
+    settAdminCost: 'adminCost',
+    settRiskBuffer: 'riskBuffer',
+    settOverheadAlloc: 'overheadAlloc',
+    emailGenerac: 'emailGenerac',
+    emailInfo: 'emailInfo',
+    emailCustomerSupport: 'emailCustomerSupport',
+    settScanFrequency: 'scanFrequency',
+    settUnansweredThreshold: 'unansweredThreshold',
+  };
+
+  Object.entries(fields).forEach(([fieldId, path]) => {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+
+    const value = ['settDepotLat', 'settDepotLng'].includes(fieldId) ? parseFloat(el.value) : el.value;
+
+    if (Array.isArray(path)) {
+      settings[path[0]][path[1]] = value;
+    } else {
+      settings[path] = value;
+    }
+  });
+
+  persistData();
+  toast('Settings saved', 'success');
+}
+
+// ============================================================================
+// CLAUDE SIDEBAR
+// ============================================================================
+
+function initClaudeSidebar() {
+  const fab = document.getElementById('claudeFab');
+  const sidebar = document.getElementById('claudeSidebar');
+  const closeBtn = document.getElementById('claudeClose');
+  const sendBtn = document.getElementById('claudeSend');
+  const input = document.getElementById('claudeInput');
+  const chatContainer = document.getElementById('claudeChat');
+
+  if (fab && sidebar) {
+    fab.addEventListener('click', () => {
+      const isOpen = sidebar.style.right === '0px';
+      sidebar.style.right = isOpen ? '-400px' : '0px';
+    });
+  }
+
+  if (closeBtn && sidebar) {
+    closeBtn.addEventListener('click', () => {
+      sidebar.style.right = '-400px';
+    });
+  }
+
+  // Claude tab switching
+  document.querySelectorAll('.claude-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.claude-tab').forEach(t => {
+        t.classList.remove('active');
+        t.style.borderBottomColor = 'transparent';
+        t.style.color = '#6b7280';
+      });
+      tab.classList.add('active');
+      tab.style.borderBottomColor = '#1F4E79';
+      tab.style.color = '#1F4E79';
+    });
+  });
+
+  // Claude chat send
+  function sendClaudeMessage() {
+    if (!input || !chatContainer) return;
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    // Add user message
+    const userBubble = document.createElement('div');
+    userBubble.className = 'claude-message';
+    userBubble.textContent = msg;
+    chatContainer.appendChild(userBubble);
+
+    // Simulate response
+    const assistantBubble = document.createElement('div');
+    assistantBubble.className = 'claude-message assistant';
+    assistantBubble.textContent = getClaudeResponse(msg);
+    chatContainer.appendChild(assistantBubble);
+
+    input.value = '';
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  if (sendBtn) sendBtn.addEventListener('click', sendClaudeMessage);
+  if (input) input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendClaudeMessage();
+  });
+}
+
+function getClaudeResponse(msg) {
+  const lower = msg.toLowerCase();
+  if (lower.includes('breakeven') || lower.includes('break even')) {
+    return `At ${CONFIG.JOBS_PER_WEEK} jobs/week (${CONFIG.JOBS_PER_MONTH.toFixed(1)}/month), overhead per job is ${fmt(CONFIG.OVERHEAD_PER_JOB)}. Breakeven per job: ${fmt(CONFIG.BREAKEVEN_PER_JOB)}.`;
+  }
+  if (lower.includes('overhead')) {
+    return `Monthly overhead: ${fmt(CONFIG.MONTHLY_OVERHEAD)}. At ${CONFIG.JOBS_PER_WEEK} jobs/week, that's ${fmt(CONFIG.OVERHEAD_PER_JOB)} per job. Cost per hour: ${fmt(CONFIG.COST_PER_HOUR)}.`;
+  }
+  if (lower.includes('profit') || lower.includes('revenue')) {
+    const allRevenue = DataStore.jobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
+    const allCost = DataStore.jobs.reduce((sum, j) => sum + calcJobCost(j).total, 0);
+    return `Total revenue: ${fmt(allRevenue)}. Total cost: ${fmt(allCost)}. Net profit: ${fmt(allRevenue - allCost)}. Margin: ${pct((allRevenue - allCost) / allRevenue)}.`;
+  }
+  if (lower.includes('job') && lower.includes('count')) {
+    return `${DataStore.jobs.length} total jobs. ${DataStore.jobs.filter(j => j.status === 'completed').length} completed, ${DataStore.jobs.filter(j => j.status === 'in-progress').length} in progress, ${DataStore.jobs.filter(j => j.status === 'scheduled').length} scheduled.`;
+  }
+  return `I can help with breakeven analysis, overhead calculations, profit reports, and job counts. Try asking about any of those topics.`;
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Load persisted data (if any)
+  loadPersistedData();
+
+  // Login handling
+  const loginForm = document.getElementById('loginForm');
+  const loginContainer = document.getElementById('loginContainer');
+  const appContainer = document.getElementById('appContainer');
+  const demoModeBtn = document.getElementById('demoModeBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  function doLogin() {
+    if (loginContainer) loginContainer.style.display = 'none';
+    if (appContainer) appContainer.style.display = 'flex';
+    localStorage.setItem('akino_logged_in', 'true');
+    switchTab('dashboard');
+  }
+
+  function doLogout() {
+    if (loginContainer) loginContainer.style.display = 'flex';
+    if (appContainer) appContainer.style.display = 'none';
+    localStorage.removeItem('akino_logged_in');
+  }
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      doLogin();
+    });
+  }
+
+  if (demoModeBtn) demoModeBtn.addEventListener('click', doLogin);
+  if (logoutBtn) logoutBtn.addEventListener('click', doLogout);
+
+  // Auto-login if session persists
+  if (localStorage.getItem('akino_logged_in') === 'true') {
+    doLogin();
+  }
+
+  // Initialize tab navigation
+  const navItems = document.querySelectorAll('.nav-item[data-tab]');
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const tab = item.dataset.tab;
+      switchTab(tab);
+    });
+  });
+
+  // Initialize buttons
+  const addJobBtn = document.getElementById('addJobBtn');
+  if (addJobBtn) {
+    addJobBtn.addEventListener('click', () => {
+      const modal = document.getElementById('jobModal');
+      if (modal) {
+        modal.dataset.editingId = '';
+        // Clear form fields for new job
+        ['jobModalCustomer', 'jobModalCity', 'jobModalState', 'jobModalTech',
+         'jobModalStatus', 'jobModalService', 'jobModalRevenue', 'jobModalScheduled',
+         'jobModalNotes'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+      }
+      showModal('jobModal');
+    });
+  }
+
+  const saveJobBtn = document.getElementById('saveJobBtn');
+  if (saveJobBtn) saveJobBtn.addEventListener('click', saveJob);
+
+  const cancelJobBtn = document.getElementById('cancelJobBtn');
+  if (cancelJobBtn) cancelJobBtn.addEventListener('click', () => hideModal('jobModal'));
+
+  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+  if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', saveSettings);
+
+  const calculateBtn = document.getElementById('calculateBtn');
+  if (calculateBtn) calculateBtn.addEventListener('click', calculateTrueCost);
+
+  // Sync button
+  const syncBtn = document.getElementById('syncBackendBtn');
+  if (syncBtn) syncBtn.addEventListener('click', syncWithBackend);
+
+  // Reconciliation buttons
+  const reconImportBtn = document.getElementById('reconImportBtn');
+  if (reconImportBtn) reconImportBtn.addEventListener('click', importUnreconciled);
+  const reconAutoMatchBtn = document.getElementById('reconAutoMatchBtn');
+  if (reconAutoMatchBtn) reconAutoMatchBtn.addEventListener('click', autoMatchRecon);
+  const reconStatusFilter = document.getElementById('reconStatusFilter');
+  if (reconStatusFilter) reconStatusFilter.addEventListener('change', renderReconciliation);
+
+  // Quoting Engine button
+  const generateQuoteBtn = document.getElementById('generateQuoteBtn');
+  if (generateQuoteBtn) generateQuoteBtn.addEventListener('click', generateQuote);
+
+  // Archive Paid Jobs button
+  const archivePaidBtn = document.getElementById('archivePaidBtn');
+  if (archivePaidBtn) archivePaidBtn.addEventListener('click', archivePaidJobs);
+
+  // Fleet PDF Export button
+  const exportPdfsBtn = document.getElementById('exportPdfsBtn');
+  if (exportPdfsBtn) exportPdfsBtn.addEventListener('click', exportFleetPDF);
+
+  // Geocode Backlog button
+  const geocodeBacklogBtn = document.getElementById('geocodeBacklogBtn');
+  if (geocodeBacklogBtn) geocodeBacklogBtn.addEventListener('click', geocodeBacklog);
+
+  // System Diagnostics buttons
+  const runDiagnosticsBtn = document.getElementById('runDiagnosticsBtn');
+  if (runDiagnosticsBtn) runDiagnosticsBtn.addEventListener('click', runDiagnostics);
+  const repairDashboardBtn = document.getElementById('repairDashboardBtn');
+  if (repairDashboardBtn) repairDashboardBtn.addEventListener('click', () => { toast('Dashboard repair requires backend connection. Set Apps Script URL in Settings.', 'info'); });
+  const cleanOverheadBtn = document.getElementById('cleanOverheadBtn');
+  if (cleanOverheadBtn) cleanOverheadBtn.addEventListener('click', () => { toast('Overhead cleanup requires backend connection. Set Apps Script URL in Settings.', 'info'); });
+
+  // Hamburger menu (mobile)
+  const hamburger = document.getElementById('hamburgerMenu');
+  const sidebar = document.getElementById('navSidebar');
+  if (hamburger && sidebar) {
+    hamburger.addEventListener('click', () => {
+      sidebar.classList.toggle('mobile-hidden');
+      sidebar.classList.toggle('active');
+    });
+  }
+
+  // Initialize Claude sidebar
+  initClaudeSidebar();
+
+  // Render initial dashboard
+  switchTab('dashboard');
+
+  // Initialize search and filter listeners
+  const jobSearchInput = document.getElementById('jobSearchInput');
+  if (jobSearchInput) {
+    jobSearchInput.addEventListener('input', renderJobs);
+  }
+
+  const jobStatusFilter = document.getElementById('jobStatusFilter');
+  if (jobStatusFilter) {
+    jobStatusFilter.addEventListener('change', renderJobs);
+  }
+
+  const jobTechFilter = document.getElementById('jobTechFilter');
+  if (jobTechFilter) {
+    jobTechFilter.addEventListener('change', renderJobs);
+  }
+});
+
+// ============================================================================
+// EXPORT/IMPORT
+// ============================================================================
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(DataStore, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'akino_solar_data.json';
+  a.click();
+}
+
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      Object.assign(DataStore, imported);
+      persistData();
+      toast('Data imported successfully', 'success');
+      switchTab('dashboard');
+    } catch (err) {
+      toast('Failed to import data: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+    </script>
+</body>
+</html>

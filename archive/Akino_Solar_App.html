@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Akino Solar Command Center</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1a1a2e}
+.header{background:linear-gradient(135deg,#1F4E79,#2563EB);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:22px;font-weight:800;letter-spacing:1px}
+.header .subtitle{font-size:12px;color:#93c5fd}
+.header .runrate{text-align:right}
+.header .runrate .label{font-size:11px;color:#93c5fd}
+.header .runrate .val{font-size:20px;font-weight:700}
+.tabs{display:flex;background:#fff;border-bottom:2px solid #e5e7eb;overflow-x:auto}
+.tab{padding:12px 20px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:#6b7280;white-space:nowrap;transition:.2s}
+.tab:hover{color:#1F4E79;background:#f8fafc}
+.tab.active{color:#2563EB;border-bottom-color:#2563EB;background:#eff6ff}
+.content{max-width:1200px;margin:0 auto;padding:20px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px}
+@media(max-width:768px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.card h3{font-size:13px;font-weight:700;color:#374151;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.kpi{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-left:4px solid #1F4E79}
+.kpi .label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px}
+.kpi .value{font-size:24px;font-weight:800;margin-top:4px}
+.kpi .sub{font-size:11px;color:#9ca3af;margin-top:2px}
+.kpi.green{border-left-color:#16a34a} .kpi.green .value{color:#16a34a}
+.kpi.red{border-left-color:#dc2626} .kpi.red .value{color:#dc2626}
+.kpi.blue{border-left-color:#2563EB} .kpi.blue .value{color:#2563EB}
+.kpi.orange{border-left-color:#ea580c} .kpi.orange .value{color:#ea580c}
+.kpi.navy .value{color:#1F4E79}
+input,select{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;outline:none;transition:.2s}
+input:focus,select:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+label{display:block;font-size:11px;font-weight:600;color:#6b7280;margin-bottom:4px;text-transform:uppercase}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.verdict-box{border-radius:12px;padding:24px;margin-top:16px;text-align:center}
+.verdict-box.accept{background:#f0fdf4;border:2px solid #16a34a}
+.verdict-box.reject{background:#fef2f2;border:2px solid #dc2626}
+.verdict-text{font-size:36px;font-weight:900;letter-spacing:2px}
+.cost-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:14px}
+.cost-row:last-child{border-bottom:none}
+.cost-row .clabel{color:#6b7280}
+.cost-row .cval{font-weight:600}
+.cost-row.total{border-top:2px solid #1F4E79;font-weight:700;font-size:15px;padding-top:12px}
+.min-price{background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:16px;margin-top:16px}
+.min-price .mp-label{font-size:12px;color:#92400e;font-weight:600}
+.min-price .mp-val{font-size:28px;font-weight:900;color:#b45309}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:#1F4E79;color:#fff}
+th{padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+td{padding:10px 12px;border-bottom:1px solid #f3f4f6}
+tr:nth-child(even){background:#f9fafb}
+tr:hover{background:#eff6ff}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge.accept{background:#dcfce7;color:#166534}
+.badge.reject{background:#fee2e2;color:#991b1b}
+.badge.warn{background:#fef3c7;color:#92400e}
+.chart-container{position:relative;height:280px;margin-top:8px}
+.section-title{font-size:16px;font-weight:800;color:#1F4E79;margin:24px 0 12px;padding-bottom:8px;border-bottom:2px solid #e5e7eb}
+.highlight-row{background:#fff7ed !important;font-weight:700}
+.footer{text-align:center;padding:20px;color:#9ca3af;font-size:11px}
+.entry-section{background:#eff6ff;border:2px solid #2563EB;border-radius:12px;padding:20px;margin-bottom:20px}
+.entry-section h3{color:#1F4E79}
+.btn{padding:10px 20px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:.2s}
+.btn-primary{background:#2563EB;color:#fff}.btn-primary:hover{background:#1d4ed8}
+.btn-danger{background:#dc2626;color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-success{background:#16a34a;color:#fff}.btn-success:hover{background:#15803d}
+.btn-outline{background:#fff;color:#374151;border:1px solid #d1d5db}.btn-outline:hover{background:#f9fafb}
+.btn-group{display:flex;gap:8px;margin-top:12px}
+.alert{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:12px}
+.alert-warn{background:#fef3c7;border:1px solid #f59e0b;color:#92400e}
+.alert-danger{background:#fee2e2;border:1px solid #dc2626;color:#991b1b}
+.alert-success{background:#dcfce7;border:1px solid #16a34a;color:#166534}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="header">
+  <div><h1>AKINO SOLAR</h1><div class="subtitle">Command Center</div></div>
+  <div class="runrate"><div class="label">Monthly Run-Rate</div><div class="val" id="headerRunRate">$56,638</div></div>
+</div>
+<div class="tabs" id="tabBar">
+  <div class="tab active" data-tab="pricing">Job Pricing</div>
+  <div class="tab" data-tab="dashboard">Dashboard</div>
+  <div class="tab" data-tab="entry">Daily Entry</div>
+  <div class="tab" data-tab="jobs">Job P&L</div>
+  <div class="tab" data-tab="routes">Routes</div>
+  <div class="tab" data-tab="breakeven">Break-Even</div>
+  <div class="tab" data-tab="warranty">Warranty</div>
+</div>
+
+<!-- PRICING CALCULATOR -->
+<div class="content" id="page-pricing">
+  <div class="section-title">Job Pricing Calculator</div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Job Details</h3>
+      <div class="form-grid">
+        <div><label>Technician</label><select id="pc-tech"><option value="Sam">Sam — $32.50/hr</option><option value="Lucas">Lucas — $26.00/hr</option><option value="Spencer">Spencer — $52.00/hr</option><option value="Caden">Caden — $37.51/hr</option><option value="Lex">Lex — $39.00/hr</option><option value="Katie">Katie — $26.00/hr</option></select></div>
+        <div><label>Customer Revenue ($)</label><input type="number" id="pc-revenue" value="800"></div>
+        <div><label>Onsite Hours</label><input type="number" id="pc-onsite" value="2" step="0.5"></div>
+        <div><label>Travel Hours</label><input type="number" id="pc-travel" value="2" step="0.5"></div>
+        <div><label>Miles (round trip)</label><input type="number" id="pc-miles" value="200"></div>
+        <div><label>Parts Cost ($)</label><input type="number" id="pc-parts" value="0"></div>
+        <div><label>Consumables ($)</label><input type="number" id="pc-consum" value="0"></div>
+      </div>
+    </div>
+    <div>
+      <div id="pc-verdict" class="verdict-box accept">
+        <div class="verdict-text" id="pc-verdict-text">ACCEPT</div>
+        <div style="margin-top:8px;font-size:14px;color:#374151" id="pc-verdict-sub">This job is profitable</div>
+      </div>
+      <div class="grid3" style="margin-top:12px">
+        <div class="kpi navy"><div class="label">True Cost</div><div class="value" id="pc-cost">$0</div></div>
+        <div class="kpi" id="pc-profit-kpi"><div class="label">Net Profit</div><div class="value" id="pc-profit">$0</div></div>
+        <div class="kpi" id="pc-margin-kpi"><div class="label">Margin</div><div class="value" id="pc-margin">0%</div></div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <h3>Cost Breakdown</h3>
+        <div id="pc-breakdown"></div>
+      </div>
+      <div class="min-price">
+        <div class="mp-label">Minimum price to charge (10% margin):</div>
+        <div class="mp-val" id="pc-minprice">$0</div>
+        <div style="font-size:11px;color:#92400e;margin-top:4px" id="pc-minprice-note"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="content hidden" id="page-dashboard">
+  <div class="section-title">Business Dashboard</div>
+  <div class="grid4" id="dash-kpis"></div>
+  <div class="grid2" style="margin-top:16px">
+    <div class="card"><h3>Revenue vs True Cost by Tech</h3><div class="chart-container"><canvas id="chartTechPerf"></canvas></div></div>
+    <div class="card"><h3>Overhead Breakdown</h3><div class="chart-container"><canvas id="chartOverhead"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h3>Monthly Revenue vs Cost Trend</h3><div class="chart-container"><canvas id="chartMonthly"></canvas></div></div>
+</div>
+
+<!-- DAILY ENTRY -->
+<div class="content hidden" id="page-entry">
+  <div class="section-title">Daily Job Entry</div>
+  <div class="entry-section">
+    <h3>Add New Job</h3>
+    <div class="form-grid" style="margin-top:12px">
+      <div><label>Date</label><input type="date" id="e-date"></div>
+      <div><label>Job ID</label><input type="text" id="e-jobid" placeholder="e.g. 597"></div>
+      <div><label>Customer</label><input type="text" id="e-customer" placeholder="Customer name"></div>
+      <div><label>City</label><input type="text" id="e-city"></div>
+      <div><label>State</label><input type="text" id="e-state" value="TN" maxlength="2"></div>
+      <div><label>Tech</label><select id="e-tech"><option>Sam</option><option>Lucas</option><option>Spencer</option><option>Caden</option><option>Lex</option><option>Katie</option></select></div>
+      <div><label>Priority</label><select id="e-priority"><option>Medium</option><option>High</option><option>Low</option></select></div>
+      <div><label>Route</label><select id="e-route"><option value="">—</option><option>R1</option><option>R2</option><option>R3</option><option>R4</option><option>R5</option><option>R6</option><option>R7</option><option>R8</option><option>R9</option><option>R10</option><option>R11</option><option>R12</option><option>R13</option><option>R14</option><option>R15</option><option>R16</option><option>R17</option><option>R18</option></select></div>
+      <div><label>Type</label><select id="e-type"><option>Service</option><option>Warranty</option><option>Both</option></select></div>
+      <div><label>Onsite Hrs</label><input type="number" id="e-onsite" value="2" step="0.5"></div>
+      <div><label>Travel Hrs</label><input type="number" id="e-travel" value="2" step="0.5"></div>
+      <div><label>Miles</label><input type="number" id="e-miles" value="200"></div>
+      <div><label>Parts $</label><input type="number" id="e-parts" value="0"></div>
+      <div><label>Revenue $</label><input type="number" id="e-revenue" value="0"></div>
+      <div><label>W. Case #</label><input type="text" id="e-wcase" placeholder="Warranty case#"></div>
+      <div><label>W. Status</label><select id="e-wstatus"><option value="">—</option><option>Submitted</option><option>Completed not paid</option><option>Paid</option><option>Denied</option></select></div>
+      <div><label>Notes</label><input type="text" id="e-notes" placeholder="Notes..."></div>
+      <div><label>&nbsp;</label><button class="btn btn-primary" onclick="addJob()" style="width:100%">Add Job</button></div>
+    </div>
+  </div>
+  <div id="entry-alert"></div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="margin:0">All Jobs (<span id="job-count">0</span>)</h3>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="exportData()">Export JSON</button>
+        <label class="btn btn-outline" style="cursor:pointer">Import JSON<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table><thead><tr>
+        <th>Date</th><th>ID</th><th>Customer</th><th>Tech</th><th>Hrs</th><th>Miles</th><th>Revenue</th><th>True Cost</th><th>Profit</th><th>Verdict</th><th></th>
+      </tr></thead><tbody id="jobs-tbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- JOB P&L -->
+<div class="content hidden" id="page-jobs">
+  <div class="section-title">Job Profit & Loss</div>
+  <div class="grid3" id="pnl-kpis"></div>
+  <div class="card" style="margin-top:16px"><h3>Tech Performance Summary</h3>
+    <table><thead><tr><th>Tech</th><th>Jobs</th><th>Revenue</th><th>True Cost</th><th>Net Profit</th><th>Avg Margin</th></tr></thead><tbody id="tech-tbody"></tbody></table>
+  </div>
+  <div class="card" style="margin-top:16px"><h3>All Jobs Ranked by Profit</h3>
+    <div style="overflow-x:auto"><table><thead><tr><th>Job</th><th>Customer</th><th>Tech</th><th>Date</th><th>Revenue</th><th>True Cost</th><th>Net Profit</th><th>Margin</th><th>Verdict</th></tr></thead><tbody id="pnl-tbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- ROUTES -->
+<div class="content hidden" id="page-routes">
+  <div class="section-title">Route Performance</div>
+  <div class="grid3" id="route-kpis"></div>
+  <div class="card" style="margin-top:16px"><h3>Revenue by Route</h3><div class="chart-container"><canvas id="chartRoutes"></canvas></div></div>
+  <div class="card" style="margin-top:16px">
+    <table><thead><tr><th>Route</th><th>Jobs</th><th>Miles</th><th>Drive Time</th><th>Revenue</th><th>$/Job</th><th>$/Mile</th></tr></thead><tbody id="routes-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- BREAK-EVEN -->
+<div class="content hidden" id="page-breakeven">
+  <div class="section-title">Break-Even Analysis</div>
+  <div class="alert alert-warn">At your current volume (~5 jobs/week), each job needs at least <strong id="be-current">$0</strong> to break even.</div>
+  <div class="card"><h3>Breakeven Revenue Per Job by Volume</h3><div class="chart-container"><canvas id="chartBE"></canvas></div></div>
+  <div class="card" style="margin-top:16px">
+    <table><thead><tr><th>Jobs/Week</th><th>Jobs/Month</th><th>Overhead</th><th>Per Job</th><th>Breakeven/Job</th><th>Cost/Hour</th></tr></thead><tbody id="be-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- WARRANTY -->
+<div class="content hidden" id="page-warranty">
+  <div class="section-title">Warranty Claims Tracker</div>
+  <div class="grid4" id="warranty-kpis"></div>
+  <div class="card" style="margin-top:16px">
+    <h3>Warranty Claims</h3>
+    <table><thead><tr><th>Date</th><th>Customer</th><th>Case#</th><th>Tech</th><th>Status</th><th>Adjusted $</th><th>Paid $</th><th>Outstanding</th></tr></thead><tbody id="warranty-tbody"></tbody></table>
+  </div>
+</div>
+
+<div class="footer">Akino Solar Command Center &mdash; Built Feb 11, 2026 &mdash; Data saves when you export</div>
+
+<script>
+const TECHS={Sam:{loaded:32.5},Lucas:{loaded:26},Spencer:{loaded:52},Caden:{loaded:37.51},Lex:{loaded:39},Katie:{loaded:26}};
+const FUEL=0.99, OVERHEAD_TOTAL=56637.88, JOBS_WK=5, BE_PER_JOB=OVERHEAD_TOTAL/(JOBS_WK*52/12)+100;
+const ROUTES_DATA=[
+  {id:"R1",jobs:4,miles:372.56,min:640,val:400},{id:"R2",jobs:4,miles:382.10,min:655,val:150},
+  {id:"R3",jobs:4,miles:501.72,min:860,val:1433.82},{id:"R4",jobs:4,miles:229.25,min:393,val:1407.88},
+  {id:"R5",jobs:4,miles:289.38,min:497,val:0},{id:"R6",jobs:4,miles:333.08,min:571,val:0},
+  {id:"R7",jobs:4,miles:445.59,min:764,val:3820.20},{id:"R8",jobs:4,miles:761.43,min:1305,val:1146.21},
+  {id:"R9",jobs:4,miles:501.89,min:860,val:1278.51},{id:"R10",jobs:4,miles:470.11,min:805,val:4893.62},
+  {id:"R11",jobs:4,miles:396.41,min:679,val:667.50},{id:"R12",jobs:4,miles:329.68,min:566,val:2289},
+  {id:"R13",jobs:4,miles:156.16,min:267,val:961.88},{id:"R14",jobs:4,miles:46.05,min:79,val:826.63},
+  {id:"R15",jobs:4,miles:130.86,min:225,val:75},{id:"R16",jobs:4,miles:168.70,min:289,val:606.88},
+  {id:"R17",jobs:4,miles:763.69,min:1310,val:2073},{id:"R18",jobs:1,miles:731.52,min:1254,val:600}
+];
+const OVERHEAD_CAT=[
+  {cat:"People & Payroll",val:33383},{cat:"Software & Comms",val:1819},{cat:"Storage",val:899},
+  {cat:"Fleet & Insurance",val:2358},{cat:"Misc/Other",val:3537},{cat:"Debt",val:7593},
+  {cat:"Reserves & Taxes",val:8315},{cat:"Depreciation",val:1283},{cat:"Variable",val:1925}
+];
+
+let jobs=[
+  {date:"2026-01-05",id:"435804",customer:"Dennis Stadler",city:"McEwen",state:"TN",tech:"Lucas",priority:"Medium",route:"R7",type:"Both",onsite:1,travel:4,miles:234,parts:0,revenue:150,wcase:"435804",wstatus:"Completed not paid",notes:"Warranty + service"},
+  {date:"2026-01-06",id:"439295",customer:"Krista Hogan",city:"",state:"TN",tech:"Lucas",priority:"Medium",route:"",type:"Warranty",onsite:2.5,travel:1,miles:28,parts:0,revenue:450,wcase:"439295",wstatus:"Completed not paid",notes:"Warranty claim"},
+  {date:"2026-01-05",id:"",customer:"Anna Testa",city:"",state:"TN",tech:"",priority:"Low",route:"",type:"Warranty",onsite:0,travel:0,miles:0,parts:0,revenue:0,wcase:"",wstatus:"Submitted",notes:"Pending"},
+  {date:"2026-02-11",id:"597",customer:"Barabra Arledge",city:"Portland",state:"TN",tech:"Lucas",priority:"High",route:"R10",type:"Service",onsite:3,travel:2,miles:470,parts:0,revenue:3713.62,wcase:"",wstatus:"",notes:""},
+  {date:"2026-02-10",id:"628",customer:"Martha Berry",city:"Nashville",state:"TN",tech:"Caden",priority:"High",route:"R7",type:"Service",onsite:2,travel:1.5,miles:445,parts:0,revenue:1404.20,wcase:"",wstatus:"",notes:""},
+  {date:"2026-02-17",id:"649",customer:"Peter Tran",city:"Ellijay",state:"TN",tech:"Caden",priority:"High",route:"R3",type:"Service",onsite:2,travel:2,miles:500,parts:0,revenue:740.82,wcase:"",wstatus:"",notes:""},
+  {date:"2026-02-11",id:"464",customer:"Mary Leffell",city:"Louisville",state:"KY",tech:"Sam",priority:"Medium",route:"R14",type:"Service",onsite:1,travel:1,miles:46,parts:0,revenue:394.63,wcase:"",wstatus:"",notes:""},
+  {date:"2026-02-19",id:"638",customer:"Erica Drvoldelic",city:"Grovetown",state:"GA",tech:"Lucas",priority:"Low",route:"R3",type:"Service",onsite:2,travel:3,miles:501,parts:0,revenue:343.50,wcase:"",wstatus:"",notes:""},
+  {date:"2026-02-11",id:"645",customer:"Jason Wirth",city:"Fairview",state:"TN",tech:"Caden",priority:"Medium",route:"R7",type:"Service",onsite:3,travel:2,miles:445,parts:0,revenue:2191,wcase:"",wstatus:"",notes:""},
+  {date:"2026-02-11",id:"666",customer:"Dennis Stadler",city:"McEwen",state:"TN",tech:"Caden",priority:"Medium",route:"R7",type:"Service",onsite:1,travel:1.5,miles:333,parts:0,revenue:75,wcase:"",wstatus:"",notes:"Troubleshoot"},
+  {date:"2026-01-15",id:"200",customer:"Jon",city:"",state:"TN",tech:"Caden",priority:"Medium",route:"",type:"Service",onsite:2,travel:1,miles:98,parts:0,revenue:676,wcase:"",wstatus:"",notes:""},
+  {date:"2026-01-20",id:"100",customer:"Heidi",city:"",state:"TN",tech:"Lucas",priority:"Medium",route:"",type:"Service",onsite:7,travel:1,miles:100,parts:0,revenue:900,wcase:"",wstatus:"",notes:""},
+  {date:"2026-01-25",id:"500",customer:"Bane",city:"",state:"TN",tech:"Lucas",priority:"High",route:"",type:"Service",onsite:8,travel:4,miles:510,parts:0,revenue:675,wcase:"",wstatus:"",notes:""},
+  {date:"2025-12-21",id:"410",customer:"Rivera",city:"Atlanta",state:"GA",tech:"Lucas",priority:"Medium",route:"R1",type:"Service",onsite:1,travel:2,miles:372,parts:0,revenue:400,wcase:"",wstatus:"",notes:""},
+  {date:"2026-02-11",id:"616",customer:"Robert Makowski",city:"Adamsville",state:"TN",tech:"Lucas",priority:"High",route:"R8",type:"Service",onsite:2,travel:3,miles:761,parts:0,revenue:649.50,wcase:"",wstatus:"",notes:""}
+];
+
+function fmt(v){if(v==null)return"$0.00";const n=v<0;const a=Math.abs(v);const s="$"+a.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});return n?`(${s})`:s}
+function pct(v){return(v*100).toFixed(1)+"%"}
+function calcCost(j){
+  const rate=TECHS[j.tech]?TECHS[j.tech].loaded:30;
+  const labor=(j.onsite+j.travel)*rate;
+  const travelCost=j.miles*FUEL;
+  const overhead=OVERHEAD_TOTAL/(JOBS_WK*52/12);
+  const total=labor+travelCost+j.parts+overhead;
+  return{labor,travelCost,overhead,total,rate};
+}
+
+// TAB SWITCHING
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelectorAll('.content').forEach(p=>p.classList.add('hidden'));
+    document.getElementById('page-'+t.dataset.tab).classList.remove('hidden');
+    renderAll();
+  });
+});
+
+// PRICING CALCULATOR
+function updatePricing(){
+  const tech=document.getElementById('pc-tech').value;
+  const rev=+document.getElementById('pc-revenue').value;
+  const onsite=+document.getElementById('pc-onsite').value;
+  const travel=+document.getElementById('pc-travel').value;
+  const miles=+document.getElementById('pc-miles').value;
+  const parts=+document.getElementById('pc-parts').value;
+  const consum=+document.getElementById('pc-consum').value;
+  const rate=TECHS[tech]?TECHS[tech].loaded:30;
+  const labor=(onsite+travel)*rate;
+  const travelC=miles*FUEL;
+  const overhead=OVERHEAD_TOTAL/(JOBS_WK*52/12);
+  const total=labor+travelC+parts+consum+overhead;
+  const profit=rev-total;
+  const margin=rev>0?profit/rev:0;
+  const minPrice=total*1.1;
+  const accept=profit>=0;
+  document.getElementById('pc-cost').textContent=fmt(total);
+  document.getElementById('pc-profit').textContent=fmt(profit);
+  document.getElementById('pc-margin').textContent=pct(margin);
+  const vb=document.getElementById('pc-verdict');
+  vb.className='verdict-box '+(accept?'accept':'reject');
+  document.getElementById('pc-verdict-text').textContent=accept?'ACCEPT':'REJECT';
+  document.getElementById('pc-verdict-text').style.color=accept?'#16a34a':'#dc2626';
+  document.getElementById('pc-verdict-sub').textContent=accept?'This job is profitable':'This job loses money';
+  const pk=document.getElementById('pc-profit-kpi');pk.className='kpi '+(profit>=0?'green':'red');
+  const mk=document.getElementById('pc-margin-kpi');mk.className='kpi '+(margin>=0?'green':'red');
+  document.getElementById('pc-minprice').textContent=fmt(minPrice);
+  document.getElementById('pc-minprice-note').textContent=`Anything below ${fmt(total)} is a guaranteed loss.`;
+  document.getElementById('pc-breakdown').innerHTML=[
+    {l:`Labor (${(onsite+travel).toFixed(1)} hrs x $${rate.toFixed(2)})`,v:labor},
+    {l:`Travel (${miles} mi x $${FUEL})`,v:travelC},
+    {l:'Parts',v:parts},{l:'Consumables',v:consum},{l:'Overhead allocation',v:overhead},
+    {l:'Total True Cost',v:total,total:true}
+  ].map(r=>`<div class="cost-row${r.total?' total':''}"><span class="clabel">${r.l}</span><span class="cval">${fmt(r.v)}</span></div>`).join('');
+}
+['pc-tech','pc-revenue','pc-onsite','pc-travel','pc-miles','pc-parts','pc-consum'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',updatePricing);
+  document.getElementById(id).addEventListener('change',updatePricing);
+});
+
+// ADD JOB
+function addJob(){
+  const j={
+    date:document.getElementById('e-date').value||new Date().toISOString().slice(0,10),
+    id:document.getElementById('e-jobid').value,
+    customer:document.getElementById('e-customer').value,
+    city:document.getElementById('e-city').value,
+    state:document.getElementById('e-state').value,
+    tech:document.getElementById('e-tech').value,
+    priority:document.getElementById('e-priority').value,
+    route:document.getElementById('e-route').value,
+    type:document.getElementById('e-type').value,
+    onsite:+document.getElementById('e-onsite').value,
+    travel:+document.getElementById('e-travel').value,
+    miles:+document.getElementById('e-miles').value,
+    parts:+document.getElementById('e-parts').value,
+    revenue:+document.getElementById('e-revenue').value,
+    wcase:document.getElementById('e-wcase').value,
+    wstatus:document.getElementById('e-wstatus').value,
+    notes:document.getElementById('e-notes').value
+  };
+  if(!j.customer){document.getElementById('entry-alert').innerHTML='<div class="alert alert-danger">Customer name is required.</div>';return}
+  jobs.unshift(j);
+  const c=calcCost(j);
+  const v=j.revenue>=c.total?'ACCEPT':'REJECT';
+  document.getElementById('entry-alert').innerHTML=`<div class="alert ${v==='ACCEPT'?'alert-success':'alert-warn'}">Added: ${j.customer} — ${v} (Revenue: ${fmt(j.revenue)}, Cost: ${fmt(c.total)}, Profit: ${fmt(j.revenue-c.total)})</div>`;
+  document.getElementById('e-jobid').value='';document.getElementById('e-customer').value='';document.getElementById('e-notes').value='';
+  renderEntry();
+}
+function deleteJob(i){jobs.splice(i,1);renderEntry()}
+
+function renderEntry(){
+  document.getElementById('job-count').textContent=jobs.length;
+  document.getElementById('jobs-tbody').innerHTML=jobs.map((j,i)=>{
+    const c=calcCost(j);const p=j.revenue-c.total;const v=p>=0;
+    return`<tr><td>${j.date}</td><td>${j.id}</td><td>${j.customer}</td><td>${j.tech}</td><td>${(j.onsite+j.travel).toFixed(1)}</td><td>${j.miles}</td><td style="color:#2563EB;font-weight:600">${fmt(j.revenue)}</td><td>${fmt(c.total)}</td><td style="color:${v?'#16a34a':'#dc2626'};font-weight:700">${fmt(p)}</td><td><span class="badge ${v?'accept':'reject'}">${v?'ACCEPT':'REJECT'}</span></td><td><button onclick="deleteJob(${i})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px">x</button></td></tr>`;
+  }).join('');
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(jobs,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='akino_jobs_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+}
+function importData(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=ev=>{try{jobs=JSON.parse(ev.target.result);renderAll();document.getElementById('entry-alert').innerHTML='<div class="alert alert-success">Imported '+jobs.length+' jobs.</div>'}catch(e){document.getElementById('entry-alert').innerHTML='<div class="alert alert-danger">Invalid JSON file.</div>'}};r.readAsText(f);
+}
+
+// DASHBOARD
+let charts={};
+function renderDashboard(){
+  const jc=jobs.map(j=>{const c=calcCost(j);return{...j,...c,profit:j.revenue-c.total,margin:j.revenue>0?(j.revenue-c.total)/j.revenue:0}});
+  const totRev=jc.reduce((s,j)=>s+j.revenue,0);
+  const totCost=jc.reduce((s,j)=>s+j.total,0);
+  const totProfit=totRev-totCost;
+  const accepted=jc.filter(j=>j.profit>=0).length;
+  document.getElementById('dash-kpis').innerHTML=[
+    {l:'Total Revenue',v:fmt(totRev),s:jobs.length+' jobs',c:'blue'},
+    {l:'Total True Cost',v:fmt(totCost),s:'Overhead: '+fmt(OVERHEAD_TOTAL)+'/mo',c:'orange'},
+    {l:'Net Profit/Loss',v:fmt(totProfit),s:'Margin: '+pct(totRev>0?totProfit/totRev:0),c:totProfit>=0?'green':'red'},
+    {l:'Accepted',v:accepted+' / '+jc.length,s:'Rate: '+pct(jc.length>0?accepted/jc.length:0),c:accepted>jc.length/2?'green':'red'}
+  ].map(k=>`<div class="kpi ${k.c}"><div class="label">${k.l}</div><div class="value">${k.v}</div><div class="sub">${k.s}</div></div>`).join('');
+
+  // Tech chart
+  const techNames=[...new Set(jc.map(j=>j.tech).filter(Boolean))];
+  const techRev=techNames.map(t=>jc.filter(j=>j.tech===t).reduce((s,j)=>s+j.revenue,0));
+  const techCost=techNames.map(t=>jc.filter(j=>j.tech===t).reduce((s,j)=>s+j.total,0));
+  if(charts.tech)charts.tech.destroy();
+  charts.tech=new Chart(document.getElementById('chartTechPerf'),{type:'bar',data:{labels:techNames,datasets:[{label:'Revenue',data:techRev,backgroundColor:'#2563EB'},{label:'True Cost',data:techCost,backgroundColor:'#dc2626'}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}}}}});
+
+  // Overhead pie
+  if(charts.overhead)charts.overhead.destroy();
+  charts.overhead=new Chart(document.getElementById('chartOverhead'),{type:'doughnut',data:{labels:OVERHEAD_CAT.map(c=>c.cat),datasets:[{data:OVERHEAD_CAT.map(c=>c.val),backgroundColor:['#1F4E79','#2563EB','#16a34a','#ea580c','#f59e0b','#8b5cf6','#ec4899','#6366f1','#14b8a6']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10}}}}}});
+
+  // Monthly
+  const months={};jc.forEach(j=>{const m=j.date.slice(0,7);if(!months[m])months[m]={m,rev:0,cost:0};months[m].rev+=j.revenue;months[m].cost+=j.total});
+  const md=Object.values(months).sort((a,b)=>a.m.localeCompare(b.m));
+  if(charts.monthly)charts.monthly.destroy();
+  charts.monthly=new Chart(document.getElementById('chartMonthly'),{type:'line',data:{labels:md.map(m=>m.m),datasets:[{label:'Revenue',data:md.map(m=>m.rev),borderColor:'#2563EB',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:.3},{label:'True Cost',data:md.map(m=>m.cost),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.1)',fill:true,tension:.3}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}}}}});
+}
+
+// JOB P&L
+function renderPnL(){
+  const jc=jobs.map(j=>{const c=calcCost(j);return{...j,...c,profit:j.revenue-c.total,margin:j.revenue>0?(j.revenue-c.total)/j.revenue:-1}}).sort((a,b)=>b.profit-a.profit);
+  const totRev=jc.reduce((s,j)=>s+j.revenue,0);
+  const totProfit=jc.reduce((s,j)=>s+j.profit,0);
+  document.getElementById('pnl-kpis').innerHTML=[
+    {l:'Total Revenue',v:fmt(totRev),c:'blue'},{l:'Total Net P/L',v:fmt(totProfit),c:totProfit>=0?'green':'red'},
+    {l:'Avg Profit/Job',v:fmt(jc.length>0?totProfit/jc.length:0),c:totProfit>=0?'green':'red'}
+  ].map(k=>`<div class="kpi ${k.c}"><div class="label">${k.l}</div><div class="value">${k.v}</div></div>`).join('');
+
+  const techNames=[...new Set(jc.map(j=>j.tech).filter(Boolean))];
+  document.getElementById('tech-tbody').innerHTML=techNames.map(t=>{
+    const tj=jc.filter(j=>j.tech===t);
+    const rev=tj.reduce((s,j)=>s+j.revenue,0);const cost=tj.reduce((s,j)=>s+j.total,0);const prof=rev-cost;
+    return`<tr><td style="font-weight:700">${t}</td><td>${tj.length}</td><td>${fmt(rev)}</td><td>${fmt(cost)}</td><td style="color:${prof>=0?'#16a34a':'#dc2626'};font-weight:700">${fmt(prof)}</td><td>${pct(rev>0?prof/rev:0)}</td></tr>`;
+  }).join('')+`<tr style="background:#f0f2f5;font-weight:700"><td>TOTAL</td><td>${jc.length}</td><td>${fmt(totRev)}</td><td>${fmt(jc.reduce((s,j)=>s+j.total,0))}</td><td style="color:${totProfit>=0?'#16a34a':'#dc2626'}">${fmt(totProfit)}</td><td>${pct(totRev>0?totProfit/totRev:0)}</td></tr>`;
+
+  document.getElementById('pnl-tbody').innerHTML=jc.map(j=>{
+    const v=j.profit>=0;
+    return`<tr><td>${j.id||'-'}</td><td>${j.customer}</td><td>${j.tech}</td><td>${j.date}</td><td style="color:#2563EB">${fmt(j.revenue)}</td><td>${fmt(j.total)}</td><td style="color:${v?'#16a34a':'#dc2626'};font-weight:700">${fmt(j.profit)}</td><td>${pct(j.margin)}</td><td><span class="badge ${v?'accept':'reject'}">${v?'ACCEPT':'REJECT'}</span></td></tr>`;
+  }).join('');
+}
+
+// ROUTES
+function renderRoutes(){
+  const totVal=ROUTES_DATA.reduce((s,r)=>s+r.val,0);
+  const totMiles=ROUTES_DATA.reduce((s,r)=>s+r.miles,0);
+  const totJobs=ROUTES_DATA.reduce((s,r)=>s+r.jobs,0);
+  document.getElementById('route-kpis').innerHTML=[
+    {l:'Routes',v:ROUTES_DATA.length,s:totJobs+' total jobs',c:'navy'},
+    {l:'Total Route Value',v:fmt(totVal),s:'Avg '+fmt(totVal/ROUTES_DATA.length)+'/route',c:'blue'},
+    {l:'Total Miles',v:totMiles.toLocaleString(),s:'Avg '+(totMiles/ROUTES_DATA.length).toFixed(0)+' mi/route',c:'orange'}
+  ].map(k=>`<div class="kpi ${k.c}"><div class="label">${k.l}</div><div class="value">${k.v}</div><div class="sub">${k.s}</div></div>`).join('');
+
+  if(charts.routes)charts.routes.destroy();
+  charts.routes=new Chart(document.getElementById('chartRoutes'),{type:'bar',data:{labels:ROUTES_DATA.map(r=>r.id),datasets:[{label:'Route Value',data:ROUTES_DATA.map(r=>r.val),backgroundColor:ROUTES_DATA.map(r=>r.val>=BE_PER_JOB?'#16a34a':'#dc2626')}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}}},plugins:{legend:{display:false}}}});
+
+  document.getElementById('routes-tbody').innerHTML=ROUTES_DATA.map(r=>{
+    const h=Math.floor(r.min/60),m=r.min%60;
+    return`<tr><td style="font-weight:700">${r.id}</td><td>${r.jobs}</td><td>${r.miles.toFixed(0)}</td><td>${h}h ${m}m</td><td style="color:#2563EB;font-weight:600">${fmt(r.val)}</td><td>${fmt(r.jobs>0?r.val/r.jobs:0)}</td><td>${fmt(r.miles>0?r.val/r.miles:0)}</td></tr>`;
+  }).join('')+`<tr style="background:#f0f2f5;font-weight:700"><td>TOTAL</td><td>${totJobs}</td><td>${totMiles.toFixed(0)}</td><td>-</td><td style="color:#2563EB">${fmt(totVal)}</td><td>${fmt(totVal/totJobs)}</td><td>${fmt(totVal/totMiles)}</td></tr>`;
+}
+
+// BREAK-EVEN
+function renderBE(){
+  const scenarios=Array.from({length:15},(_,i)=>{
+    const jpw=i+1,jpm=jpw*52/12,perJob=OVERHEAD_TOTAL/jpm,be=perJob+100;
+    return{jpw,jpm:jpm.toFixed(1),perJob,be,cph:OVERHEAD_TOTAL/173.33};
+  });
+  document.getElementById('be-current').textContent=fmt(scenarios[4].be);
+  if(charts.be)charts.be.destroy();
+  charts.be=new Chart(document.getElementById('chartBE'),{type:'bar',data:{labels:scenarios.map(s=>s.jpw),datasets:[{label:'Breakeven/Job',data:scenarios.map(s=>s.be),backgroundColor:scenarios.map((_,i)=>i===4?'#ea580c':'#1F4E79')}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{title:{display:true,text:'Jobs/Week'}},y:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}}},plugins:{legend:{display:false}}}});
+  document.getElementById('be-tbody').innerHTML=scenarios.map((s,i)=>`<tr class="${i===4?'highlight-row':''}"><td>${s.jpw}${i===4?' (current)':''}</td><td>${s.jpm}</td><td>${fmt(OVERHEAD_TOTAL)}</td><td>${fmt(s.perJob)}</td><td style="color:#2563EB;font-weight:700">${fmt(s.be)}</td><td>${fmt(s.cph)}</td></tr>`).join('');
+}
+
+// WARRANTY
+function renderWarranty(){
+  const wj=jobs.filter(j=>j.type==='Warranty'||j.type==='Both');
+  const submitted=wj.filter(j=>j.wstatus==='Submitted').length;
+  const unpaid=wj.filter(j=>j.wstatus==='Completed not paid').length;
+  const paid=wj.filter(j=>j.wstatus==='Paid').length;
+  const denied=wj.filter(j=>j.wstatus==='Denied').length;
+  document.getElementById('warranty-kpis').innerHTML=[
+    {l:'Total Claims',v:wj.length,c:'navy'},{l:'Unpaid',v:unpaid,c:unpaid>0?'red':'green'},
+    {l:'Paid',v:paid,c:'green'},{l:'Submitted',v:submitted,c:submitted>0?'orange':'navy'}
+  ].map(k=>`<div class="kpi ${k.c}"><div class="label">${k.l}</div><div class="value">${k.v}</div></div>`).join('');
+
+  document.getElementById('warranty-tbody').innerHTML=wj.map(j=>{
+    const adj=j.revenue||0;const pd=0;const out=adj-pd;
+    const sc=j.wstatus==='Paid'?'accept':j.wstatus==='Denied'?'reject':'warn';
+    return`<tr><td>${j.date}</td><td>${j.customer}</td><td>${j.wcase||'-'}</td><td>${j.tech||'-'}</td><td><span class="badge ${sc}">${j.wstatus||'-'}</span></td><td>${fmt(adj)}</td><td>${fmt(pd)}</td><td style="color:${out>0?'#dc2626':'#16a34a'};font-weight:600">${fmt(out)}</td></tr>`;
+  }).join('');
+}
+
+function renderAll(){renderEntry();renderDashboard();renderPnL();renderRoutes();renderBE();renderWarranty()}
+
+// INIT
+document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
+updatePricing();
+renderAll();
+</script>
+</body>
+</html>

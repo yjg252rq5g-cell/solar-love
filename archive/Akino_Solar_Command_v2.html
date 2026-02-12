@@ -1,0 +1,3911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akino Solar Command Center</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Leaflet CSS and JS (Maps) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <!-- Font Awesome 6 CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --primary-light: #fed7aa;
+            --bg-dark: #1e293b;
+            --bg-darker: #0f172a;
+            --sidebar-width: 260px;
+            --transition-fast: 0.2s;
+            --transition-normal: 0.3s;
+        }
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* ============ LAYOUT STRUCTURE ============ */
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg-darker);
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            background: var(--bg-darker);
+        }
+
+        /* ============ SIDEBAR NAVIGATION ============ */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, var(--bg-dark) 0%, #0f172a 100%);
+            border-right: 1px solid rgba(255, 147, 51, 0.1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 40;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+            transition: transform var(--transition-normal);
+        }
+
+        .sidebar.mobile-hidden {
+            transform: translateX(-100%);
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            z-index: 50;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px;
+            border-bottom: 1px solid rgba(255, 147, 51, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .solar-logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: white;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+
+        .sidebar-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 24px 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            color: #cbd5e1;
+            font-size: 14px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            user-select: none;
+        }
+
+        .nav-item:hover {
+            background: rgba(249, 115, 22, 0.1);
+            color: white;
+            border-left-color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        .nav-item.active {
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--primary);
+            border-left-color: var(--primary);
+            font-weight: 600;
+            box-shadow: inset 4px 0 0 var(--primary);
+        }
+
+        .nav-item i {
+            width: 18px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .sidebar-user {
+            padding: 16px 12px;
+            border-top: 1px solid rgba(255, 147, 51, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-role {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .logout-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: rgba(249, 115, 22, 0.1);
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+        }
+
+        .logout-btn:hover {
+            background: rgba(249, 115, 22, 0.2);
+            transform: scale(1.05);
+        }
+
+        /* ============ MAIN CONTENT AREA ============ */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-darker);
+            overflow: hidden;
+        }
+
+        .top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255, 147, 51, 0.1);
+            background: linear-gradient(90deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.6) 100%);
+            gap: 20px;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .hamburger-btn {
+            display: none;
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: rgba(249, 115, 22, 0.1);
+            border-radius: 6px;
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 18px;
+            transition: all var(--transition-fast);
+        }
+
+        .hamburger-btn:hover {
+            background: rgba(249, 115, 22, 0.2);
+        }
+
+        .current-tab-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tab-icon {
+            color: var(--primary);
+            font-size: 24px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-left: auto;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 147, 51, 0.05);
+            border: 1px solid rgba(255, 147, 51, 0.2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            gap: 8px;
+            width: 280px;
+            transition: all var(--transition-fast);
+        }
+
+        .search-bar:focus-within {
+            border-color: var(--primary);
+            background: rgba(255, 147, 51, 0.1);
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        }
+
+        .search-bar input {
+            background: none;
+            border: none;
+            outline: none;
+            color: white;
+            font-size: 14px;
+            flex: 1;
+            width: 100%;
+        }
+
+        .search-bar input::placeholder {
+            color: #64748b;
+        }
+
+        .search-bar i {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        /* ============ CONTENT AREA ============ */
+        .content-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            background: var(--bg-darker);
+        }
+
+        .content-wrapper::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .content-wrapper::-webkit-scrollbar-track {
+            background: rgba(255, 147, 51, 0.05);
+            border-radius: 10px;
+        }
+
+        .content-wrapper::-webkit-scrollbar-thumb {
+            background: rgba(249, 115, 22, 0.3);
+            border-radius: 10px;
+        }
+
+        .content-wrapper::-webkit-scrollbar-thumb:hover {
+            background: rgba(249, 115, 22, 0.5);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============ LOGIN PAGE ============ */
+        .login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #f97316 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            animation: gradientShift 3s ease infinite;
+            background-size: 400% 400%;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #f97316 100%); }
+            50% { background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #ff8533 100%); }
+        }
+
+        .login-card {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-radius: 16px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(249, 115, 22, 0.2);
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .login-logo {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: white;
+            font-size: 36px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(249, 115, 22, 0.4);
+        }
+
+        .login-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: white;
+            letter-spacing: -0.5px;
+            margin: 0;
+        }
+
+        .login-subtitle {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #cbd5e1;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input {
+            padding: 12px 14px;
+            background: rgba(255, 147, 51, 0.05);
+            border: 1px solid rgba(255, 147, 51, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            transition: all var(--transition-fast);
+            outline: none;
+        }
+
+        .form-input:focus {
+            background: rgba(255, 147, 51, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #64748b;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #cbd5e1;
+            cursor: pointer;
+            user-select: none;
+            margin-bottom: 8px;
+        }
+
+        .remember-me input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .login-button {
+            padding: 12px 16px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .login-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+        }
+
+        .login-button:active {
+            transform: translateY(0);
+        }
+
+        .demo-button {
+            padding: 12px 16px;
+            background: rgba(255, 147, 51, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            outline: none;
+        }
+
+        .demo-button:hover {
+            background: rgba(255, 147, 51, 0.15);
+            border-color: var(--primary);
+        }
+
+        .login-footer {
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 147, 51, 0.1);
+        }
+
+        .login-footer i {
+            color: var(--primary);
+            margin-right: 4px;
+        }
+
+        /* ============ CARDS & KPI STYLES ============ */
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 147, 51, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: all var(--transition-normal);
+        }
+
+        .card:hover {
+            border-color: rgba(249, 115, 22, 0.3);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 147, 51, 0.1);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .kpi-card {
+            border-top: 4px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .kpi-label {
+            font-size: 13px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .kpi-change {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            width: fit-content;
+        }
+
+        .kpi-change.positive {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .kpi-change.negative {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        /* ============ TABLES ============ */
+        .table-container {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 147, 51, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(255, 147, 51, 0.1);
+            border-bottom: 2px solid rgba(255, 147, 51, 0.2);
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 12px;
+            color: #cbd5e1;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 147, 51, 0.05);
+            font-size: 14px;
+            color: #e2e8f0;
+        }
+
+        tbody tr:hover {
+            background: rgba(249, 115, 22, 0.05);
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(255, 147, 51, 0.03);
+        }
+
+        /* ============ BADGES & STATUS ============ */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-paid {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .badge-needs-attention {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .badge-scheduled {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .badge-submitted {
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+        }
+
+        .badge-completed-not-paid {
+            background: rgba(249, 115, 22, 0.2);
+            color: #f97316;
+        }
+
+        .badge-waiting-rma {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+        }
+
+        .badge-waiting-go-back {
+            background: rgba(251, 146, 60, 0.2);
+            color: #fb923c;
+        }
+
+        .badge-parts-ordered {
+            background: rgba(99, 102, 241, 0.2);
+            color: #6366f1;
+        }
+
+        .badge-rma-approved {
+            background: rgba(20, 184, 166, 0.2);
+            color: #14b8a6;
+        }
+
+        .badge-rma-denied {
+            background: rgba(244, 63, 94, 0.2);
+            color: #f43f5e;
+        }
+
+        .badge-go-back-scheduled {
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+        }
+
+        .badge-go-back-complete {
+            background: rgba(52, 211, 153, 0.2);
+            color: #34d399;
+        }
+
+        .badge-in-progress {
+            background: rgba(34, 211, 238, 0.2);
+            color: #22d3ee;
+        }
+
+        .badge-pending-review {
+            background: rgba(139, 92, 246, 0.2);
+            color: #8b5cf6;
+        }
+
+        .badge-denied {
+            background: rgba(107, 114, 128, 0.2);
+            color: #9ca3af;
+        }
+
+        .badge-cancelled {
+            background: rgba(71, 85, 105, 0.2);
+            color: #64748b;
+        }
+
+        .priority-high {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .priority-medium {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+        }
+
+        .priority-low {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        /* ============ BUTTONS ============ */
+        .btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            outline: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 147, 51, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 147, 51, 0.15);
+            border-color: var(--primary);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* ============ MODALS ============ */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 90;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-dark);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(249, 115, 22, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .modal-close:hover {
+            color: white;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid rgba(249, 115, 22, 0.1);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* ============ TOAST NOTIFICATIONS ============ */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 95;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 400px;
+        }
+
+        .toast {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 8px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .toast.success {
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .toast.error {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .toast.warning {
+            border-color: rgba(234, 179, 8, 0.3);
+        }
+
+        .toast-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .toast.success .toast-icon {
+            color: #22c55e;
+        }
+
+        .toast.error .toast-icon {
+            color: #ef4444;
+        }
+
+        .toast.warning .toast-icon {
+            color: #eab308;
+        }
+
+        .toast-message {
+            font-size: 14px;
+            color: #e2e8f0;
+            flex: 1;
+        }
+
+        /* ============ RESPONSIVE DESIGN ============ */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: var(--sidebar-width);
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100vh;
+                z-index: 50;
+            }
+
+            .sidebar.mobile-hidden {
+                transform: translateX(-100%);
+            }
+
+            .hamburger-btn {
+                display: flex;
+            }
+
+            .app-container {
+                flex-direction: column;
+            }
+
+            .main-content {
+                width: 100%;
+            }
+
+            .search-bar {
+                width: 200px;
+            }
+
+            .current-tab-name {
+                font-size: 18px;
+            }
+
+            .top-header {
+                padding: 12px 16px;
+            }
+
+            .content-wrapper {
+                padding: 16px;
+            }
+
+            .login-card {
+                margin: 16px;
+                padding: 32px 24px;
+            }
+
+            .toast-container {
+                left: 12px;
+                right: 12px;
+                max-width: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sidebar {
+                width: 100vw;
+            }
+
+            .search-bar {
+                display: none;
+            }
+
+            .current-tab-name {
+                font-size: 16px;
+            }
+
+            .login-card {
+                padding: 24px 16px;
+            }
+
+            .login-title {
+                font-size: 24px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px 12px;
+            }
+
+            .kpi-card {
+                padding: 16px;
+            }
+
+            .kpi-value {
+                font-size: 24px;
+            }
+        }
+
+        /* ============ ROUTE CARDS ============ */
+        .route-card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 147, 51, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all var(--transition-normal);
+        }
+
+        .route-card:hover {
+            border-color: rgba(249, 115, 22, 0.3);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.1);
+        }
+
+        .route-verdict {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        .route-verdict.profitable {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .route-verdict.marginal {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+        }
+
+        .route-verdict.loss {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        /* ============ CSV DROP ZONE ============ */
+        .drop-zone {
+            border: 2px dashed rgba(249, 115, 22, 0.3);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            background: rgba(255, 147, 51, 0.05);
+        }
+
+        .drop-zone:hover {
+            border-color: var(--primary);
+            background: rgba(255, 147, 51, 0.1);
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(255, 147, 51, 0.15);
+            box-shadow: 0 0 20px rgba(249, 115, 22, 0.2);
+        }
+
+        .drop-zone i {
+            font-size: 32px;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .drop-zone-text {
+            color: #cbd5e1;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .drop-zone-hint {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        /* ============ CLAUDE AI SIDEBAR ============ */
+        .claude-sidebar {
+            position: fixed;
+            right: -400px;
+            top: 0;
+            width: 400px;
+            height: 100vh;
+            background: linear-gradient(180deg, var(--bg-dark) 0%, #0f172a 100%);
+            border-left: 1px solid rgba(249, 115, 22, 0.2);
+            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+            z-index: 60;
+            transition: right var(--transition-normal);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .claude-sidebar.active {
+            right: 0;
+        }
+
+        .claude-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+            transition: all var(--transition-fast);
+            z-index: 59;
+        }
+
+        .claude-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 28px rgba(249, 115, 22, 0.5);
+        }
+
+        .claude-fab:active {
+            transform: scale(0.95);
+        }
+
+        .claude-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .claude-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .claude-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 18px;
+            transition: color var(--transition-fast);
+        }
+
+        .claude-close:hover {
+            color: white;
+        }
+
+        .claude-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(249, 115, 22, 0.1);
+            flex-shrink: 0;
+        }
+
+        .claude-tab {
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all var(--transition-fast);
+        }
+
+        .claude-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .claude-tab:hover {
+            color: white;
+        }
+
+        .claude-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .claude-message {
+            background: rgba(255, 147, 51, 0.05);
+            border: 1px solid rgba(249, 115, 22, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .claude-input {
+            padding: 12px;
+            border-top: 1px solid rgba(249, 115, 22, 0.1);
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .claude-input input {
+            flex: 1;
+            background: rgba(255, 147, 51, 0.05);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .claude-input input:focus {
+            border-color: var(--primary);
+            background: rgba(255, 147, 51, 0.1);
+        }
+
+        .claude-send {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+        }
+
+        .claude-send:hover {
+            background: var(--primary-dark);
+        }
+
+        /* ============ PRINT STYLES ============ */
+        @media print {
+            .top-header,
+            .sidebar,
+            .search-bar,
+            .hamburger-btn,
+            .claude-fab,
+            .claude-sidebar {
+                display: none;
+            }
+
+            .main-content {
+                width: 100%;
+            }
+
+            .content-wrapper {
+                background: white;
+                color: #1e293b;
+            }
+
+            .card,
+            .table-container {
+                background: white;
+                border: 1px solid #e2e8f0;
+                box-shadow: none;
+            }
+
+            table {
+                border: 1px solid #e2e8f0;
+            }
+
+            thead {
+                background: #f1f5f9;
+            }
+
+            .badge {
+                border: 1px solid #cbd5e1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- LOGIN PAGE -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-card">
+            <div class="login-logo-container">
+                <div class="login-logo">☀️</div>
+                <h1 class="login-title">AKINO SOLAR</h1>
+                <p class="login-subtitle">Command Center</p>
+            </div>
+
+            <form class="login-form" id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="loginEmail" placeholder="caden@akinosolar.com" value="caden@akinosolar.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="loginPassword" placeholder="••••••••" required>
+                </div>
+
+                <label class="remember-me">
+                    <input type="checkbox" id="rememberMe">
+                    <span>Remember me on this device</span>
+                </label>
+
+                <button type="submit" class="login-button">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+
+                <button type="button" class="demo-button" id="demoModeBtn">
+                    <i class="fas fa-play"></i> Quick Demo
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <i class="fas fa-brain"></i>
+                Powered by Claude AI
+            </div>
+        </div>
+    </div>
+
+    <!-- APP SHELL (Hidden until login) -->
+    <div class="app-container" id="appContainer" style="display: none;">
+        <!-- SIDEBAR NAVIGATION -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="solar-logo">☀️</div>
+                <div class="sidebar-title">AKINO</div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-tab="dashboard">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" data-tab="jobs">
+                    <i class="fas fa-briefcase"></i>
+                    <span>Jobs</span>
+                </div>
+                <div class="nav-item" data-tab="routes">
+                    <i class="fas fa-route"></i>
+                    <span>Routes</span>
+                </div>
+                <div class="nav-item" data-tab="warranty">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>Warranty</span>
+                </div>
+                <div class="nav-item" data-tab="inventory">
+                    <i class="fas fa-warehouse"></i>
+                    <span>Inventory</span>
+                </div>
+                <div class="nav-item" data-tab="technicians">
+                    <i class="fas fa-users"></i>
+                    <span>Technicians</span>
+                </div>
+                <div class="nav-item" data-tab="financials">
+                    <i class="fas fa-dollar-sign"></i>
+                    <span>Financials</span>
+                </div>
+                <div class="nav-item" data-tab="email-monitor">
+                    <i class="fas fa-envelope"></i>
+                    <span>Email Monitor</span>
+                </div>
+                <div class="nav-item" data-tab="settings">
+                    <i class="fas fa-gear"></i>
+                    <span>Settings</span>
+                </div>
+            </nav>
+
+            <div class="sidebar-user">
+                <div class="user-avatar">CM</div>
+                <div class="user-info">
+                    <div class="user-name">Caden Montgomery</div>
+                    <div class="user-role">Owner / Admin</div>
+                </div>
+                <button class="logout-btn" id="logoutBtn" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- TOP HEADER -->
+            <div class="top-header">
+                <div class="header-left">
+                    <button class="hamburger-btn" id="hamburgerBtn">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="current-tab-name">
+                        <i class="tab-icon fas fa-chart-line"></i>
+                        <span id="currentTabName">Dashboard</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search jobs, technicians, routes...">
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENT WRAPPER -->
+            <div class="content-wrapper" id="contentWrapper">
+
+  <!-- ========== TAB 1: DASHBOARD ========== -->
+  <div class="tab-content active" id="tab-dashboard">
+    <!-- KPI Cards Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+      <div class="kpi-card">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-briefcase" style="font-size: 24px; color: #4a90e2;"></i>
+          <div>
+            <div class="kpi-value">--</div>
+            <div class="kpi-label">Active Jobs</div>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-dollar-sign" style="font-size: 24px; color: #7cb342;"></i>
+          <div>
+            <div class="kpi-value">$--</div>
+            <div class="kpi-label">Monthly Revenue</div>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-percent" style="font-size: 24px; color: #f57c00;"></i>
+          <div>
+            <div class="kpi-value">--</div>
+            <div class="kpi-label">Profit Margin</div>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-shield-alt" style="font-size: 24px; color: #e53935;"></i>
+          <div>
+            <div class="kpi-value">--</div>
+            <div class="kpi-label">Pending Warranty</div>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-exclamation-triangle" style="font-size: 24px; color: #fb8c00;"></i>
+          <div>
+            <div class="kpi-value">--</div>
+            <div class="kpi-label">Unassigned Jobs</div>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i class="fas fa-envelope" style="font-size: 24px; color: #1e88e5;"></i>
+          <div>
+            <div class="kpi-value">--</div>
+            <div class="kpi-label">Unanswered Emails</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 16px; margin-bottom: 24px;">
+      <div class="card">
+        <h3 style="margin: 0 0 16px 0;">Revenue vs Cost</h3>
+        <canvas id="revenueChart" style="max-height: 300px;"></canvas>
+      </div>
+      <div class="card">
+        <h3 style="margin: 0 0 16px 0;">Job Status Distribution</h3>
+        <canvas id="jobStatusChart" style="max-height: 300px;"></canvas>
+      </div>
+    </div>
+
+    <!-- Alerts Section -->
+    <div class="card" style="margin-bottom: 24px;">
+      <h3 style="margin: 0 0 16px 0;">Active Alerts</h3>
+      <div id="dashboardAlerts" style="display: flex; flex-direction: column; gap: 8px;">
+        <p style="color: #999; text-align: center;">No active alerts</p>
+      </div>
+    </div>
+
+    <!-- Recent Activity Feed -->
+    <div class="card">
+      <h3 style="margin: 0 0 16px 0;">Recent Activity</h3>
+      <div id="activityFeed" style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto;">
+        <p style="color: #999; text-align: center;">No recent activity</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 2: JOBS ========== -->
+  <div class="tab-content" id="tab-jobs">
+    <!-- Toolbar -->
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+      <select class="form-input" style="min-width: 150px;">
+        <option>Status: All</option>
+        <option>Needs Scheduling</option>
+        <option>Scheduled</option>
+        <option>In Progress</option>
+        <option>Completed</option>
+        <option>Done</option>
+      </select>
+      <select class="form-input" style="min-width: 150px;">
+        <option>Priority: All</option>
+        <option>High</option>
+        <option>Medium</option>
+        <option>Low</option>
+      </select>
+      <select class="form-input" style="min-width: 150px;">
+        <option>Tech: All</option>
+        <option>Sam</option>
+        <option>Lucas</option>
+        <option>Katie</option>
+        <option>Spencer</option>
+        <option>Lex</option>
+        <option>Caden</option>
+        <option>Jen</option>
+        <option>Andrew</option>
+      </select>
+      <input type="text" class="form-input" placeholder="Search jobs..." style="flex: 1; min-width: 150px;">
+      <button class="btn btn-primary">Add Job</button>
+      <button class="btn btn-secondary">Import CSV</button>
+    </div>
+
+    <!-- Jobs Table -->
+    <div class="table-container" style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead style="background-color: #f5f5f5;">
+          <tr>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Job#</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Priority</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Customer</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">City</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">St</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Zip</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Requested</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Route Date</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Tech</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Tags</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Revenue</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Notes</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Job Flags</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Route</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="jobsTableBody" style="background-color: #fff;">
+          <tr style="border-top: 1px solid #eee;">
+            <td colspan="15" style="padding: 20px; text-align: center; color: #999;">No jobs loaded</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CSV Import Modal -->
+    <div id="csvModal" class="modal-overlay" style="display: none;">
+      <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+          <h2 class="modal-title">Import CSV</h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="drop-zone">
+            <div class="drop-zone-text">Drag & drop CSV file here</div>
+            <div class="drop-zone-hint">or click to select file</div>
+          </div>
+          <div id="csvPreview" style="margin-top: 16px; max-height: 300px; overflow-y: auto;"></div>
+          <div style="margin-top: 16px;">
+            <label class="form-label">Column Mapping:</label>
+            <div id="columnMapping" style="display: flex; flex-direction: column; gap: 8px;"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary">Cancel</button>
+          <button class="btn btn-primary">Import</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 3: ROUTES ========== -->
+  <div class="tab-content" id="tab-routes">
+    <!-- View Toggle -->
+    <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+      <button class="btn btn-primary" data-view="map">Map View</button>
+      <button class="btn btn-secondary" data-view="list">List View</button>
+      <button class="btn btn-secondary" data-view="analytics">Analytics</button>
+    </div>
+
+    <!-- Route Controls -->
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+      <input type="date" class="form-input" placeholder="Start Date">
+      <input type="date" class="form-input" placeholder="End Date">
+      <button class="btn btn-primary">Optimize Routes</button>
+      <button class="btn btn-secondary">Export PDFs</button>
+      <button class="btn btn-secondary">Archive Routes</button>
+    </div>
+
+    <!-- Weather Widget -->
+    <div class="card" style="margin-bottom: 20px; max-width: 300px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <i class="fas fa-cloud-sun" style="font-size: 32px; color: #ff9800;"></i>
+        <div>
+          <div style="font-size: 24px; font-weight: 600;">--°F</div>
+          <div style="color: #666;">Partly Cloudy</div>
+          <div style="font-size: 12px; color: #999;">Wind: -- mph</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map Container -->
+    <div id="routeMap" style="height: 500px; border-radius: 12px; background-color: #f0f0f0; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd;">
+      <p style="color: #999;">Map container (requires Leaflet/Maps API)</p>
+    </div>
+
+    <!-- Route List -->
+    <div id="routeList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 16px; margin-bottom: 20px;">
+      <div class="route-card card">
+        <h4 style="margin: 0 0 12px 0;">Route 1</h4>
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">No routes loaded</div>
+      </div>
+    </div>
+
+    <!-- Find Best Fit Section -->
+    <div class="card" style="margin-bottom: 20px;">
+      <h3 style="margin: 0 0 16px 0;">Find Best Route for Job</h3>
+      <div style="display: flex; gap: 12px;">
+        <input type="text" class="form-input" placeholder="Enter address..." style="flex: 1;">
+        <button class="btn btn-primary">Find Best Route</button>
+      </div>
+      <div id="bestFitResult" style="margin-top: 12px; padding: 12px; background-color: #f5f5f5; border-radius: 8px; display: none;">
+        <!-- Result will be populated by JS -->
+      </div>
+    </div>
+
+    <!-- Route Analytics Section (hidden by default) -->
+    <div id="analyticsSection" style="display: none;">
+      <!-- Sub-tabs -->
+      <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #eee;">
+        <button class="btn btn-secondary" data-analytics="overview">Overview</button>
+        <button class="btn btn-secondary" data-analytics="technicians">Technicians</button>
+        <button class="btn btn-secondary" data-analytics="routes">Routes</button>
+        <button class="btn btn-secondary" data-analytics="geographic">Geographic</button>
+      </div>
+
+      <!-- Overview Chart -->
+      <div class="card" style="margin-bottom: 20px;">
+        <h3 style="margin: 0 0 16px 0;">Route Overview</h3>
+        <canvas id="routeOverviewChart" style="max-height: 300px;"></canvas>
+      </div>
+
+      <!-- Technician Performance Chart -->
+      <div class="card" style="margin-bottom: 20px;">
+        <h3 style="margin: 0 0 16px 0;">Technician Performance</h3>
+        <canvas id="techPerformanceChart" style="max-height: 300px;"></canvas>
+      </div>
+
+      <!-- Route Comparison Chart -->
+      <div class="card" style="margin-bottom: 20px;">
+        <h3 style="margin: 0 0 16px 0;">Route Comparison</h3>
+        <canvas id="routeCompareChart" style="max-height: 300px;"></canvas>
+      </div>
+
+      <!-- Geographic Heatmap -->
+      <div class="card">
+        <h3 style="margin: 0 0 16px 0;">Geographic Distribution</h3>
+        <canvas id="geoHeatChart" style="max-height: 300px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 4: WARRANTY ========== -->
+  <div class="tab-content" id="tab-warranty">
+    <!-- Monthly Tab Navigation (horizontally scrollable) -->
+    <div style="display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px;">
+      <button class="btn btn-primary">All Claims</button>
+      <button class="btn btn-secondary">January 2026</button>
+      <button class="btn btn-secondary">December 2025</button>
+      <button class="btn btn-secondary">November 2025</button>
+      <button class="btn btn-secondary">October 2025</button>
+      <button class="btn btn-secondary">September 2025</button>
+      <button class="btn btn-secondary">August 2025</button>
+      <button class="btn btn-secondary">July 2025</button>
+      <button class="btn btn-secondary">April 2025</button>
+      <button class="btn btn-secondary">Mar 2025</button>
+      <button class="btn btn-secondary">Feb 2025</button>
+      <button class="btn btn-secondary">Jan 2025</button>
+      <button class="btn btn-secondary">Dec 2024</button>
+      <button class="btn btn-secondary">Nov 2024</button>
+    </div>
+
+    <!-- Summary Stats Row -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 24px; font-weight: 600;">--</div>
+        <div style="font-size: 12px; color: #666;">Total Claims</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 24px; font-weight: 600;">$--</div>
+        <div style="font-size: 12px; color: #666;">Allotted</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 24px; font-weight: 600;">$--</div>
+        <div style="font-size: 12px; color: #666;">Paid</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 24px; font-weight: 600;">$--</div>
+        <div style="font-size: 12px; color: #666;">Outstanding</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 24px; font-weight: 600;">--</div>
+        <div style="font-size: 12px; color: #666;">Waiting RMA</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 24px; font-weight: 600;">--</div>
+        <div style="font-size: 12px; color: #666;">Waiting Go Back</div>
+      </div>
+    </div>
+
+    <!-- Filter Row -->
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+      <select class="form-input" style="min-width: 150px;">
+        <option>Status: All</option>
+        <option>Paid</option>
+        <option>Needs Attention</option>
+        <option>Scheduled</option>
+        <option>Submitted</option>
+        <option>Completed not paid</option>
+        <option>Waiting RMA</option>
+        <option>Waiting Go Back</option>
+        <option>Parts Ordered</option>
+        <option>RMA Approved</option>
+        <option>RMA Denied</option>
+        <option>Go Back Scheduled</option>
+        <option>Go Back Complete</option>
+        <option>In Progress</option>
+        <option>Pending Review</option>
+        <option>Denied</option>
+        <option>Cancelled</option>
+      </select>
+      <select class="form-input" style="min-width: 150px;">
+        <option>Tech: All</option>
+        <option>Sam</option>
+        <option>Lucas</option>
+        <option>Katie</option>
+        <option>Spencer</option>
+        <option>Lex</option>
+        <option>Caden</option>
+        <option>Jen</option>
+        <option>Andrew</option>
+      </select>
+      <input type="date" class="form-input" placeholder="Start Date">
+      <input type="date" class="form-input" placeholder="End Date">
+      <button class="btn btn-primary">Add Claim</button>
+    </div>
+
+    <!-- Warranty Table - 20 Columns -->
+    <div class="table-container" style="overflow-x: auto; margin-bottom: 20px;">
+      <table style="width: 100%; border-collapse: collapse; white-space: nowrap;">
+        <thead style="background-color: #f5f5f5;">
+          <tr>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">STATUS</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">CUSTOMER NAME</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">DATE OF JOB</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">CASE#</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">TECH NAME</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">ALLOTTED TRAVEL</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">ACTUAL TRAVEL TIME</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">DISTANCE MILEAGE</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">ACTUAL MILEAGE</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">ALLOTTED TECH TIME</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">ACTUAL TECH TIME</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">ALLOTTED AMOUNT</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">ADJUSTED AMOUNT</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">PAID AMOUNT</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">DATE CHECK CUT</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">SVN#</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">COMPANY COST</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">PROFIT AMOUNT</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">LOSS AMOUNT</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; font-size: 12px;">NOTES</th>
+          </tr>
+        </thead>
+        <tbody id="warrantyTableBody" style="background-color: #fff;">
+          <tr style="border-top: 1px solid #eee;">
+            <td colspan="20" style="padding: 20px; text-align: center; color: #999;">No warranty claims loaded</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Add Warranty Claim Modal -->
+    <div id="warrantyModal" class="modal-overlay" style="display: none;">
+      <div class="modal" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
+        <div class="modal-header">
+          <h2 class="modal-title">Add Warranty Claim</h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select class="form-input"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Customer Name</label>
+              <input type="text" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date of Job</label>
+              <input type="date" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Case#</label>
+              <input type="text" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tech Name</label>
+              <select class="form-input"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Allotted Travel</label>
+              <input type="number" class="form-input" step="0.5">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Actual Travel Time</label>
+              <input type="number" class="form-input" step="0.5">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Distance Mileage</label>
+              <input type="number" class="form-input" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Actual Mileage</label>
+              <input type="number" class="form-input" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Allotted Tech Time</label>
+              <input type="number" class="form-input" step="0.5">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Actual Tech Time</label>
+              <input type="number" class="form-input" step="0.5">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Allotted Amount</label>
+              <input type="number" class="form-input" step="0.01" placeholder="$0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Adjusted Amount</label>
+              <input type="number" class="form-input" step="0.01" placeholder="$0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Paid Amount</label>
+              <input type="number" class="form-input" step="0.01" placeholder="$0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date Check Cut</label>
+              <input type="date" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">SVN#</label>
+              <input type="text" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Company Cost</label>
+              <input type="number" class="form-input" step="0.01" placeholder="$0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Profit Amount</label>
+              <input type="number" class="form-input" step="0.01" placeholder="$0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Loss Amount</label>
+              <input type="number" class="form-input" step="0.01" placeholder="$0.00">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label">Notes</label>
+              <textarea class="form-input" rows="3" placeholder="Enter any notes..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary">Cancel</button>
+          <button class="btn btn-primary">Save Claim</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 5: INVENTORY ========== -->
+  <div class="tab-content" id="tab-inventory">
+    <!-- Stat Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 24px; font-weight: 600;">--</div>
+        <div style="font-size: 12px; color: #666;">Total Items</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 24px; font-weight: 600;">--</div>
+        <div style="font-size: 12px; color: #666;">In Stock</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 24px; font-weight: 600;">--</div>
+        <div style="font-size: 12px; color: #666;">Low Stock</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 24px; font-weight: 600;">--</div>
+        <div style="font-size: 12px; color: #666;">Out of Stock</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+      <input type="text" class="form-input" placeholder="Search inventory..." style="flex: 1; min-width: 150px;">
+      <select class="form-input" style="min-width: 150px;">
+        <option>Category: All</option>
+        <option>Generators</option>
+        <option>Parts</option>
+        <option>Consumables</option>
+        <option>Tools</option>
+      </select>
+      <button class="btn btn-primary">Add Item</button>
+      <button class="btn btn-secondary">RMA Tracking</button>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="table-container" style="overflow-x: auto; margin-bottom: 20px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead style="background-color: #f5f5f5;">
+          <tr>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Part#</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Name</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Category</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Manufacturer</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Qty In Stock</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Min Stock</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Status</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Location</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Last Updated</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryTableBody" style="background-color: #fff;">
+          <tr style="border-top: 1px solid #eee;">
+            <td colspan="10" style="padding: 20px; text-align: center; color: #999;">No inventory loaded</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- RMA Section (initially hidden) -->
+    <div id="rmaSection" style="display: none; margin-bottom: 20px;">
+      <h3 style="margin: 0 0 16px 0;">RMA Tracking</h3>
+      <div class="table-container" style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead style="background-color: #f5f5f5;">
+            <tr>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">RMA#</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Part</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Status</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Submitted Date</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Expected Return</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Notes</th>
+            </tr>
+          </thead>
+          <tbody id="rmaTableBody" style="background-color: #fff;">
+            <tr style="border-top: 1px solid #eee;">
+              <td colspan="6" style="padding: 20px; text-align: center; color: #999;">No RMA records</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Technician Checkout Section -->
+    <div id="checkoutSection" style="margin-bottom: 20px;">
+      <h3 style="margin: 0 0 16px 0;">Technician Checkout</h3>
+      <div class="table-container" style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead style="background-color: #f5f5f5;">
+            <tr>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Tech Name</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Item</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Serial#</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Qty</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Date Out</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Expected Return</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Status</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="checkoutTableBody" style="background-color: #fff;">
+            <tr style="border-top: 1px solid #eee;">
+              <td colspan="8" style="padding: 20px; text-align: center; color: #999;">No checked out items</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 6: TECHNICIANS ========== -->
+  <div class="tab-content" id="tab-technicians">
+    <!-- Technician Cards Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+      <!-- Sample tech card (will be repeated for all 8 techs) -->
+      <div class="card" style="text-align: center;">
+        <div style="width: 60px; height: 60px; border-radius: 50%; background-color: #4a90e2; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 600; margin: 0 auto 12px;">--</div>
+        <h4 style="margin: 0 0 8px 0;">--</h4>
+        <div style="font-size: 12px; color: #666; margin-bottom: 12px;">--</div>
+        <div style="font-size: 12px; margin-bottom: 4px;"><strong>Hourly:</strong> $--</div>
+        <div style="font-size: 12px; margin-bottom: 4px;"><strong>Loaded:</strong> $--</div>
+        <div style="font-size: 12px; margin-bottom: 12px; color: #7cb342;"><strong>Active</strong></div>
+        <div style="height: 6px; background-color: #eee; border-radius: 3px; margin-bottom: 8px; overflow: hidden;">
+          <div style="height: 100%; background-color: #4a90e2; width: 65%;"></div>
+        </div>
+        <div style="font-size: 11px; color: #999;">65% Utilization</div>
+      </div>
+    </div>
+
+    <!-- Personnel Table -->
+    <div class="card" style="margin-bottom: 24px;">
+      <h3 style="margin: 0 0 16px 0;">Personnel Summary</h3>
+      <div class="table-container" style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead style="background-color: #f5f5f5;">
+            <tr>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Name</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Role</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Hourly</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Loaded Rate</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Monthly Pay</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Annual Pay</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Status</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Jobs (Month)</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Efficiency %</th>
+            </tr>
+          </thead>
+          <tbody id="personnelTableBody" style="background-color: #fff;">
+            <tr style="border-top: 1px solid #eee;">
+              <td colspan="9" style="padding: 20px; text-align: center; color: #999;">No personnel data loaded</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Workload Chart -->
+    <div class="card" style="margin-bottom: 24px;">
+      <h3 style="margin: 0 0 16px 0;">Team Workload</h3>
+      <canvas id="workloadChart" style="max-height: 300px;"></canvas>
+    </div>
+
+    <!-- Availability Calendar -->
+    <div class="card">
+      <h3 style="margin: 0 0 16px 0;">Technician Availability</h3>
+      <div id="techCalendar" style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center; color: #999;">
+        Calendar placeholder (will integrate real calendar)
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 7: FINANCIALS ========== -->
+  <div class="tab-content" id="tab-financials">
+    <!-- P&L Summary Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px;">
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Monthly Revenue</div>
+        <div style="font-size: 24px; font-weight: 600;">$--</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Monthly Overhead</div>
+        <div style="font-size: 24px; font-weight: 600;">$43,480</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Breakeven/Job</div>
+        <div style="font-size: 24px; font-weight: 600;">$2,698</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Cost/Hour</div>
+        <div style="font-size: 24px; font-weight: 600;">$250.85</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Monthly Profit</div>
+        <div style="font-size: 24px; font-weight: 600; color: #7cb342;">$--</div>
+      </div>
+      <div class="card" style="text-align: center;">
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Profit Margin</div>
+        <div style="font-size: 24px; font-weight: 600;">--</div>
+      </div>
+    </div>
+
+    <!-- True Cost Calculator -->
+    <div class="card" style="margin-bottom: 24px;">
+      <h3 style="margin: 0 0 16px 0;">True Cost Calculator</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+        <div class="form-group">
+          <label class="form-label">Technician</label>
+          <select class="form-input"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Onsite Hours</label>
+          <input type="number" class="form-input" step="0.5" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Travel Hours</label>
+          <input type="number" class="form-input" step="0.5" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Miles</label>
+          <input type="number" class="form-input" step="0.1" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Parts Cost</label>
+          <input type="number" class="form-input" step="0.01" placeholder="$0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Consumables Cost</label>
+          <input type="number" class="form-input" step="0.01" placeholder="$0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Revenue</label>
+          <input type="number" class="form-input" step="0.01" placeholder="$0.00">
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-bottom: 16px;">Calculate</button>
+      <div id="calcResults" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 16px; background-color: #f5f5f5; border-radius: 8px;">
+        <div><strong>Labor Cost:</strong> <div style="font-size: 18px; color: #4a90e2;">$--</div></div>
+        <div><strong>Travel Cost:</strong> <div style="font-size: 18px; color: #4a90e2;">$--</div></div>
+        <div><strong>Parts:</strong> <div style="font-size: 18px; color: #4a90e2;">$--</div></div>
+        <div><strong>Overhead Allocation:</strong> <div style="font-size: 18px; color: #4a90e2;">$--</div></div>
+        <div><strong>Total True Cost:</strong> <div style="font-size: 18px; color: #e53935;">$--</div></div>
+        <div><strong>Profit/Loss:</strong> <div style="font-size: 18px; color: #7cb342;">$--</div></div>
+        <div style="grid-column: 1 / -1;"><strong>Verdict:</strong> <div style="font-size: 16px; font-weight: 600;">--</div></div>
+      </div>
+    </div>
+
+    <!-- Overhead Breakdown -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 16px; margin-bottom: 24px;">
+      <div class="card">
+        <h3 style="margin: 0 0 16px 0;">Overhead Breakdown</h3>
+        <canvas id="overheadChart" style="max-height: 300px;"></canvas>
+      </div>
+
+      <!-- Break-Even Analysis -->
+      <div class="card">
+        <h3 style="margin: 0 0 16px 0;">Break-Even Scenarios</h3>
+        <div class="table-container" style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead style="background-color: #f5f5f5;">
+              <tr>
+                <th style="padding: 8px; text-align: left;">Jobs/Week</th>
+                <th style="padding: 8px; text-align: left;">Monthly Jobs</th>
+                <th style="padding: 8px; text-align: left;">Revenue Needed</th>
+              </tr>
+            </thead>
+            <tbody style="background-color: #fff;">
+              <tr style="border-top: 1px solid #eee;">
+                <td style="padding: 8px;">3</td>
+                <td style="padding: 8px;">12</td>
+                <td style="padding: 8px;">$32,376</td>
+              </tr>
+              <tr style="border-top: 1px solid #eee;">
+                <td style="padding: 8px;">4</td>
+                <td style="padding: 8px;">16</td>
+                <td style="padding: 8px;">$43,168</td>
+              </tr>
+              <tr style="border-top: 1px solid #eee;">
+                <td style="padding: 8px;">5</td>
+                <td style="padding: 8px;">20</td>
+                <td style="padding: 8px;">$53,960</td>
+              </tr>
+              <tr style="border-top: 1px solid #eee;">
+                <td style="padding: 8px;">6</td>
+                <td style="padding: 8px;">24</td>
+                <td style="padding: 8px;">$64,752</td>
+              </tr>
+              <tr style="border-top: 1px solid #eee;">
+                <td style="padding: 8px;">7</td>
+                <td style="padding: 8px;">28</td>
+                <td style="padding: 8px;">$75,544</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly P&L Chart -->
+    <div class="card">
+      <h3 style="margin: 0 0 16px 0;">Monthly P&L Trend</h3>
+      <canvas id="pnlChart" style="max-height: 300px;"></canvas>
+    </div>
+  </div>
+
+  <!-- ========== TAB 8: EMAIL MONITOR ========== -->
+  <div class="tab-content" id="tab-email-monitor">
+    <!-- Inbox Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 20px;">
+      <div class="card">
+        <h4 style="margin: 0 0 8px 0;">generac@akinosolar.com</h4>
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Warranty & Generac Updates</div>
+        <div style="font-size: 24px; font-weight: 600;">--</div>
+        <div style="font-size: 12px; color: #999;">Unread messages</div>
+      </div>
+      <div class="card">
+        <h4 style="margin: 0 0 8px 0;">info@akinosolar.com</h4>
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Customer Inquiries & GoDaddy</div>
+        <div style="font-size: 24px; font-weight: 600;">--</div>
+        <div style="font-size: 12px; color: #999;">Unread messages</div>
+      </div>
+      <div class="card">
+        <h4 style="margin: 0 0 8px 0;">caden@akinosolar.com</h4>
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Direct Messages</div>
+        <div style="font-size: 24px; font-weight: 600;">--</div>
+        <div style="font-size: 12px; color: #999;">Unread messages</div>
+      </div>
+    </div>
+
+    <!-- CRITICAL: Unanswered Customers Alert -->
+    <div class="card" style="margin-bottom: 20px; border-left: 4px solid #e53935;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <i class="fas fa-exclamation-circle" style="font-size: 24px; color: #e53935; animation: pulse 2s infinite;"></i>
+        <h3 style="margin: 0;">Unanswered Customers</h3>
+      </div>
+      <div id="unansweredList" style="display: flex; flex-direction: column; gap: 12px;">
+        <p style="color: #999; text-align: center;">No unanswered customers</p>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+      <input type="date" class="form-input" placeholder="Start Date">
+      <input type="date" class="form-input" placeholder="End Date">
+      <select class="form-input" style="min-width: 150px;">
+        <option>Source: All</option>
+        <option>Generac</option>
+        <option>Info</option>
+        <option>Caden</option>
+      </select>
+      <select class="form-input" style="min-width: 150px;">
+        <option>Type: All</option>
+        <option>Warranty</option>
+        <option>Customer</option>
+        <option>Invoice</option>
+        <option>RMA</option>
+      </select>
+    </div>
+
+    <!-- Email Feed -->
+    <div class="card" style="margin-bottom: 20px;">
+      <h3 style="margin: 0 0 16px 0;">Recent Emails</h3>
+      <div id="emailFeed" style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto;">
+        <p style="color: #999; text-align: center;">No emails loaded</p>
+      </div>
+    </div>
+
+    <!-- Auto-Action Log -->
+    <div class="card">
+      <h3 style="margin: 0 0 16px 0;">Auto-Action Log</h3>
+      <div id="autoActionLog" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; font-size: 12px;">
+        <p style="color: #999; text-align: center;">No auto-actions logged</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 9: SETTINGS ========== -->
+  <div class="tab-content" id="tab-settings">
+    <!-- API Configuration -->
+    <div class="card" style="margin-bottom: 24px;">
+      <h3 style="margin: 0 0 16px 0;">API Configuration</h3>
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label class="form-label">Apps Script URL</label>
+        <input type="text" class="form-input" id="appsScriptUrl" placeholder="Paste your deployed Apps Script URL here">
+        <div style="font-size: 12px; color: #999; margin-top: 4px;">Your web app endpoint for job/route data</div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px;">
+        <button class="btn btn-secondary">Test Connection</button>
+        <div id="connectionStatus" style="font-size: 12px; color: #999;">Status: Not tested</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Google Maps API Key</label>
+        <input type="text" class="form-input" id="mapsApiKey" value="AIzaSyDV9WNls0mPZPcuCZSEkyeJ9wiedU8Q2HY">
+        <div style="font-size: 12px; color: #999; margin-top: 4px;">For route optimization and mapping</div>
+      </div>
+    </div>
+
+    <!-- Depot Configuration -->
+    <div class="card" style="margin-bottom: 24px;">
+      <h3 style="margin: 0 0 16px 0;">Depot Configuration</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          <input type="text" class="form-input" value="Knoxville, TN 37931" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Latitude</label>
+          <input type="number" class="form-input" value="35.9641189" step="0.000001">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Longitude</label>
+          <input type="number" class="form-input" value="-83.9201656" step="0.000001">
+        </div>
+      </div>
+      <button class="btn btn-secondary" style="margin-top: 12px;">Update on Map</button>
+    </div>
+
+    <!-- Operation Settings -->
+    <div class="card" style="margin-bottom: 24px;">
+      <h3 style="margin: 0 0 16px 0;">Operation Settings</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        <div class="form-group">
+          <label class="form-label">Max Jobs Per Route</label>
+          <input type="number" class="form-input" value="4" step="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Default Service Duration (min)</label>
+          <input type="number" class="form-input" value="30" step="5">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Workday Start</label>
+          <input type="time" class="form-input" value="08:00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fuel Cost Per Mile</label>
+          <input type="number" class="form-input" value="0.99" step="0.01" placeholder="$0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">QA Cost Per Job</label>
+          <input type="number" class="form-input" value="85" step="1" placeholder="$0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Admin/Mgmt/SW Per Job</label>
+          <input type="number" class="form-input" value="315" step="1" placeholder="$0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Risk Buffer Per Job</label>
+          <input type="number" class="form-input" value="100" step="1" placeholder="$0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Overhead Allocation to Generac (%)</label>
+          <input type="number" class="form-input" value="85" min="0" max="100" step="1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Email Monitoring Settings -->
+    <div class="card">
+      <h3 style="margin: 0 0 16px 0;">Email Monitoring Settings</h3>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <input type="checkbox" id="emailGenerac" checked>
+          <label for="emailGenerac" style="margin: 0; cursor: pointer;">generac@akinosolar.com</label>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <input type="checkbox" id="emailInfo" checked>
+          <label for="emailInfo" style="margin: 0; cursor: pointer;">info@akinosolar.com</label>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Scan Frequency</label>
+          <select class="form-input">
+            <option>Every 15 min</option>
+            <option>Every 30 min</option>
+            <option>Every hour</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Auto-flag Unanswered After (hours)</label>
+          <input type="number" class="form-input" value="4" min="1" step="1">
+        </div>
+      </div>
+
+      <!-- Save Settings Button -->
+      <button class="btn btn-primary" style="margin-top: 24px; width: 100%;">Save Settings</button>
+    </div>
+  </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- CLAUDE AI SIDEBAR FAB -->
+    <button class="claude-fab" id="claudeFab" title="Claude AI Assistant">
+        <i class="fas fa-brain"></i>
+    </button>
+
+    <!-- CLAUDE AI SIDEBAR -->
+    <div class="claude-sidebar" id="claudeSidebar">
+        <div class="claude-header">
+            <div class="claude-title">
+                <i class="fas fa-brain"></i>
+                Claude AI
+            </div>
+            <button class="claude-close" id="claudeClose">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="claude-tabs">
+            <button class="claude-tab active" data-tab="chat">Chat</button>
+            <button class="claude-tab" data-tab="scan">Scan</button>
+            <button class="claude-tab" data-tab="auto">Auto-Actions</button>
+        </div>
+
+        <div class="claude-content" id="claudeContent">
+            <!-- Tab content will be inserted here -->
+        </div>
+
+        <div class="claude-input">
+            <input type="text" placeholder="Ask Claude anything...">
+            <button class="claude-send">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div class="toast-container" id="toastContainer"></div>
+
+
+    <script>
+// ============================================
+// AKINO SOLAR COMMAND CENTER - JAVASCRIPT ENGINE
+// ============================================
+
+// CONFIGURATION & CONSTANTS
+const CONFIG = {
+    SHEET_IDS: {
+        JOB_CALC: '1yL-M-YJqbS5smTqxiJPJrUcW_fz0JF-IX4kkHYV_svE',
+        ROUTE_OPT: '1SxmUhIBU2tUXX7eoH1wWGP6A2bcJstx_K5NrPRWGy1E',
+        JOB_TRUE_COST: '1cJvAFLZDGNzVxNNCgL6P7snG0MXwb0FB3WoqtTnK-b4',
+        WARRANTY: '1ZqTK21k4S6htIFpFO_ZL1KZ06vPcxR07jtn15fa5j54',
+        PNL_DOC: '11--0Uodbm7hvY2XzXg5-TUipdSgh3DkcmkFPnA5StF4'
+    },
+    MAPS_API_KEY: 'AIzaSyDV9WNls0mPZPcuCZSEkyeJ9wiedU8Q2HY',
+    DEPOT: { lat: 35.9641189, lng: -83.9201656, name: 'Knoxville, TN 37931' },
+    MAX_JOBS_PER_ROUTE: 4,
+    SERVICE_DURATION: 30,
+    WORKDAY_START: '08:00',
+    FUEL_PER_MILE: 0.99,
+    QA_COST: 85,
+    ADMIN_MGMT_SW: 315,
+    RISK_BUFFER: 100,
+    OVERHEAD_ALLOC: 0.85,
+    MONTHLY_OVERHEAD: 43480,
+    BREAKEVEN_PER_JOB: 2698,
+    COST_PER_HOUR: 250.85,
+    EMPLOYER_BURDEN: 0.30,
+    PAYROLL_TAX: 0.1125,
+    WARRANTY_RESERVE: 0.02,
+    MERCHANT_FEE: 0.0275,
+    BAD_DEBT: 0.01,
+    EMAILS: {
+        GENERAC: 'generac@akinosolar.com',
+        INFO: 'info@akinosolar.com',
+        SUPPORT: 'customersupport@akinosolar.com',
+        CADEN: 'caden@akinosolar.com'
+    }
+};
+
+const PERSONNEL = [
+    { name: 'Sam', role: 'Technician', hourly: 25, loaded: 35.21, monthly: 4333, annual: 51999, active: true },
+    { name: 'Lucas', role: 'Technician', hourly: 20, loaded: 28.17, monthly: 3467, annual: 41599, active: true },
+    { name: 'Katie', role: 'Admin', hourly: 20, loaded: 28.17, monthly: 3467, annual: 41599, active: true },
+    { name: 'Spencer', role: 'Technician', hourly: 40, loaded: 56.33, monthly: 6933, annual: 83198, active: true },
+    { name: 'Lex', role: 'Job Management', hourly: 30, loaded: 42.25, monthly: 5200, annual: 62399, active: true },
+    { name: 'Caden', role: 'Owner', hourly: 0, loaded: 40.63, monthly: 5000, annual: 60000, active: true },
+    { name: 'Jen', role: 'Admin (PT)', hourly: 0, loaded: 5.28, monthly: 650, annual: 7800, active: true },
+    { name: 'Andrew', role: 'Technician', hourly: 25, loaded: 32.50, monthly: 0, annual: 0, active: true }
+];
+
+const WARRANTY_STATUSES = ['Paid','Needs Attention','Scheduled','Submitted','Completed not paid','Waiting RMA','Waiting Go Back','Parts Ordered','RMA Approved','RMA Denied','Go Back Scheduled','Go Back Complete','In Progress','Pending Review','Denied','Cancelled'];
+
+const WARRANTY_MONTHS = ['January 2026','December 2025','November 2025','October 2025','September 2025','August 2025','July 2025','June 2025','May 2025','April 2025','March 2025','February 2025','January 2025','December 2024','November 2024'];
+
+// DATA STORE
+const DataStore = {
+    jobs: [
+        { id: 'J001', customerName: 'Smith Residence', city: 'Knoxville', state: 'TN', lat: 35.9641, lng: -83.9202, tech: 'Sam', status: 'Scheduled', serviceType: 'Installation', revenue: 1850, parts: 450, travel: 2, scheduled: '2026-02-13', notes: 'Generac 22kW' },
+        { id: 'J002', customerName: 'Johnson Commercial', city: 'Nashville', state: 'TN', lat: 36.1627, lng: -86.7816, tech: 'Spencer', status: 'In Progress', serviceType: 'Maintenance', revenue: 890, parts: 150, travel: 3.5, scheduled: '2026-02-12', notes: 'Quarterly service' },
+        { id: 'J003', customerName: 'Williams Farms', city: 'Memphis', state: 'TN', lat: 35.1495, lng: -90.0490, tech: 'Lucas', status: 'Scheduled', serviceType: 'Repair', revenue: 1200, parts: 320, travel: 5, scheduled: '2026-02-14', notes: 'Battery replacement' },
+        { id: 'J004', customerName: 'Brown Industries', city: 'Atlanta', state: 'GA', lat: 33.7490, lng: -84.3880, tech: 'Andrew', status: 'Completed', serviceType: 'Inspection', revenue: 450, parts: 0, travel: 4, scheduled: '2026-02-11', notes: 'Safety inspection' },
+        { id: 'J005', customerName: 'Davis Apartments', city: 'Louisville', state: 'KY', lat: 38.2527, lng: -85.7585, tech: 'Sam', status: 'Scheduled', serviceType: 'Installation', revenue: 2100, parts: 680, travel: 6, scheduled: '2026-02-15', notes: '22kW dual unit' },
+        { id: 'J006', customerName: 'Miller Hospital', city: 'Richmond', state: 'VA', lat: 37.5407, lng: -77.4360, tech: '', status: 'Pending', serviceType: 'Consultation', revenue: 0, parts: 0, travel: 7.5, scheduled: '2026-02-16', notes: 'Unassigned - awaiting confirmation' },
+        { id: 'J007', customerName: 'Taylor Estate', city: 'Charlotte', state: 'NC', lat: 35.2271, lng: -80.8431, tech: 'Spencer', status: 'In Progress', serviceType: 'Upgrade', revenue: 1650, parts: 520, travel: 5, scheduled: '2026-02-12', notes: 'Battery upgrade to 18kWh' },
+        { id: 'J008', customerName: 'Anderson Park', city: 'Knoxville', state: 'TN', lat: 35.9800, lng: -83.9100, tech: 'Lucas', status: 'Completed', serviceType: 'Maintenance', revenue: 750, parts: 200, travel: 1.2, scheduled: '2026-02-10', notes: 'Annual service complete' },
+        { id: 'J009', customerName: 'Garcia Manufacturing', city: 'Chattanooga', state: 'TN', lat: 35.0456, lng: -85.2672, tech: 'Andrew', status: 'Scheduled', serviceType: 'Troubleshooting', revenue: 1100, parts: 280, travel: 3, scheduled: '2026-02-14', notes: 'Inverter diagnostics' },
+        { id: 'J010', customerName: 'Martinez Ranch', city: 'Johnson City', state: 'TN', lat: 36.3150, lng: -82.3050, tech: 'Sam', status: 'Scheduled', serviceType: 'Installation', revenue: 1950, parts: 590, travel: 4, scheduled: '2026-02-17', notes: '18kW backup system' },
+        { id: 'J011', customerName: 'Robinson School', city: 'Nashville', state: 'TN', lat: 36.1445, lng: -86.7755, tech: '', status: 'Pending', serviceType: 'Quote', revenue: 0, parts: 0, travel: 3.2, scheduled: '2026-02-18', notes: 'Waiting on customer decision' },
+        { id: 'J012', customerName: 'Lee Manufacturing', city: 'Bowling Green', state: 'KY', lat: 36.9910, lng: -86.4427, tech: 'Spencer', status: 'Completed', serviceType: 'Maintenance', revenue: 850, parts: 150, travel: 5.5, scheduled: '2026-02-09', notes: 'Quarterly maintenance done' },
+        { id: 'J013', customerName: 'White Retail', city: 'Raleigh', state: 'NC', lat: 35.7796, lng: -78.6382, tech: 'Lucas', status: 'In Progress', serviceType: 'Support', revenue: 600, parts: 100, travel: 6, scheduled: '2026-02-13', notes: 'Troubleshooting support' }
+    ],
+
+    warrantyClaims: [
+        { status: 'Paid', customerName: 'Smith Residence', dateOfJob: '2025-12-10', caseNum: 'WC001', tech: 'Sam', allottedTravel: 1.5, actualTravel: 1.2, distanceMiles: 2.4, actualMiles: 2.1, allottedTechTime: 3, actualTechTime: 2.8, allottedAmount: 450, adjustedAmount: 450, paidAmount: 450, dateCheckCut: '2026-01-08', svn: 'SVN0541', companyCost: 185, profitAmount: 265, lossAmount: 0, notes: 'Generator installation warranty' },
+        { status: 'Submitted', customerName: 'Johnson HVAC', dateOfJob: '2026-01-15', caseNum: 'WC002', tech: 'Lucas', allottedTravel: 2, actualTravel: 2.2, distanceMiles: 4.4, actualMiles: 4.8, allottedTechTime: 4, actualTechTime: 4.5, allottedAmount: 680, adjustedAmount: 680, paidAmount: 0, dateCheckCut: '', svn: '', companyCost: 320, profitAmount: 360, lossAmount: 0, notes: 'Awaiting Generac approval' },
+        { status: 'Completed not paid', customerName: 'Williams Farm Supply', dateOfJob: '2025-11-20', caseNum: 'WC003', tech: 'Spencer', allottedTravel: 3, actualTravel: 3.1, distanceMiles: 6.2, actualMiles: 6.4, allottedTechTime: 5, actualTechTime: 5.3, allottedAmount: 850, adjustedAmount: 750, paidAmount: 0, dateCheckCut: '', svn: '', companyCost: 410, profitAmount: 340, lossAmount: 0, notes: 'Service completed 2+ months ago - STALE' },
+        { status: 'Waiting RMA', customerName: 'Brown Industries', dateOfJob: '2026-01-22', caseNum: 'WC004', tech: 'Andrew', allottedTravel: 1.5, actualTravel: 1.6, distanceMiles: 3.2, actualMiles: 3.4, allottedTechTime: 3, actualTechTime: 3.2, allottedAmount: 520, adjustedAmount: 520, paidAmount: 0, dateCheckCut: '', svn: '', companyCost: 260, profitAmount: 260, lossAmount: 0, notes: 'Waiting on RMA authorization from Generac' },
+        { status: 'In Progress', customerName: 'Davis Apartments', dateOfJob: '2026-02-01', caseNum: 'WC005', tech: 'Sam', allottedTravel: 2, actualTravel: 1.9, distanceMiles: 3.8, actualMiles: 3.6, allottedTechTime: 4, actualTechTime: 3.8, allottedAmount: 620, adjustedAmount: 620, paidAmount: 0, dateCheckCut: '', svn: '', companyCost: 310, profitAmount: 310, lossAmount: 0, notes: 'Currently being serviced' },
+        { status: 'Paid', customerName: 'Miller Hospital', dateOfJob: '2025-10-05', caseNum: 'WC006', tech: 'Lucas', allottedTravel: 3.5, actualTravel: 3.2, distanceMiles: 6.4, actualMiles: 6.0, allottedTechTime: 6, actualTechTime: 5.8, allottedAmount: 1200, adjustedAmount: 1200, paidAmount: 1200, dateCheckCut: '2025-11-15', svn: 'SVN0542', companyCost: 580, profitAmount: 620, lossAmount: 0, notes: 'Major repair - paid in full' },
+        { status: 'Waiting Go Back', customerName: 'Taylor Estate', dateOfJob: '2026-01-28', caseNum: 'WC007', tech: 'Spencer', allottedTravel: 2.5, actualTravel: 2.4, distanceMiles: 4.8, actualMiles: 4.6, allottedTechTime: 5, actualTechTime: 5.1, allottedAmount: 750, adjustedAmount: 750, paidAmount: 0, dateCheckCut: '', svn: '', companyCost: 370, profitAmount: 380, lossAmount: 0, notes: 'Needs follow-up visit - scheduled next week' },
+        { status: 'RMA Approved', customerName: 'Anderson Park', dateOfJob: '2025-12-18', caseNum: 'WC008', tech: 'Andrew', allottedTravel: 1, actualTravel: 1.1, distanceMiles: 2.2, actualMiles: 2.3, allottedTechTime: 2.5, actualTechTime: 2.6, allottedAmount: 380, adjustedAmount: 380, paidAmount: 0, dateCheckCut: '', svn: '', companyCost: 190, profitAmount: 190, lossAmount: 0, notes: 'RMA approved, parts on order' },
+        { status: 'Parts Ordered', customerName: 'Garcia Manufacturing', dateOfJob: '2026-01-30', caseNum: 'WC009', tech: 'Sam', allottedTravel: 2, actualTravel: 2.1, distanceMiles: 4.2, actualMiles: 4.3, allottedTechTime: 4, actualTechTime: 4.2, allottedAmount: 890, adjustedAmount: 890, paidAmount: 0, dateCheckCut: '', svn: '', companyCost: 440, profitAmount: 450, lossAmount: 0, notes: 'Waiting on parts delivery from supplier' },
+        { status: 'Scheduled', customerName: 'Martinez Ranch', dateOfJob: '2026-02-03', caseNum: 'WC010', tech: 'Lucas', allottedTravel: 2.5, actualTravel: 2.4, distanceMiles: 4.8, actualMiles: 4.6, allottedTechTime: 4.5, actualTechTime: 4.4, allottedAmount: 720, adjustedAmount: 720, paidAmount: 0, dateCheckCut: '', svn: '', companyCost: 360, profitAmount: 360, lossAmount: 0, notes: 'Follow-up scheduled for 2/20' },
+        { status: 'Needs Attention', customerName: 'Robinson School', dateOfJob: '2025-10-12', caseNum: 'WC011', tech: 'Spencer', allottedTravel: 2, actualTravel: 2.3, distanceMiles: 4.6, actualMiles: 5.1, allottedTechTime: 3.5, actualTechTime: 4.2, allottedAmount: 600, adjustedAmount: 500, paidAmount: 500, dateCheckCut: '2025-11-20', svn: 'SVN0543', companyCost: 350, profitAmount: 150, lossAmount: 0, notes: 'Negotiated discount due to time overrun' },
+        { status: 'Pending Review', customerName: 'Lee Manufacturing', dateOfJob: '2026-02-04', caseNum: 'WC012', tech: 'Andrew', allottedTravel: 2.2, actualTravel: 2.0, distanceMiles: 4.0, actualMiles: 3.8, allottedTechTime: 3.8, actualTechTime: 3.5, allottedAmount: 550, adjustedAmount: 550, paidAmount: 0, dateCheckCut: '', svn: '', companyCost: 270, profitAmount: 280, lossAmount: 0, notes: 'Awaiting customer sign-off on final costs' },
+        { status: 'RMA Denied', customerName: 'White Retail', dateOfJob: '2026-01-18', caseNum: 'WC013', tech: 'Sam', allottedTravel: 2.5, actualTravel: 2.6, distanceMiles: 5.2, actualMiles: 5.3, allottedTechTime: 4, actualTechTime: 4.3, allottedAmount: 480, adjustedAmount: 280, paidAmount: 280, dateCheckCut: '2026-02-05', svn: 'SVN0544', companyCost: 240, profitAmount: 40, lossAmount: 0, notes: 'RMA denied - not warranty covered. Customer paid reduced amount.' },
+        { status: 'Go Back Complete', customerName: 'Patterson Energy', dateOfJob: '2025-09-15', caseNum: 'WC014', tech: 'Lucas', allottedTravel: 3, actualTravel: 3.2, distanceMiles: 6.4, actualMiles: 6.8, allottedTechTime: 6, actualTechTime: 6.5, allottedAmount: 950, adjustedAmount: 950, paidAmount: 950, dateCheckCut: '2026-01-30', svn: 'SVN0545', companyCost: 520, profitAmount: 430, lossAmount: 0, notes: 'Follow-up repair completed successfully' },
+        { status: 'Cancelled', customerName: 'Fox Dental', dateOfJob: '2026-01-25', caseNum: 'WC015', tech: 'Spencer', allottedTravel: 1.5, actualTravel: 1.5, distanceMiles: 3.0, actualMiles: 3.0, allottedTechTime: 2.5, actualTechTime: 0, allottedAmount: 400, adjustedAmount: 0, paidAmount: 0, dateCheckCut: '', svn: '', companyCost: 0, profitAmount: 0, lossAmount: 0, notes: 'Customer cancelled warranty claim' }
+    ],
+
+    inventory: [
+        { id: 'INV001', itemName: 'Generac 22kW Unit', category: 'Generators', qty: 3, minStock: 2, cost: 6500, supplier: 'Generac Direct', lastOrder: '2026-01-15', sku: 'GN-22KW-01' },
+        { id: 'INV002', itemName: 'Generac 18kW Unit', category: 'Generators', qty: 2, minStock: 1, cost: 5200, supplier: 'Generac Direct', lastOrder: '2026-01-10', sku: 'GN-18KW-01' },
+        { id: 'INV003', itemName: 'Battery Bank (18kWh)', category: 'Batteries', qty: 1, minStock: 1, cost: 8900, supplier: 'Generac Storage', lastOrder: '2026-02-01', sku: 'BATT-18K' },
+        { id: 'INV004', itemName: 'Inverter (10kW)', category: 'Components', qty: 4, minStock: 2, cost: 2100, supplier: 'Generac Components', lastOrder: '2025-12-20', sku: 'INV-10K' },
+        { id: 'INV005', itemName: 'Transfer Switch Kit', category: 'Components', qty: 8, minStock: 5, cost: 850, supplier: 'Electrical Supply Co', lastOrder: '2026-01-25', sku: 'XFER-KIT' },
+        { id: 'INV006', itemName: 'Fuel Tank (500gal)', category: 'Accessories', qty: 1, minStock: 1, cost: 3200, supplier: 'Generac Accessories', lastOrder: '2025-11-30', sku: 'TANK-500' },
+        { id: 'INV007', itemName: 'Oil Change Kit', category: 'Consumables', qty: 12, minStock: 8, cost: 45, supplier: 'Local Supply', lastOrder: '2026-02-08', sku: 'OIL-KIT' },
+        { id: 'INV008', itemName: 'Spark Plugs (Box of 10)', category: 'Consumables', qty: 5, minStock: 4, cost: 28, supplier: 'Local Supply', lastOrder: '2026-02-01', sku: 'SPARK-10' },
+        { id: 'INV009', itemName: 'Air Filters', category: 'Consumables', qty: 15, minStock: 10, cost: 18, supplier: 'Local Supply', lastOrder: '2026-02-05', sku: 'FILTER-AIR' },
+        { id: 'INV010', itemName: 'Installation Hardware Pack', category: 'Components', qty: 6, minStock: 3, cost: 150, supplier: 'Hardware Supplier', lastOrder: '2026-01-20', sku: 'HWPACK-01' }
+    ],
+
+    routes: [],
+
+    emails: [
+        { id: 'E001', from: 'customer@smithresidence.com', subject: 'Installation complete - thank you!', body: 'Just wanted to thank the team for the professional installation...', received: '2026-02-10', answered: true, age: '1 day' },
+        { id: 'E002', from: 'warranty@generac.com', subject: 'Warranty claim WC002 status update', body: 'Your claim is currently under review...', received: '2026-02-08', answered: false, age: '3 days' },
+        { id: 'E003', from: 'manager@johnsonhvac.com', subject: 'Scheduling follow-up service', body: 'Can you provide availability for next week?', received: '2026-02-09', answered: false, age: '2 days' },
+        { id: 'E004', from: 'billing@davisapts.com', subject: 'Invoice payment received - thank you', body: 'Payment has been processed and applied to account...', received: '2026-02-11', answered: true, age: 'Today' },
+        { id: 'E005', from: 'support@generac.com', subject: 'RMA tracking number provided', body: 'Your RMA has been approved. Tracking: RMA-2026-00541', received: '2026-02-06', answered: true, age: '5 days' },
+        { id: 'E006', from: 'info@millerhosp.com', subject: 'Urgent: Generator not starting', body: 'Our backup unit is not responding. Can someone come out immediately?', received: '2026-02-11', answered: false, age: 'Today' }
+    ],
+
+    checkouts: [
+        { id: 'CHK001', tech: 'Sam', date: '2026-02-10', items: [{item: 'Oil Change Kit', qty: 1}], status: 'Returned', returnDate: '2026-02-11' },
+        { id: 'CHK002', tech: 'Lucas', date: '2026-02-11', items: [{item: 'Air Filters', qty: 2}, {item: 'Spark Plugs', qty: 1}], status: 'Active', returnDate: null }
+    ]
+};
+
+// ============================================
+// LOGIN & AUTH FUNCTIONS
+// ============================================
+
+function handleLogin(e) {
+    e.preventDefault();
+    const password = document.getElementById('loginPassword')?.value || '';
+    const email = document.getElementById('loginEmail')?.value || '';
+
+    if (!email || !password) {
+        showToast('Please enter email and password', 'error');
+        return;
+    }
+
+    // Demo mode - accept any valid email
+    if (email.includes('@')) {
+        document.getElementById('loginContainer').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'flex';
+        if (document.getElementById('rememberMe').checked) {
+            localStorage.setItem('akino_logged_in', 'true');
+        }
+        initApp();
+    } else {
+        showToast('Invalid email format', 'error');
+    }
+}
+
+function handleDemoMode() {
+    document.getElementById('loginContainer').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'flex';
+    initApp();
+}
+
+function handleLogout() {
+    localStorage.removeItem('akino_logged_in');
+    location.reload();
+}
+
+if (localStorage.getItem('akino_logged_in') === 'true') {
+    setTimeout(() => handleDemoMode(), 500);
+}
+
+// ============================================
+// TAB NAVIGATION
+// ============================================
+
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    const targetTab = document.getElementById('tab-' + tabName);
+    if (targetTab) targetTab.classList.add('active');
+
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('active');
+
+    const tabNames = {
+        dashboard: ['Dashboard', 'fa-chart-line'],
+        jobs: ['Jobs', 'fa-briefcase'],
+        routes: ['Routes', 'fa-route'],
+        warranty: ['Warranty Claims', 'fa-shield-halved'],
+        inventory: ['Inventory', 'fa-warehouse'],
+        technicians: ['Technicians', 'fa-users'],
+        financials: ['Financials', 'fa-dollar-sign'],
+        'email-monitor': ['Email Monitor', 'fa-envelope'],
+        settings: ['Settings', 'fa-gear']
+    };
+
+    const [name, icon] = tabNames[tabName] || ['Dashboard', 'fa-chart-line'];
+    const header = document.getElementById('currentTabName');
+    const iconEl = document.querySelector('.tab-icon');
+    if (header) header.textContent = name;
+    if (iconEl) iconEl.className = 'tab-icon fas ' + icon;
+
+    if (tabName === 'routes') setTimeout(() => initMap(), 100);
+    if (tabName === 'dashboard') renderDashboard();
+    if (tabName === 'jobs') renderJobs();
+    if (tabName === 'warranty') renderWarranty();
+    if (tabName === 'inventory') renderInventory();
+    if (tabName === 'technicians') renderTechnicians();
+    if (tabName === 'financials') renderFinancials();
+    if (tabName === 'email-monitor') renderEmailMonitor();
+}
+
+// ============================================
+// DASHBOARD RENDERING
+// ============================================
+
+function renderDashboard() {
+    const jobsScheduled = DataStore.jobs.filter(j => j.status === 'Scheduled').length;
+    const jobsCompleted = DataStore.jobs.filter(j => j.status === 'Completed').length;
+    const totalRevenue = DataStore.jobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
+    const avgJobValue = DataStore.jobs.length > 0 ? Math.round(totalRevenue / DataStore.jobs.length) : 0;
+    const staleWarranty = DataStore.warrantyClaims.filter(c => ['Submitted', 'Completed not paid'].includes(c.status)).length;
+    const warrantyProfit = DataStore.warrantyClaims.reduce((sum, c) => sum + (c.profitAmount || 0), 0);
+
+    const kpiHtml = `
+        <div class="kpi-card">
+            <div class="kpi-value">${DataStore.jobs.length}</div>
+            <div class="kpi-label">Total Jobs</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value">${jobsScheduled}</div>
+            <div class="kpi-label">Scheduled</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value">${jobsCompleted}</div>
+            <div class="kpi-label">Completed</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value">$${totalRevenue.toLocaleString()}</div>
+            <div class="kpi-label">Revenue</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value">$${avgJobValue.toLocaleString()}</div>
+            <div class="kpi-label">Avg Job</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value">$${Math.round(warrantyProfit).toLocaleString()}</div>
+            <div class="kpi-label">Warranty Profit</div>
+        </div>
+    `;
+
+    const kpiContainer = document.getElementById('kpiContainer');
+    if (kpiContainer) kpiContainer.innerHTML = kpiHtml;
+
+    const issues = runFullScan();
+    let alertsHtml = '<div class="alerts-section">';
+
+    if (issues.length === 0) {
+        alertsHtml += '<div style="padding:12px;color:#22c55e;text-align:center;"><i class="fas fa-check-circle"></i> All systems operational</div>';
+    } else {
+        issues.forEach(issue => {
+            const icon = issue.type === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle';
+            const color = issue.type === 'error' ? '#ef4444' : '#f59e0b';
+            alertsHtml += `<div style="padding:12px;border-left:4px solid ${color};color:${color};display:flex;align-items:center;gap:12px;">
+                <i class="fas ${icon}"></i>
+                <span>${issue.msg}</span>
+            </div>`;
+        });
+    }
+    alertsHtml += '</div>';
+
+    const alertsContainer = document.getElementById('alertsContainer');
+    if (alertsContainer) alertsContainer.innerHTML = alertsHtml;
+
+    renderActivityFeed();
+}
+
+function renderActivityFeed() {
+    const activities = [];
+
+    DataStore.jobs.filter(j => j.status === 'In Progress').forEach(j => {
+        activities.push({ time: 'Now', msg: `${j.customerName} - Job in progress with ${j.tech}`, icon: 'fa-briefcase', color: '#3b82f6' });
+    });
+
+    DataStore.jobs.filter(j => j.status === 'Completed').slice(-3).forEach(j => {
+        activities.push({ time: '2+ hours ago', msg: `${j.customerName} - Job completed by ${j.tech}`, icon: 'fa-check', color: '#22c55e' });
+    });
+
+    DataStore.emails.filter(e => !e.answered).slice(0, 2).forEach(e => {
+        activities.push({ time: e.age, msg: `Email from ${e.from.split('@')[0]} - "${e.subject.substring(0, 30)}..."`, icon: 'fa-envelope', color: '#f97316' });
+    });
+
+    let feedHtml = '<div class="activity-feed">';
+    activities.forEach(a => {
+        feedHtml += `
+            <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.1);">
+                <div style="color:${a.color};font-size:14px;"><i class="fas ${a.icon}"></i></div>
+                <div style="flex:1;">
+                    <div style="font-size:13px;color:#e2e8f0;">${a.msg}</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:4px;">${a.time}</div>
+                </div>
+            </div>
+        `;
+    });
+    feedHtml += '</div>';
+
+    const feedContainer = document.getElementById('activityFeed');
+    if (feedContainer) feedContainer.innerHTML = feedHtml;
+}
+
+// ============================================
+// JOBS MANAGEMENT
+// ============================================
+
+function renderJobs(filter = {}) {
+    let filtered = [...DataStore.jobs];
+
+    const statusFilter = document.getElementById('jobStatusFilter')?.value;
+    const techFilter = document.getElementById('jobTechFilter')?.value;
+    const stateFilter = document.getElementById('jobStateFilter')?.value;
+
+    if (statusFilter && statusFilter !== 'all') {
+        filtered = filtered.filter(j => j.status === statusFilter);
+    }
+    if (techFilter && techFilter !== 'all') {
+        filtered = filtered.filter(j => j.tech === techFilter);
+    }
+    if (stateFilter && stateFilter !== 'all') {
+        filtered = filtered.filter(j => j.state === stateFilter);
+    }
+
+    let html = '<table class="data-table"><thead><tr>';
+    html += '<th>ID</th><th>Customer</th><th>City/State</th><th>Tech</th><th>Status</th><th>Service Type</th><th>Revenue</th><th>Scheduled</th><th>Actions</th>';
+    html += '</tr></thead><tbody>';
+
+    filtered.forEach((job, idx) => {
+        const statusClass = `badge badge-${job.status.toLowerCase().replace(/\s+/g, '-')}`;
+        html += `<tr>
+            <td>${job.id}</td>
+            <td>${job.customerName}</td>
+            <td>${job.city}, ${job.state}</td>
+            <td>${job.tech || '—'}</td>
+            <td><span class="${statusClass}">${job.status}</span></td>
+            <td>${job.serviceType}</td>
+            <td>$${job.revenue.toLocaleString()}</td>
+            <td>${job.scheduled}</td>
+            <td><button onclick="editJob(${idx})" class="btn btn-sm" style="padding:4px 8px;font-size:12px;">Edit</button></td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+
+    const container = document.getElementById('jobsTable');
+    if (container) container.innerHTML = html;
+}
+
+function editJob(index) {
+    const job = DataStore.jobs[index];
+    const modal = document.getElementById('jobModal');
+    if (!modal) return;
+
+    document.getElementById('jobModalCustomer').value = job.customerName;
+    document.getElementById('jobModalCity').value = job.city;
+    document.getElementById('jobModalState').value = job.state;
+    document.getElementById('jobModalTech').value = job.tech;
+    document.getElementById('jobModalStatus').value = job.status;
+    document.getElementById('jobModalService').value = job.serviceType;
+    document.getElementById('jobModalRevenue').value = job.revenue;
+    document.getElementById('jobModalScheduled').value = job.scheduled;
+
+    modal.dataset.editIndex = index;
+    modal.style.display = 'block';
+}
+
+function saveJob() {
+    const index = document.getElementById('jobModal').dataset.editIndex;
+    const idx = parseInt(index);
+
+    DataStore.jobs[idx].customerName = document.getElementById('jobModalCustomer').value;
+    DataStore.jobs[idx].city = document.getElementById('jobModalCity').value;
+    DataStore.jobs[idx].state = document.getElementById('jobModalState').value;
+    DataStore.jobs[idx].tech = document.getElementById('jobModalTech').value;
+    DataStore.jobs[idx].status = document.getElementById('jobModalStatus').value;
+    DataStore.jobs[idx].serviceType = document.getElementById('jobModalService').value;
+    DataStore.jobs[idx].revenue = parseFloat(document.getElementById('jobModalRevenue').value);
+    DataStore.jobs[idx].scheduled = document.getElementById('jobModalScheduled').value;
+
+    document.getElementById('jobModal').style.display = 'none';
+    renderJobs();
+    showToast('Job updated', 'success');
+}
+
+function deleteJob(index) {
+    if (confirm('Are you sure? This cannot be undone.')) {
+        DataStore.jobs.splice(index, 1);
+        renderJobs();
+        showToast('Job deleted', 'success');
+    }
+}
+
+function filterJobs() {
+    renderJobs();
+}
+
+function addJobModal() {
+    const modal = document.getElementById('jobModal');
+    if (!modal) return;
+    modal.dataset.editIndex = '-1';
+    document.getElementById('jobModalCustomer').value = '';
+    document.getElementById('jobModalCity').value = '';
+    document.getElementById('jobModalState').value = 'TN';
+    document.getElementById('jobModalTech').value = '';
+    document.getElementById('jobModalStatus').value = 'Pending';
+    document.getElementById('jobModalService').value = 'Maintenance';
+    document.getElementById('jobModalRevenue').value = '';
+    document.getElementById('jobModalScheduled').value = '';
+    modal.style.display = 'block';
+}
+
+function handleCSVImport(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n');
+        const headers = lines[0].split(',').map(h => h.trim());
+        const rows = [];
+
+        for (let i = 1; i < lines.length; i++) {
+            if (lines[i].trim()) {
+                rows.push(lines[i].split(',').map(c => c.trim()));
+            }
+        }
+
+        showCSVPreview(headers, rows);
+    };
+    reader.readAsText(file);
+}
+
+function showCSVPreview(headers, rows) {
+    const modal = document.getElementById('csvPreviewModal');
+    if (!modal) return;
+
+    let html = '<table class="data-table"><thead><tr>';
+    headers.forEach(h => html += `<th>${h}</th>`);
+    html += '</tr></thead><tbody>';
+
+    rows.slice(0, 5).forEach(row => {
+        html += '<tr>';
+        row.forEach(cell => html += `<td>${cell}</td>`);
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+
+    const preview = document.getElementById('csvPreview');
+    if (preview) preview.innerHTML = html;
+
+    modal.dataset.rows = JSON.stringify(rows);
+    modal.dataset.headers = JSON.stringify(headers);
+    modal.style.display = 'block';
+}
+
+// ============================================
+// ROUTE OPTIMIZATION & HAVERSINE
+// ============================================
+
+function haversine(lat1, lon1, lat2, lon2) {
+    const toRad = Math.PI / 180;
+    const a = Math.sin(((lat2 - lat1) * toRad) / 2) ** 2 +
+        Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) *
+        Math.sin(((lon2 - lon1) * toRad) / 2) ** 2;
+    return 2 * 3958.8 * Math.asin(Math.sqrt(a));
+}
+
+function optimizeRoutes() {
+    const jobs = DataStore.jobs.filter(j => j.lat && j.lng &&
+        !['Done', 'Completed'].includes(j.status) && j.status !== 'Pending');
+
+    let unassigned = [...jobs];
+    const routes = [];
+    let routeNum = 1;
+
+    while (unassigned.length > 0) {
+        let route = {
+            id: 'R' + routeNum,
+            stops: [],
+            totalMiles: 0,
+            totalDrive: 0,
+            totalRevenue: 0,
+            tech: ''
+        };
+
+        let currentLat = CONFIG.DEPOT.lat;
+        let currentLng = CONFIG.DEPOT.lng;
+
+        while (route.stops.length < CONFIG.MAX_JOBS_PER_ROUTE && unassigned.length > 0) {
+            let nearestIdx = -1;
+            let nearestDist = Infinity;
+
+            for (let i = 0; i < unassigned.length; i++) {
+                const d = haversine(currentLat, currentLng, unassigned[i].lat, unassigned[i].lng);
+                if (d < nearestDist) {
+                    nearestDist = d;
+                    nearestIdx = i;
+                }
+            }
+
+            if (nearestIdx >= 0) {
+                const job = unassigned.splice(nearestIdx, 1)[0];
+                const driveTime = Math.round((nearestDist / 45) * 60);
+
+                route.stops.push({
+                    ...job,
+                    miles: Math.round(nearestDist * 10) / 10,
+                    driveMin: driveTime,
+                    serviceMin: CONFIG.SERVICE_DURATION,
+                    totalMin: driveTime + CONFIG.SERVICE_DURATION
+                });
+
+                route.totalMiles += nearestDist;
+                route.totalDrive += driveTime;
+                route.totalRevenue += (job.revenue || 0);
+
+                if (!route.tech && job.tech) route.tech = job.tech;
+
+                currentLat = job.lat;
+                currentLng = job.lng;
+            }
+        }
+
+        const tech = PERSONNEL.find(p => p.name === route.tech) || PERSONNEL[0];
+        const totalHours = (route.totalDrive + route.stops.length * CONFIG.SERVICE_DURATION) / 60;
+        const laborCost = tech.loaded * totalHours;
+        const travelCost = route.totalMiles * CONFIG.FUEL_PER_MILE;
+        const overhead = (CONFIG.MONTHLY_OVERHEAD / (CONFIG.MAX_JOBS_PER_ROUTE * 4.33)) * route.stops.length;
+
+        route.trueCost = Math.round((laborCost + travelCost + overhead) * 100) / 100;
+        route.profit = Math.round((route.totalRevenue - route.trueCost) * 100) / 100;
+        route.verdict = route.profit > 200 ? 'profitable' : route.profit > 0 ? 'marginal' : 'loss';
+        route.totalMiles = Math.round(route.totalMiles * 10) / 10;
+
+        routes.push(route);
+        routeNum++;
+    }
+
+    DataStore.routes = routes;
+    renderRoutes();
+    showToast('Routes optimized! ' + routes.length + ' routes created.', 'success');
+}
+
+function renderRoutes() {
+    if (!DataStore.routes || DataStore.routes.length === 0) {
+        const container = document.getElementById('routesTable');
+        if (container) container.innerHTML = '<p style="padding:20px;color:#94a3b8;">No routes yet. Click "Optimize Routes" to generate.</p>';
+        return;
+    }
+
+    let html = '<table class="data-table"><thead><tr>';
+    html += '<th>Route ID</th><th>Tech</th><th>Stops</th><th>Miles</th><th>Drive Time</th><th>Revenue</th><th>True Cost</th><th>Profit</th><th>Verdict</th>';
+    html += '</tr></thead><tbody>';
+
+    DataStore.routes.forEach(route => {
+        const verdictClass = `badge badge-${route.verdict}`;
+        html += `<tr>
+            <td>${route.id}</td>
+            <td>${route.tech || '—'}</td>
+            <td>${route.stops.length}</td>
+            <td>${route.totalMiles} mi</td>
+            <td>${Math.round(route.totalDrive)} min</td>
+            <td>$${route.totalRevenue.toLocaleString()}</td>
+            <td>$${route.trueCost.toLocaleString()}</td>
+            <td>$${route.profit.toLocaleString()}</td>
+            <td><span class="${verdictClass}">${route.verdict}</span></td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+
+    const container = document.getElementById('routesTable');
+    if (container) container.innerHTML = html;
+}
+
+// ============================================
+// MAP INITIALIZATION (LEAFLET)
+// ============================================
+
+let map = null;
+let mapMarkers = [];
+let routePolylines = [];
+
+function initMap() {
+    if (map) return;
+
+    setTimeout(() => {
+        const mapEl = document.getElementById('routeMap');
+        if (!mapEl) return;
+
+        map = L.map('routeMap', { scrollWheelZoom: true }).setView([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], 8);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        L.marker([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], {
+            icon: L.divIcon({
+                className: 'depot-marker',
+                html: '<div style="background:#f97316;color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.3);">HQ</div>',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            })
+        }).addTo(map).bindPopup('<b>Akino Solar HQ</b><br>Knoxville, TN 37931');
+
+        renderMapMarkers();
+    }, 200);
+}
+
+function renderMapMarkers() {
+    if (!map) return;
+
+    mapMarkers.forEach(m => map.removeLayer(m));
+    routePolylines.forEach(p => map.removeLayer(p));
+    mapMarkers = [];
+    routePolylines = [];
+
+    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dfe6e9'];
+
+    DataStore.routes.forEach((route, routeIdx) => {
+        const color = colors[routeIdx % colors.length];
+        const routePoints = [[CONFIG.DEPOT.lat, CONFIG.DEPOT.lng]];
+
+        route.stops.forEach((stop, stopIdx) => {
+            routePoints.push([stop.lat, stop.lng]);
+
+            const marker = L.marker([stop.lat, stop.lng], {
+                icon: L.divIcon({
+                    className: 'route-marker',
+                    html: `<div style="background:${color};color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${stopIdx + 1}</div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                })
+            }).addTo(map);
+
+            marker.bindPopup(`<b>${stop.customerName}</b><br>${stop.city}, ${stop.state}<br>$${stop.revenue}<br>Tech: ${stop.tech}`);
+            mapMarkers.push(marker);
+        });
+
+        routePoints.push([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng]);
+
+        const polyline = L.polyline(routePoints, {
+            color: color,
+            weight: 3,
+            opacity: 0.6,
+            dashArray: '5, 5'
+        }).addTo(map);
+
+        routePolylines.push(polyline);
+    });
+
+    if (mapMarkers.length > 0) {
+        const group = new L.featureGroup([...mapMarkers]);
+        map.fitBounds(group.getBounds().pad(0.1));
+    }
+}
+
+// ============================================
+// WARRANTY MANAGEMENT
+// ============================================
+
+function renderWarranty(month = 'January 2026', filter = 'all') {
+    let filtered = [...DataStore.warrantyClaims];
+
+    if (filter !== 'all') {
+        filtered = filtered.filter(c => c.status === filter);
+    }
+
+    let html = '<table class="data-table"><thead><tr>';
+    html += '<th>Status</th><th>Customer</th><th>Date of Job</th><th>Case #</th><th>Tech</th><th>Allotted Hours</th><th>Actual Hours</th><th>Allotted $</th><th>Paid $</th><th>Company Cost</th><th>Profit</th>';
+    html += '</tr></thead><tbody>';
+
+    filtered.forEach((claim, idx) => {
+        const statusClass = `badge badge-${claim.status.toLowerCase().replace(/\s+/g, '-')}`;
+        const allottedHours = ((claim.allottedTravel || 0) + (claim.allottedTechTime || 0)) / 60;
+        const actualHours = ((claim.actualTravel || 0) + (claim.actualTechTime || 0)) / 60;
+
+        html += `<tr>
+            <td><span class="${statusClass}">${claim.status}</span></td>
+            <td>${claim.customerName}</td>
+            <td>${claim.dateOfJob}</td>
+            <td>${claim.caseNum}</td>
+            <td>${claim.tech}</td>
+            <td>${allottedHours.toFixed(1)}</td>
+            <td>${actualHours.toFixed(1)}</td>
+            <td>$${claim.allottedAmount}</td>
+            <td>$${claim.paidAmount}</td>
+            <td>$${claim.companyCost}</td>
+            <td>$${claim.profitAmount}</td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+
+    const container = document.getElementById('warrantyTable');
+    if (container) container.innerHTML = html;
+}
+
+function updateClaimStatus(index, newStatus) {
+    if (index >= 0 && index < DataStore.warrantyClaims.length) {
+        DataStore.warrantyClaims[index].status = newStatus;
+        renderWarranty();
+        showToast('Claim status updated', 'success');
+    }
+}
+
+function getWarrantySummary() {
+    const summary = {};
+    WARRANTY_STATUSES.forEach(status => {
+        summary[status] = DataStore.warrantyClaims.filter(c => c.status === status).length;
+    });
+    return summary;
+}
+
+function getStaleWarrantyClaims() {
+    return DataStore.warrantyClaims.filter(c => ['Submitted', 'Completed not paid'].includes(c.status));
+}
+
+// ============================================
+// INVENTORY MANAGEMENT
+// ============================================
+
+function renderInventory(filter = 'all') {
+    let filtered = [...DataStore.inventory];
+
+    if (filter === 'low') {
+        filtered = filtered.filter(i => i.qty <= i.minStock);
+    } else if (filter === 'active') {
+        filtered = filtered.filter(i => i.qty > 0);
+    }
+
+    let html = '<table class="data-table"><thead><tr>';
+    html += '<th>Item</th><th>Category</th><th>Qty</th><th>Min Stock</th><th>Status</th><th>Unit Cost</th><th>Total Value</th><th>Supplier</th><th>Last Order</th><th>Actions</th>';
+    html += '</tr></thead><tbody>';
+
+    filtered.forEach((item, idx) => {
+        const status = item.qty <= item.minStock ? '<span class="badge badge-needs-attention">Low</span>' : '<span class="badge badge-paid">OK</span>';
+        const totalValue = item.qty * item.cost;
+
+        html += `<tr>
+            <td>${item.itemName}</td>
+            <td>${item.category}</td>
+            <td>${item.qty}</td>
+            <td>${item.minStock}</td>
+            <td>${status}</td>
+            <td>$${item.cost}</td>
+            <td>$${totalValue.toLocaleString()}</td>
+            <td>${item.supplier}</td>
+            <td>${item.lastOrder}</td>
+            <td><button onclick="checkoutItem(${idx})" class="btn btn-sm" style="padding:4px 8px;font-size:12px;">Checkout</button></td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+
+    const container = document.getElementById('inventoryTable');
+    if (container) container.innerHTML = html;
+}
+
+function checkoutItem(index) {
+    const item = DataStore.inventory[index];
+    const modal = document.getElementById('checkoutModal');
+    if (!modal) return;
+
+    modal.dataset.itemIndex = index;
+    document.getElementById('checkoutItemName').value = item.itemName;
+    document.getElementById('checkoutTech').value = '';
+    document.getElementById('checkoutQty').value = 1;
+    modal.style.display = 'block';
+}
+
+function saveCheckout() {
+    const index = document.getElementById('checkoutModal').dataset.itemIndex;
+    const tech = document.getElementById('checkoutTech').value;
+    const qty = parseInt(document.getElementById('checkoutQty').value);
+
+    if (!tech || qty <= 0) {
+        showToast('Please select tech and quantity', 'error');
+        return;
+    }
+
+    const item = DataStore.inventory[index];
+    if (item.qty < qty) {
+        showToast('Not enough stock', 'error');
+        return;
+    }
+
+    item.qty -= qty;
+
+    DataStore.checkouts.push({
+        id: 'CHK' + Date.now(),
+        tech: tech,
+        date: new Date().toISOString().split('T')[0],
+        items: [{ item: item.itemName, qty: qty }],
+        status: 'Active',
+        returnDate: null
+    });
+
+    document.getElementById('checkoutModal').style.display = 'none';
+    renderInventory();
+    showToast('Checkout recorded', 'success');
+}
+
+function renderCheckouts() {
+    let html = '<table class="data-table"><thead><tr>';
+    html += '<th>Checkout ID</th><th>Tech</th><th>Date</th><th>Items</th><th>Status</th><th>Return Date</th><th>Actions</th>';
+    html += '</tr></thead><tbody>';
+
+    DataStore.checkouts.forEach((checkout, idx) => {
+        const items = checkout.items.map(i => `${i.item} (${i.qty})`).join(', ');
+        const statusBadge = checkout.status === 'Active' ? '<span class="badge badge-in-progress">Active</span>' : '<span class="badge badge-paid">Returned</span>';
+
+        html += `<tr>
+            <td>${checkout.id}</td>
+            <td>${checkout.tech}</td>
+            <td>${checkout.date}</td>
+            <td>${items}</td>
+            <td>${statusBadge}</td>
+            <td>${checkout.returnDate || '—'}</td>
+            <td>${checkout.status === 'Active' ? `<button onclick="returnCheckout(${idx})" class="btn btn-sm" style="padding:4px 8px;font-size:12px;">Return</button>` : '—'}</td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+
+    const container = document.getElementById('checkoutsTable');
+    if (container) container.innerHTML = html;
+}
+
+function returnCheckout(index) {
+    DataStore.checkouts[index].status = 'Returned';
+    DataStore.checkouts[index].returnDate = new Date().toISOString().split('T')[0];
+
+    DataStore.checkouts[index].items.forEach(item => {
+        const invItem = DataStore.inventory.find(i => i.itemName === item.item);
+        if (invItem) invItem.qty += item.qty;
+    });
+
+    renderCheckouts();
+    renderInventory();
+    showToast('Checkout marked as returned', 'success');
+}
+
+// ============================================
+// TECHNICIAN MANAGEMENT
+// ============================================
+
+function renderTechnicians() {
+    let html = '<table class="data-table"><thead><tr>';
+    html += '<th>Name</th><th>Role</th><th>Hourly Rate</th><th>Loaded Rate</th><th>Monthly Cost</th><th>Jobs (This Month)</th><th>Status</th><th>Actions</th>';
+    html += '</tr></thead><tbody>';
+
+    PERSONNEL.forEach((tech, idx) => {
+        const jobCount = DataStore.jobs.filter(j => j.tech === tech.name).length;
+        const status = tech.active ? '<span class="badge badge-paid">Active</span>' : '<span class="badge badge-cancelled">Inactive</span>';
+
+        html += `<tr>
+            <td>${tech.name}</td>
+            <td>${tech.role}</td>
+            <td>$${tech.hourly}/hr</td>
+            <td>$${tech.loaded}/hr</td>
+            <td>$${tech.monthly.toLocaleString()}</td>
+            <td>${jobCount}</td>
+            <td>${status}</td>
+            <td><button class="btn btn-sm" style="padding:4px 8px;font-size:12px;">View</button></td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+
+    const container = document.getElementById('techniciansTable');
+    if (container) container.innerHTML = html;
+}
+
+// ============================================
+// FINANCIALS
+// ============================================
+
+function renderFinancials() {
+    const totalRevenue = DataStore.jobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
+    const totalCost = DataStore.jobs.reduce((sum, j) => sum + (
+        (PERSONNEL.find(p => p.name === j.tech)?.loaded || 35) * ((j.travel || 0) + 2) +
+        (j.parts || 0) +
+        (j.travel || 0) * CONFIG.FUEL_PER_MILE
+    ), 0);
+
+    const totalProfit = totalRevenue - totalCost - CONFIG.MONTHLY_OVERHEAD;
+    const profitMargin = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100) : 0;
+
+    const warrantyRevenue = DataStore.warrantyClaims.reduce((sum, c) => sum + (c.allottedAmount || 0), 0);
+    const warrantyProfit = DataStore.warrantyClaims.reduce((sum, c) => sum + (c.profitAmount || 0), 0);
+
+    let html = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-bottom:24px;">
+            <div class="finance-card">
+                <div style="color:#94a3b8;font-size:12px;text-transform:uppercase;">Total Job Revenue</div>
+                <div style="color:#22c55e;font-size:28px;font-weight:800;margin:8px 0;">$${totalRevenue.toLocaleString()}</div>
+                <div style="color:#94a3b8;font-size:12px;">${DataStore.jobs.length} jobs</div>
+            </div>
+
+            <div class="finance-card">
+                <div style="color:#94a3b8;font-size:12px;text-transform:uppercase;">Total Cost of Goods</div>
+                <div style="color:#ef4444;font-size:28px;font-weight:800;margin:8px 0;">$${totalCost.toLocaleString()}</div>
+                <div style="color:#94a3b8;font-size:12px;">Labor + Parts + Travel</div>
+            </div>
+
+            <div class="finance-card">
+                <div style="color:#94a3b8;font-size:12px;text-transform:uppercase;">Net Profit (Jobs)</div>
+                <div style="color:#3b82f6;font-size:28px;font-weight:800;margin:8px 0;">$${totalProfit.toLocaleString()}</div>
+                <div style="color:#94a3b8;font-size:12px;">${profitMargin}% margin</div>
+            </div>
+
+            <div class="finance-card">
+                <div style="color:#94a3b8;font-size:12px;text-transform:uppercase;">Monthly Overhead</div>
+                <div style="color:#f97316;font-size:28px;font-weight:800;margin:8px 0;">$${CONFIG.MONTHLY_OVERHEAD.toLocaleString()}</div>
+                <div style="color:#94a3b8;font-size:12px;">Fixed costs</div>
+            </div>
+
+            <div class="finance-card">
+                <div style="color:#94a3b8;font-size:12px;text-transform:uppercase;">Warranty Revenue</div>
+                <div style="color:#22c55e;font-size:28px;font-weight:800;margin:8px 0;">$${warrantyRevenue.toLocaleString()}</div>
+                <div style="color:#94a3b8;font-size:12px;">${DataStore.warrantyClaims.length} claims</div>
+            </div>
+
+            <div class="finance-card">
+                <div style="color:#94a3b8;font-size:12px;text-transform:uppercase;">Warranty Profit</div>
+                <div style="color:#22c55e;font-size:28px;font-weight:800;margin:8px 0;">$${warrantyProfit.toLocaleString()}</div>
+                <div style="color:#94a3b8;font-size:12px;">After costs</div>
+            </div>
+        </div>
+
+        <div style="background:#1e293b;border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:20px;">
+            <h3 style="color:white;margin-top:0;">Breakeven Analysis</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div>
+                    <div style="color:#94a3b8;font-size:12px;">Breakeven per Job</div>
+                    <div style="color:#f97316;font-size:24px;font-weight:700;">$${CONFIG.BREAKEVEN_PER_JOB.toLocaleString()}</div>
+                </div>
+                <div>
+                    <div style="color:#94a3b8;font-size:12px;">Cost per Hour</div>
+                    <div style="color:#f97316;font-size:24px;font-weight:700;">$${CONFIG.COST_PER_HOUR}</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const container = document.getElementById('financialsContent');
+    if (container) container.innerHTML = html;
+}
+
+// ============================================
+// TRUE COST CALCULATOR
+// ============================================
+
+function calculateTrueCost() {
+    const tech = document.getElementById('calcTech')?.value || 'Sam';
+    const onsiteHrs = parseFloat(document.getElementById('calcOnsite')?.value) || 0;
+    const travelHrs = parseFloat(document.getElementById('calcTravel')?.value) || 0;
+    const miles = parseFloat(document.getElementById('calcMiles')?.value) || 0;
+    const parts = parseFloat(document.getElementById('calcParts')?.value) || 0;
+    const consumables = parseFloat(document.getElementById('calcConsumables')?.value) || 0;
+    const revenue = parseFloat(document.getElementById('calcRevenue')?.value) || 0;
+
+    const techData = PERSONNEL.find(p => p.name === tech);
+    const loadedRate = techData ? techData.loaded : 35;
+
+    const laborCost = loadedRate * (onsiteHrs + travelHrs);
+    const travelCost = miles * CONFIG.FUEL_PER_MILE;
+    const overhead = CONFIG.MONTHLY_OVERHEAD / 20;
+    const totalCost = laborCost + travelCost + parts + consumables + overhead;
+    const profit = revenue - totalCost;
+    const verdict = profit > 0 ? 'Accept' : 'Reject';
+    const verdictColor = profit > 0 ? '#22c55e' : '#ef4444';
+
+    const resultsEl = document.getElementById('calcResults');
+    if (resultsEl) {
+        resultsEl.innerHTML = `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                <div><span style="color:#94a3b8;font-size:12px;">LABOR</span><br><span style="color:white;font-size:18px;font-weight:700;">$${laborCost.toFixed(2)}</span></div>
+                <div><span style="color:#94a3b8;font-size:12px;">TRAVEL</span><br><span style="color:white;font-size:18px;font-weight:700;">$${travelCost.toFixed(2)}</span></div>
+                <div><span style="color:#94a3b8;font-size:12px;">PARTS + CONSUMABLES</span><br><span style="color:white;font-size:18px;font-weight:700;">$${(parts + consumables).toFixed(2)}</span></div>
+                <div><span style="color:#94a3b8;font-size:12px;">OVERHEAD ALLOC</span><br><span style="color:white;font-size:18px;font-weight:700;">$${overhead.toFixed(2)}</span></div>
+            </div>
+            <div style="border-top:1px solid rgba(249,115,22,0.2);padding-top:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                <div><span style="color:#94a3b8;font-size:12px;">TRUE COST</span><br><span style="color:#f97316;font-size:22px;font-weight:800;">$${totalCost.toFixed(2)}</span></div>
+                <div><span style="color:#94a3b8;font-size:12px;">PROFIT</span><br><span style="color:${verdictColor};font-size:22px;font-weight:800;">$${profit.toFixed(2)}</span></div>
+                <div><span style="color:#94a3b8;font-size:12px;">VERDICT</span><br><span class="badge ${profit >= 0 ? 'badge-paid' : 'badge-needs-attention'}" style="font-size:14px;">${verdict}</span></div>
+            </div>
+        `;
+        resultsEl.style.display = 'block';
+    }
+}
+
+// ============================================
+// EMAIL MONITOR
+// ============================================
+
+function renderEmailMonitor() {
+    let html = '<div style="margin-bottom:20px;">';
+
+    const unanswered = DataStore.emails.filter(e => !e.answered);
+    const answered = DataStore.emails.filter(e => e.answered);
+
+    html += `<div style="display:flex;gap:16px;margin-bottom:20px;">
+        <div class="kpi-card">
+            <div class="kpi-value">${DataStore.emails.length}</div>
+            <div class="kpi-label">Total Emails</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value">${unanswered.length}</div>
+            <div class="kpi-label">Unanswered</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-value">${answered.length}</div>
+            <div class="kpi-label">Resolved</div>
+        </div>
+    </div>`;
+
+    if (unanswered.length > 0) {
+        html += '<h3 style="color:white;margin-top:20px;">Unanswered Emails</h3>';
+        html += '<table class="data-table"><thead><tr>';
+        html += '<th>From</th><th>Subject</th><th>Received</th><th>Age</th><th>Actions</th>';
+        html += '</tr></thead><tbody>';
+
+        unanswered.forEach((email, idx) => {
+            html += `<tr>
+                <td>${email.from}</td>
+                <td>${email.subject}</td>
+                <td>${email.received}</td>
+                <td>${email.age}</td>
+                <td><button onclick="markEmailResolved(${idx})" class="btn btn-sm" style="padding:4px 8px;font-size:12px;background:#22c55e;">Mark Resolved</button></td>
+            </tr>`;
+        });
+
+        html += '</tbody></table>';
+    }
+
+    html += '</div>';
+
+    const container = document.getElementById('emailMonitorContent');
+    if (container) container.innerHTML = html;
+}
+
+function markEmailResolved(index) {
+    DataStore.emails[index].answered = true;
+    renderEmailMonitor();
+    showToast('Email marked as resolved', 'success');
+}
+
+// ============================================
+// CLAUDE AI SIDEBAR
+// ============================================
+
+function toggleClaudeSidebar() {
+    const sidebar = document.getElementById('claudeSidebar');
+    if (sidebar) sidebar.classList.toggle('active');
+}
+
+function processAIQuery(query) {
+    const q = query.toLowerCase();
+    let response = '';
+
+    if (q.includes('stale') || q.includes('unpaid')) {
+        const stale = getStaleWarrantyClaims();
+        response = `Found ${stale.length} potentially stale claims:\n` +
+            stale.map(c => `• ${c.customerName} - ${c.status} ($${c.allottedAmount})`).join('\n');
+    } else if (q.includes('rma') || q.includes('waiting')) {
+        const waiting = DataStore.warrantyClaims.filter(c => c.status.includes('Waiting'));
+        response = `${waiting.length} claims in waiting status:\n` +
+            waiting.map(c => `• ${c.customerName} - ${c.status}`).join('\n');
+    } else if (q.includes('profit') || q.includes('loss')) {
+        const total = DataStore.warrantyClaims.reduce((sum, c) => sum + (c.profitAmount || 0), 0);
+        const losses = DataStore.warrantyClaims.filter(c => (c.lossAmount || 0) > 0).length;
+        response = `Total warranty profit: $${total.toFixed(0)}. Jobs with losses: ${losses}`;
+    } else if (q.includes('route') || q.includes('optimize')) {
+        response = `Currently ${DataStore.routes.length} routes optimized. Total miles: ${DataStore.routes.reduce((s, r) => s + r.totalMiles, 0).toFixed(1)}. Click "Optimize Routes" to recalculate.`;
+    } else if (q.includes('tech') || q.includes('who')) {
+        response = PERSONNEL.filter(p => p.active).map(p => `${p.name} (${p.role}) - $${p.loaded}/hr`).join('\n');
+    } else if (q.includes('unanswered') || q.includes('email') || q.includes('customer')) {
+        const unanswered = DataStore.emails.filter(e => !e.answered);
+        response = unanswered.length > 0 ?
+            `${unanswered.length} unanswered emails:\n` + unanswered.map(e => `• ${e.from} - "${e.subject.substring(0, 40)}..."`).join('\n') :
+            'All customer emails have been addressed!';
+    } else if (q.includes('overhead') || q.includes('breakeven') || q.includes('break-even')) {
+        response = `Monthly overhead: $${CONFIG.MONTHLY_OVERHEAD.toLocaleString()}\nBreakeven: $${CONFIG.BREAKEVEN_PER_JOB} per job\nCost/hr: $${CONFIG.COST_PER_HOUR}`;
+    } else if (q.includes('inventory') || q.includes('stock')) {
+        const low = DataStore.inventory.filter(i => i.qty <= i.minStock);
+        response = `${low.length} inventory items low or out of stock:\n` +
+            low.map(i => `• ${i.itemName} (${i.qty}/${i.minStock})`).join('\n');
+    } else {
+        response = "I can help with: warranty, stale claims, RMA, routes, techs, emails, overhead, inventory, and more!";
+    }
+
+    addClaudeMessage(response);
+}
+
+function addClaudeMessage(msg) {
+    const chat = document.getElementById('claudeChat');
+    if (!chat) return;
+
+    const msgEl = document.createElement('div');
+    msgEl.style.cssText = 'background:#1e293b;padding:12px;border-radius:6px;margin-bottom:8px;color:#e2e8f0;font-size:13px;line-height:1.5;';
+    msgEl.textContent = msg;
+    chat.appendChild(msgEl);
+    chat.scrollTop = chat.scrollHeight;
+}
+
+function runFullScan() {
+    const issues = [];
+
+    const stale = DataStore.warrantyClaims.filter(c => ['Submitted', 'Completed not paid'].includes(c.status));
+    if (stale.length > 0) issues.push({ type: 'warning', msg: `${stale.length} stale warranty claims need attention` });
+
+    const rma = DataStore.warrantyClaims.filter(c => c.status === 'Waiting RMA');
+    if (rma.length > 0) issues.push({ type: 'warning', msg: `${rma.length} claims waiting on RMA` });
+
+    const unassigned = DataStore.jobs.filter(j => !j.tech && j.status !== 'Done');
+    if (unassigned.length > 0) issues.push({ type: 'error', msg: `${unassigned.length} jobs with no technician assigned` });
+
+    const zeroRev = DataStore.jobs.filter(j => !j.revenue || j.revenue === 0);
+    if (zeroRev.length > 0) issues.push({ type: 'warning', msg: `${zeroRev.length} jobs with $0 revenue` });
+
+    const lowStock = DataStore.inventory.filter(i => i.qty <= i.minStock);
+    if (lowStock.length > 0) issues.push({ type: 'warning', msg: `${lowStock.length} inventory items low` });
+
+    const unanswered = DataStore.emails.filter(e => !e.answered);
+    if (unanswered.length > 0) issues.push({ type: 'error', msg: `${unanswered.length} customer emails UNANSWERED` });
+
+    const lossRoutes = DataStore.routes.filter(r => r.verdict === 'loss');
+    if (lossRoutes.length > 0) issues.push({ type: 'error', msg: `${lossRoutes.length} routes at a loss` });
+
+    return issues;
+}
+
+// ============================================
+// WEATHER INTEGRATION
+// ============================================
+
+async function fetchWeather() {
+    try {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.DEPOT.lat}&longitude=${CONFIG.DEPOT.lng}&current=temperature_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit`);
+        const data = await res.json();
+        renderWeather(data.current);
+    } catch (e) {
+        console.log('Weather fetch failed:', e);
+    }
+}
+
+function renderWeather(weather) {
+    if (!weather) return;
+
+    const icon = getWeatherIcon(weather.weather_code);
+    const weatherEl = document.getElementById('weatherWidget');
+
+    if (weatherEl) {
+        weatherEl.innerHTML = `
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="font-size:24px;">${icon}</div>
+                <div>
+                    <div style="font-size:18px;font-weight:700;color:white;">${Math.round(weather.temperature_2m)}°F</div>
+                    <div style="font-size:12px;color:#94a3b8;">Wind: ${Math.round(weather.wind_speed_10m)} mph</div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function getWeatherIcon(code) {
+    if (code === 0) return '☀️';
+    if (code === 1 || code === 2) return '🌤️';
+    if (code === 3) return '☁️';
+    if (code === 45 || code === 48) return '🌫️';
+    if (code >= 51 && code <= 67) return '🌧️';
+    if (code >= 71 && code <= 85) return '❄️';
+    if (code >= 80 && code <= 82) return '⛈️';
+    return '🌤️';
+}
+
+// ============================================
+// TOAST NOTIFICATIONS
+// ============================================
+
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle'
+    };
+
+    const colors = {
+        success: '#22c55e',
+        error: '#ef4444',
+        warning: '#f59e0b'
+    };
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        background:#1e293b;
+        color:${colors[type]};
+        padding:14px 16px;
+        border-radius:6px;
+        margin-bottom:8px;
+        display:flex;
+        align-items:center;
+        gap:12px;
+        border-left:4px solid ${colors[type]};
+        animation:slideIn 0.3s ease;
+    `;
+
+    toast.innerHTML = `<i class="fas ${icons[type]}"></i><span>${message}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => toast.remove(), 5000);
+}
+
+// ============================================
+// API CONNECTION
+// ============================================
+
+async function fetchFromAPI(action, params = {}) {
+    const url = localStorage.getItem('akino_api_url');
+    if (!url) {
+        showToast('Configure Apps Script URL in Settings.', 'warning');
+        return null;
+    }
+
+    try {
+        const queryParams = new URLSearchParams({ action, ...params });
+        const res = await fetch(url + '?' + queryParams.toString());
+        return await res.json();
+    } catch (e) {
+        console.error('API Error:', e);
+        showToast('API connection failed', 'error');
+        return null;
+    }
+}
+
+async function postToAPI(action, data) {
+    const url = localStorage.getItem('akino_api_url');
+    if (!url) {
+        showToast('Configure Apps Script URL in Settings.', 'warning');
+        return null;
+    }
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, ...data })
+        });
+        return await res.json();
+    } catch (e) {
+        console.error('API Error:', e);
+        showToast('API post failed', 'error');
+        return null;
+    }
+}
+
+async function testConnection() {
+    const url = document.getElementById('appsScriptUrl')?.value;
+    if (!url) {
+        showToast('Enter an Apps Script URL first', 'warning');
+        return;
+    }
+
+    localStorage.setItem('akino_api_url', url);
+    const result = await fetchFromAPI('ping');
+
+    const status = document.getElementById('connectionStatus');
+    if (result && result.status === 'ok') {
+        showToast('Connection successful!', 'success');
+        if (status) status.innerHTML = '<span style="color:#22c55e;"><i class="fas fa-check-circle"></i> Connected</span>';
+    } else {
+        showToast('Connection failed. Check URL.', 'error');
+        if (status) status.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times-circle"></i> Failed</span>';
+    }
+}
+
+// ============================================
+// INIT APP
+// ============================================
+
+function initApp() {
+    renderDashboard();
+    renderJobs();
+    renderWarranty();
+    renderInventory();
+    renderTechnicians();
+    renderFinancials();
+    renderEmailMonitor();
+    renderCheckouts();
+    fetchWeather();
+
+    const savedUrl = localStorage.getItem('akino_api_url');
+    if (savedUrl && document.getElementById('appsScriptUrl')) {
+        document.getElementById('appsScriptUrl').value = savedUrl;
+    }
+}
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) loginForm.addEventListener('submit', handleLogin);
+
+    const demoBtn = document.getElementById('demoModeBtn');
+    if (demoBtn) demoBtn.addEventListener('click', handleDemoMode);
+
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const tabName = this.dataset.tab;
+            if (tabName) switchTab(tabName);
+        });
+    });
+
+    const hamburger = document.getElementById('hamburgerMenu');
+    if (hamburger) hamburger.addEventListener('click', function() {
+        const nav = document.getElementById('navSidebar');
+        if (nav) nav.classList.toggle('active');
+    });
+
+    const claudeFab = document.getElementById('claudeFab');
+    if (claudeFab) claudeFab.addEventListener('click', toggleClaudeSidebar);
+
+    const claudeClose = document.getElementById('claudeClose');
+    if (claudeClose) claudeClose.addEventListener('click', toggleClaudeSidebar);
+
+    const claudeSend = document.getElementById('claudeSend');
+    if (claudeSend) {
+        claudeSend.addEventListener('click', function() {
+            const input = document.getElementById('claudeInput');
+            if (input && input.value.trim()) {
+                processAIQuery(input.value);
+                input.value = '';
+            }
+        });
+    }
+
+    const claudeInput = document.getElementById('claudeInput');
+    if (claudeInput) {
+        claudeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const send = document.getElementById('claudeSend');
+                if (send) send.click();
+            }
+        });
+    }
+
+    document.getElementById('jobStatusFilter')?.addEventListener('change', filterJobs);
+    document.getElementById('jobTechFilter')?.addEventListener('change', filterJobs);
+    document.getElementById('jobStateFilter')?.addEventListener('change', filterJobs);
+
+    const optimizeBtn = document.getElementById('optimizeRoutesBtn');
+    if (optimizeBtn) optimizeBtn.addEventListener('click', optimizeRoutes);
+
+    const calcBtn = document.getElementById('calculateBtn');
+    if (calcBtn) calcBtn.addEventListener('click', calculateTrueCost);
+
+    const testConnBtn = document.getElementById('testConnectionBtn');
+    if (testConnBtn) testConnBtn.addEventListener('click', testConnection);
+
+    const dropZone = document.getElementById('csvDropZone');
+    if (dropZone) {
+        dropZone.addEventListener('dragover', e => e.preventDefault());
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file) handleCSVImport(file);
+        });
+    }
+
+    const csvInput = document.getElementById('csvFileInput');
+    if (csvInput) csvInput.addEventListener('change', function() {
+        if (this.files[0]) handleCSVImport(this.files[0]);
+    });
+
+    const saveCheckoutBtn = document.getElementById('saveCheckoutBtn');
+    if (saveCheckoutBtn) saveCheckoutBtn.addEventListener('click', saveCheckout);
+
+    const saveJobBtn = document.getElementById('saveJobBtn');
+    if (saveJobBtn) saveJobBtn.addEventListener('click', saveJob);
+
+    document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.modal').style.display = 'none';
+        });
+    });
+
+    window.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            e.target.style.display = 'none';
+        }
+    });
+});
+
+    </script>
+</body>
+</html>
