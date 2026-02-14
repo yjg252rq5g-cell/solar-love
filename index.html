@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Akino Solar Command Center - Fleet routing, job management, and warranty tracking">
-  <title>Akino Solar Command Center v3</title>
+  <title>Akino Solar Command Center v7</title>
 
   <!-- CDN IMPORTS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -1436,28 +1436,37 @@
     </table>
   </div>
 
-  <!-- CSV IMPORT MODAL -->
+  <!-- CSV MASS IMPORT MODAL -->
   <div id="csvModal" class="modal-overlay" style="display:none;">
-    <div class="modal">
+    <div class="modal" style="max-width:800px;">
       <div class="modal-header">
-        <h3 class="modal-title">Import Jobs from CSV</h3>
+        <h3 class="modal-title"><i class="fas fa-file-csv" style="margin-right:8px;"></i>Mass Import Jobs from CSV</h3>
         <button class="modal-close" id="csvModalClose" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">&times;</button>
       </div>
       <div class="modal-body">
-        <div id="csvDropZone" style="border:2px dashed #2563EB;border-radius:8px;padding:40px;text-align:center;background:#f0f2f5;cursor:pointer;margin-bottom:20px;">
-          <p style="color:#6b7280;">Drag and drop CSV file here or click to browse</p>
-          <input type="file" id="csvFileInput" accept=".csv" style="display:none;">
+        <div style="padding:12px;background:#f0f9ff;border-radius:8px;border-left:4px solid #2563eb;margin-bottom:16px;font-size:13px;color:#374151;">
+          <strong>Supported Headers:</strong> Customer Name, Address, City, State, Zip, Tech, Revenue, Date, Status, Priority, Type, Onsite Hours, Travel Hours, Miles, Parts, Consumables, Notes, Case #<br>
+          The importer auto-maps your CSV headers to the fields above. Only matched columns are imported.
         </div>
-        <div id="csvPreview" style="max-height:300px;overflow-y:auto;">
-          <!-- JS fills preview -->
+        <div id="csvDropZone" style="border:2px dashed #2563EB;border-radius:8px;padding:40px;text-align:center;background:#f0f2f5;cursor:pointer;margin-bottom:20px;transition:all 0.2s ease;">
+          <i class="fas fa-cloud-upload-alt" style="font-size:36px;color:#2563eb;margin-bottom:12px;display:block;"></i>
+          <p style="color:#374151;font-weight:600;margin:0 0 4px;">Drag and drop CSV file here</p>
+          <p style="color:#6b7280;font-size:12px;margin:0;">or click to browse files</p>
+          <input type="file" id="csvFileInput" accept=".csv,.tsv,.txt" style="display:none;">
         </div>
-        <div id="columnMapping" style="margin-top:20px;">
-          <!-- JS fills mapping interface -->
+        <div id="csvMappingInfo" style="display:none;margin-bottom:16px;">
+          <div style="padding:12px;background:#f0fdf4;border-radius:8px;border-left:4px solid #16a34a;font-size:13px;">
+            <span id="csvMappingText"></span>
+          </div>
+        </div>
+        <div id="csvPreview" style="max-height:350px;overflow:auto;display:none;">
+          <!-- JS fills preview table -->
         </div>
       </div>
       <div class="modal-footer">
+        <span id="csvRowCount" style="flex:1;font-size:13px;color:#6b7280;"></span>
         <button id="csvCancelBtn" class="btn btn-secondary">Cancel</button>
-        <button id="csvImportBtn" class="btn btn-primary">Import</button>
+        <button id="csvImportBtn" class="btn btn-primary" disabled><i class="fas fa-download"></i> Import Jobs</button>
       </div>
     </div>
   </div>
@@ -1474,6 +1483,10 @@
           <div class="form-group">
             <label class="form-label">Customer Name</label>
             <input type="text" id="jobModalCustomer" class="form-input">
+          </div>
+          <div class="form-group" style="grid-column:1/-1;">
+            <label class="form-label">Service Address</label>
+            <input type="text" id="jobModalAddress" class="form-input" placeholder="Full street address for routing...">
           </div>
           <div class="form-group">
             <label class="form-label">City</label>
@@ -1542,70 +1555,117 @@
 
 <!-- TAB 3: ROUTES -->
 <div id="tab-routes" class="tab-content" style="display:none;">
-  <h2 class="section-title">Route Optimization</h2>
+  <h2 class="section-title">Route Optimization & Fleet Dispatch</h2>
 
-  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-    <button id="routeMapViewBtn" class="btn btn-primary" data-view="map">Map View</button>
-    <button id="routeListViewBtn" class="btn btn-secondary" data-view="list">List View</button>
-    <button id="routeAnalyticsViewBtn" class="btn btn-secondary" data-view="analytics">Analytics</button>
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+    <button id="routeMapViewBtn" class="btn btn-primary" data-view="map"><i class="fas fa-map"></i> All Routes Map</button>
+    <button id="routeListViewBtn" class="btn btn-secondary" data-view="list"><i class="fas fa-list"></i> Route Cards</button>
+    <button id="routeAnalyticsViewBtn" class="btn btn-secondary" data-view="analytics"><i class="fas fa-chart-bar"></i> Analytics</button>
+    <div style="flex:1;"></div>
     <input type="date" id="routeStartDate" class="form-input" style="flex:0 0 150px;">
     <input type="date" id="routeEndDate" class="form-input" style="flex:0 0 150px;">
-    <button id="optimizeRoutesBtn" class="btn btn-primary">Optimize Routes</button>
+    <button id="optimizeRoutesBtn" class="btn btn-primary"><i class="fas fa-magic"></i> Optimize Routes</button>
     <button id="exportPdfsBtn" class="btn btn-secondary"><i class="fas fa-file-pdf"></i> Fleet PDF</button>
-    <button id="geocodeBacklogBtn" class="btn btn-secondary"><i class="fas fa-map-pin"></i> Geocode Backlog</button>
-    <button id="archiveRoutesBtn" class="btn btn-secondary">Archive Routes</button>
   </div>
 
-  <div class="card">
-    <h3 style="margin-top:0;color:#1F4E79;">Weather Widget</h3>
-    <div id="weatherWidget" style="display:flex;gap:16px;align-items:center;padding:16px;background:#f0f2f5;border-radius:8px;">
-      <div style="font-size:48px;">🌤️</div>
-      <div>
-        <p style="margin:0;font-size:24px;font-weight:bold;">72°F</p>
-        <p style="margin:0;color:#6b7280;">Clear • Wind 8 mph</p>
-      </div>
+  <!-- KPI Cards Row -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:24px;">
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Active Routes</div>
+      <div style="font-size:28px;font-weight:bold;color:#1F4E79;" id="routeKpiTotal">0</div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Total Miles</div>
+      <div style="font-size:28px;font-weight:bold;color:#2563eb;" id="routeKpiMiles">0</div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Total Revenue</div>
+      <div style="font-size:28px;font-weight:bold;color:#16a34a;" id="routeKpiRevenue">$0</div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Net Profit</div>
+      <div style="font-size:28px;font-weight:bold;color:#16a34a;" id="routeKpiProfit">$0</div>
+    </div>
+    <div class="kpi-card">
+      <div style="font-size:12px;color:#6b7280;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Weather at HQ</div>
+      <div id="weatherWidget" style="font-size:18px;font-weight:bold;color:#1F4E79;">Loading...</div>
     </div>
   </div>
 
-  <div id="routeMap" style="height:500px;border-radius:12px;background:#e5e7eb;margin-bottom:20px;display:flex;align-items:center;justify-content:center;color:#6b7280;">
-    <p>Map will load here (Requires Google Maps API)</p>
+  <!-- All Routes Map -->
+  <div id="routeMap" style="height:500px;border-radius:12px;background:#e5e7eb;margin-bottom:20px;">
   </div>
 
-  <div id="routeList" style="display:grid;gap:16px;">
-    <!-- JS fills route cards -->
+  <!-- Individual Route Cards with Maps -->
+  <div id="routeList" style="display:none;">
+    <!-- JS fills route cards with individual maps -->
   </div>
 
-  <div class="card">
-    <h3 style="margin-top:0;color:#1F4E79;">Find Best Fit for Job</h3>
-    <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:flex-end;">
+  <!-- Add Job to Schedule Section -->
+  <div class="card" style="margin-bottom:20px;">
+    <h3 style="margin-top:0;color:#1F4E79;"><i class="fas fa-plus-circle" style="margin-right:8px;"></i>Add Job to Schedule (Smart Optimizer)</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:flex-end;">
       <div class="form-group">
-        <label class="form-label">Job Address</label>
-        <input type="text" id="bestFitAddress" class="form-input" placeholder="Enter customer address...">
+        <label class="form-label">Customer Name</label>
+        <input type="text" id="smartJobCustomer" class="form-input" placeholder="Customer name...">
       </div>
-      <button id="findBestFitBtn" class="btn btn-primary">Find Best Fit</button>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <input type="text" id="smartJobAddress" class="form-input" placeholder="Full service address...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority Date (optional)</label>
+        <input type="date" id="smartJobDate" class="form-input">
+      </div>
+      <button id="smartAddJobBtn" class="btn btn-primary" style="height:42px;"><i class="fas fa-route"></i> Find Best Route</button>
     </div>
-    <div id="bestFitResult" style="margin-top:16px;display:none;padding:16px;background:#f0f2f5;border-radius:8px;border-left:4px solid #2563EB;">
-      <!-- JS fills result -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-top:12px;">
+      <div class="form-group">
+        <label class="form-label">Job Type</label>
+        <select id="smartJobType" class="form-input">
+          <option value="Service">Service</option>
+          <option value="Warranty">Warranty</option>
+          <option value="Both">Both</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Revenue ($)</label>
+        <input type="number" id="smartJobRevenue" class="form-input" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Est. Onsite (hrs)</label>
+        <input type="number" id="smartJobOnsite" class="form-input" step="0.5" value="2">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select id="smartJobPriority" class="form-input">
+          <option value="Low">Low</option>
+          <option value="Medium" selected>Medium</option>
+          <option value="High">High</option>
+        </select>
+      </div>
     </div>
+    <div id="smartJobResult" style="margin-top:16px;display:none;"></div>
   </div>
 
+  <!-- Analytics Section -->
   <div id="analyticsSection" style="display:none;">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin-top:24px;">
       <div class="card">
-        <h3 style="margin-top:0;color:#1F4E79;">Route Overview</h3>
+        <h3 style="margin-top:0;color:#1F4E79;">Route Profitability</h3>
         <canvas id="routeOverviewChart" style="max-height:300px;"></canvas>
       </div>
       <div class="card">
-        <h3 style="margin-top:0;color:#1F4E79;">Tech Performance</h3>
-        <canvas id="techPerformanceChart" style="max-height:300px;"></canvas>
+        <h3 style="margin-top:0;color:#1F4E79;">Mileage by Route</h3>
+        <canvas id="routeMileageChart" style="max-height:300px;"></canvas>
       </div>
       <div class="card">
-        <h3 style="margin-top:0;color:#1F4E79;">Route Comparison</h3>
-        <canvas id="routeCompareChart" style="max-height:300px;"></canvas>
+        <h3 style="margin-top:0;color:#1F4E79;">Revenue vs Cost</h3>
+        <canvas id="routeRevCostChart" style="max-height:300px;"></canvas>
       </div>
       <div class="card">
-        <h3 style="margin-top:0;color:#1F4E79;">Geographic Heatmap</h3>
-        <canvas id="geoHeatChart" style="max-height:300px;"></canvas>
+        <h3 style="margin-top:0;color:#1F4E79;">Efficiency Score</h3>
+        <canvas id="routeEfficiencyChart" style="max-height:300px;"></canvas>
       </div>
     </div>
   </div>
@@ -2643,24 +2703,27 @@ const OVERHEAD_CATEGORIES = {
 };
 
 const ROUTES_DATA = [
-  { id: 'R1', jobs: 4, miles: 372.56, min: 640, val: 400 },
-  { id: 'R2', jobs: 4, miles: 382.10, min: 655, val: 150 },
-  { id: 'R3', jobs: 4, miles: 501.72, min: 860, val: 1433.82 },
-  { id: 'R4', jobs: 4, miles: 229.25, min: 393, val: 1407.88 },
-  { id: 'R5', jobs: 4, miles: 156.84, min: 269, val: 1050.00 },
-  { id: 'R6', jobs: 3, miles: 334.11, min: 572, val: 925.50 },
-  { id: 'R7', jobs: 4, miles: 445.00, min: 763, val: 2741.62 },
-  { id: 'R8', jobs: 4, miles: 761.00, min: 1304, val: 649.50 },
-  { id: 'R9', jobs: 3, miles: 420.65, min: 721, val: 1100.00 },
-  { id: 'R10', jobs: 2, miles: 470.00, min: 806, val: 3713.62 },
-  { id: 'R11', jobs: 4, miles: 390.50, min: 669, val: 1200.00 },
-  { id: 'R12', jobs: 4, miles: 512.33, min: 879, val: 850.00 },
-  { id: 'R13', jobs: 3, miles: 281.40, min: 482, val: 1550.00 },
-  { id: 'R14', jobs: 4, miles: 346.50, min: 594, val: 895.13 },
-  { id: 'R15', jobs: 4, miles: 428.75, min: 735, val: 1200.00 },
-  { id: 'R16', jobs: 3, miles: 295.20, min: 506, val: 980.00 },
-  { id: 'R17', jobs: 4, miles: 510.60, min: 876, val: 1450.00 },
-  { id: 'R18', jobs: 4, miles: 389.90, min: 669, val: 1100.00 },
+  { id: 'R1', techs: ['Lucas'], date: '2025-12-21', stops: [
+    { lat: 33.7490, lng: -84.3880, customer: 'Rivera', city: 'Atlanta', state: 'GA', address: 'Atlanta, GA' }
+  ]},
+  { id: 'R3', techs: ['Lucas', 'Caden'], date: '2026-02-17', stops: [
+    { lat: 34.5551, lng: -84.3219, customer: 'Peter Tran', city: 'Ellijay', state: 'TN', address: 'Ellijay, TN' },
+    { lat: 33.4610, lng: -82.1157, customer: 'Erica Drvoldelic', city: 'Grovetown', state: 'GA', address: 'Grovetown, GA' }
+  ]},
+  { id: 'R7', techs: ['Caden'], date: '2026-02-10', stops: [
+    { lat: 36.1627, lng: -86.7816, customer: 'Martha Berry', city: 'Nashville', state: 'TN', address: 'Nashville, TN' },
+    { lat: 36.0417, lng: -87.5272, customer: 'Jason Wirth', city: 'Fairview', state: 'TN', address: 'Fairview, TN' },
+    { lat: 36.0405, lng: -87.6316, customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', address: 'McEwen, TN' }
+  ]},
+  { id: 'R8', techs: ['Lucas'], date: '2026-02-11', stops: [
+    { lat: 35.2365, lng: -88.1970, customer: 'Robert Makowski', city: 'Adamsville', state: 'TN', address: 'Adamsville, TN' }
+  ]},
+  { id: 'R10', techs: ['Lucas'], date: '2026-02-11', stops: [
+    { lat: 36.5816, lng: -86.5186, customer: 'Barbara Arledge', city: 'Portland', state: 'TN', address: 'Portland, TN' }
+  ]},
+  { id: 'R14', techs: ['Sam'], date: '2026-02-11', stops: [
+    { lat: 38.2527, lng: -85.7585, customer: 'Mary Leffell', city: 'Louisville', state: 'KY', address: 'Louisville, KY' }
+  ]},
 ];
 
 // ============================================================================
@@ -2669,21 +2732,21 @@ const ROUTES_DATA = [
 
 const DataStore = {
   jobs: [
-    { date: '2026-01-05', id: '435804', customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', zip: '', priority: 'Medium', tech: 'Lucas', type: 'Both', onsite: 1, travel: 4, miles: 234, parts: 0, consumables: 0, revenue: 150, wcase: '435804', wstatus: 'Completed not paid', notes: 'Warranty + service', flags: [], status: 'completed', route: 'R7', routeDate: '2026-01-05', requested: '2025-12-28' },
-    { date: '2026-01-06', id: '439295', customer: 'Krista Hogan', city: '', state: 'TN', zip: '', priority: 'Medium', tech: 'Lucas', type: 'Warranty', onsite: 2.5, travel: 1, miles: 28, parts: 0, consumables: 0, revenue: 450, wcase: '439295', wstatus: 'Completed not paid', notes: 'Warranty claim', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-03' },
-    { date: '2026-02-11', id: '597', customer: 'Barbara Arledge', city: 'Portland', state: 'TN', zip: '', priority: 'High', tech: 'Lucas', type: 'Service', onsite: 3, travel: 2, miles: 470, parts: 0, consumables: 0, revenue: 3713.62, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R10', routeDate: '2026-02-11', requested: '2026-02-08' },
-    { date: '2026-02-10', id: '628', customer: 'Martha Berry', city: 'Nashville', state: 'TN', zip: '', priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 1.5, miles: 445, parts: 0, consumables: 0, revenue: 1404.20, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R7', routeDate: '2026-02-10', requested: '2026-02-05' },
-    { date: '2026-02-17', id: '649', customer: 'Peter Tran', city: 'Ellijay', state: 'TN', zip: '', priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 2, miles: 500, parts: 0, consumables: 0, revenue: 740.82, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R3', routeDate: '2026-02-17', requested: '2026-02-12' },
-    { date: '2026-02-11', id: '464', customer: 'Mary Leffell', city: 'Louisville', state: 'KY', zip: '', priority: 'Medium', tech: 'Sam', type: 'Service', onsite: 1, travel: 1, miles: 46, parts: 0, consumables: 0, revenue: 394.63, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R14', routeDate: '2026-02-11', requested: '2026-02-09' },
-    { date: '2026-02-19', id: '638', customer: 'Erica Drvoldelic', city: 'Grovetown', state: 'GA', zip: '', priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 3, miles: 501, parts: 0, consumables: 0, revenue: 343.50, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R3', routeDate: '2026-02-19', requested: '2026-02-14' },
-    { date: '2026-02-11', id: '645', customer: 'Jason Wirth', city: 'Fairview', state: 'TN', zip: '', priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 3, travel: 2, miles: 445, parts: 0, consumables: 0, revenue: 2191, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R7', routeDate: '2026-02-11', requested: '2026-02-06' },
-    { date: '2026-02-11', id: '666', customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', zip: '', priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 1, travel: 1.5, miles: 333, parts: 0, consumables: 0, revenue: 75, wcase: '', wstatus: '', notes: 'Troubleshoot', flags: [], status: 'scheduled', route: 'R7', routeDate: '2026-02-11', requested: '2026-02-10' },
-    { date: '2026-01-15', id: '200', customer: 'Jon', city: 'Knoxville', state: 'TN', zip: '', priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 2, travel: 1, miles: 98, parts: 0, consumables: 0, revenue: 676, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-10' },
-    { date: '2026-01-20', id: '100', customer: 'Heidi', city: '', state: 'TN', zip: '', priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 7, travel: 1, miles: 100, parts: 0, consumables: 0, revenue: 900, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-15' },
-    { date: '2026-01-25', id: '500', customer: 'Bane', city: '', state: 'TN', zip: '', priority: 'High', tech: 'Lucas', type: 'Service', onsite: 8, travel: 4, miles: 510, parts: 0, consumables: 0, revenue: 675, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-18' },
-    { date: '2025-12-21', id: '410', customer: 'Rivera', city: 'Atlanta', state: 'GA', zip: '', priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 1, travel: 2, miles: 372, parts: 0, consumables: 0, revenue: 400, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R1', routeDate: '2025-12-21', requested: '2025-12-15' },
-    { date: '2026-02-11', id: '616', customer: 'Robert Makowski', city: 'Adamsville', state: 'TN', zip: '', priority: 'High', tech: 'Lucas', type: 'Service', onsite: 2, travel: 3, miles: 761, parts: 0, consumables: 0, revenue: 649.50, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R8', routeDate: '2026-02-11', requested: '2026-02-07' },
-    { date: '2026-01-05', id: '999', customer: 'Anna Testa', city: '', state: 'TN', zip: '', priority: 'Low', tech: '', type: 'Warranty', onsite: 0, travel: 0, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: 'Submitted', notes: 'Pending', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '2026-01-02' },
+    { date: '2026-01-05', id: '435804', customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', zip: '37101', address: '123 Main St, McEwen, TN 37101', lat: 36.0405, lng: -87.6316, priority: 'Medium', tech: 'Lucas', type: 'Both', onsite: 1, travel: 4, miles: 234, parts: 0, consumables: 0, revenue: 150, wcase: '435804', wstatus: 'Completed not paid', notes: 'Warranty + service', flags: [], status: 'completed', route: 'R7', routeDate: '2026-01-05', requested: '2025-12-28' },
+    { date: '2026-01-06', id: '439295', customer: 'Krista Hogan', city: 'Maryville', state: 'TN', zip: '37801', address: '456 Oak Ave, Maryville, TN 37801', lat: 35.7565, lng: -83.9705, priority: 'Medium', tech: 'Lucas', type: 'Warranty', onsite: 2.5, travel: 1, miles: 28, parts: 0, consumables: 0, revenue: 450, wcase: '439295', wstatus: 'Completed not paid', notes: 'Warranty claim', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-03' },
+    { date: '2026-02-11', id: '597', customer: 'Barbara Arledge', city: 'Portland', state: 'TN', zip: '37148', address: '789 Cedar Rd, Portland, TN 37148', lat: 36.5816, lng: -86.5186, priority: 'High', tech: 'Lucas', type: 'Service', onsite: 3, travel: 2, miles: 470, parts: 0, consumables: 0, revenue: 3713.62, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R10', routeDate: '2026-02-11', requested: '2026-02-08' },
+    { date: '2026-02-10', id: '628', customer: 'Martha Berry', city: 'Nashville', state: 'TN', zip: '37203', address: '1200 Broadway, Nashville, TN 37203', lat: 36.1627, lng: -86.7816, priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 1.5, miles: 445, parts: 0, consumables: 0, revenue: 1404.20, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R7', routeDate: '2026-02-10', requested: '2026-02-05' },
+    { date: '2026-02-17', id: '649', customer: 'Peter Tran', city: 'Ellijay', state: 'GA', zip: '30540', address: '55 Mountain View Dr, Ellijay, GA 30540', lat: 34.5551, lng: -84.3219, priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 2, miles: 500, parts: 0, consumables: 0, revenue: 740.82, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R3', routeDate: '2026-02-17', requested: '2026-02-12' },
+    { date: '2026-02-11', id: '464', customer: 'Mary Leffell', city: 'Louisville', state: 'KY', zip: '40202', address: '300 W Main St, Louisville, KY 40202', lat: 38.2527, lng: -85.7585, priority: 'Medium', tech: 'Sam', type: 'Service', onsite: 1, travel: 1, miles: 46, parts: 0, consumables: 0, revenue: 394.63, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R14', routeDate: '2026-02-11', requested: '2026-02-09' },
+    { date: '2026-02-19', id: '638', customer: 'Erica Drvoldelic', city: 'Grovetown', state: 'GA', zip: '30813', address: '101 Patriot Way, Grovetown, GA 30813', lat: 33.4610, lng: -82.1157, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 3, miles: 501, parts: 0, consumables: 0, revenue: 343.50, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R3', routeDate: '2026-02-19', requested: '2026-02-14' },
+    { date: '2026-02-11', id: '645', customer: 'Jason Wirth', city: 'Fairview', state: 'TN', zip: '37062', address: '88 Bowie Lake Rd, Fairview, TN 37062', lat: 36.0417, lng: -87.5272, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 3, travel: 2, miles: 445, parts: 0, consumables: 0, revenue: 2191, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R7', routeDate: '2026-02-11', requested: '2026-02-06' },
+    { date: '2026-02-11', id: '666', customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', zip: '37101', address: '123 Main St, McEwen, TN 37101', lat: 36.0405, lng: -87.6316, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 1, travel: 1.5, miles: 333, parts: 0, consumables: 0, revenue: 75, wcase: '', wstatus: '', notes: 'Troubleshoot', flags: [], status: 'scheduled', route: 'R7', routeDate: '2026-02-11', requested: '2026-02-10' },
+    { date: '2026-01-15', id: '200', customer: 'Jon', city: 'Knoxville', state: 'TN', zip: '37902', address: '800 S Gay St, Knoxville, TN 37902', lat: 35.9606, lng: -83.9207, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 2, travel: 1, miles: 98, parts: 0, consumables: 0, revenue: 676, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-10' },
+    { date: '2026-01-20', id: '100', customer: 'Heidi', city: 'Sevierville', state: 'TN', zip: '37862', address: '215 Forks of the River Pkwy, Sevierville, TN 37862', lat: 35.8682, lng: -83.5618, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 7, travel: 1, miles: 100, parts: 0, consumables: 0, revenue: 900, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-15' },
+    { date: '2026-01-25', id: '500', customer: 'Bane', city: 'Chattanooga', state: 'TN', zip: '37402', address: '100 Market St, Chattanooga, TN 37402', lat: 35.0456, lng: -85.3097, priority: 'High', tech: 'Lucas', type: 'Service', onsite: 8, travel: 4, miles: 510, parts: 0, consumables: 0, revenue: 675, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-18' },
+    { date: '2025-12-21', id: '410', customer: 'Rivera', city: 'Atlanta', state: 'GA', zip: '30303', address: '100 Peachtree St, Atlanta, GA 30303', lat: 33.7490, lng: -84.3880, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 1, travel: 2, miles: 372, parts: 0, consumables: 0, revenue: 400, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R1', routeDate: '2025-12-21', requested: '2025-12-15' },
+    { date: '2026-02-11', id: '616', customer: 'Robert Makowski', city: 'Adamsville', state: 'TN', zip: '38310', address: '200 W Main St, Adamsville, TN 38310', lat: 35.2365, lng: -88.1970, priority: 'High', tech: 'Lucas', type: 'Service', onsite: 2, travel: 3, miles: 761, parts: 0, consumables: 0, revenue: 649.50, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R8', routeDate: '2026-02-11', requested: '2026-02-07' },
+    { date: '2026-01-05', id: '999', customer: 'Anna Testa', city: 'Knoxville', state: 'TN', zip: '37919', address: '500 Kingston Pike, Knoxville, TN 37919', lat: 35.9509, lng: -83.9806, priority: 'Low', tech: '', type: 'Warranty', onsite: 0, travel: 0, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: 'Submitted', notes: 'Pending', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '2026-01-02' },
   ],
   warranty: [],
   reconciliation: [],
