@@ -2644,7 +2644,7 @@
 
 const CONFIG = {
   DEPOT: { lat: 35.9641, lng: -83.9201, name: 'Akino Solar HQ (Knoxville, TN)' },
-  MONTHLY_OVERHEAD: 43480,
+  MONTHLY_OVERHEAD: 48704.79,
   FUEL_PER_MILE: 0.99,
   QA_PER_JOB: 85,
   ADMIN_PER_JOB: 315,
@@ -2668,16 +2668,16 @@ CONFIG.OVERHEAD_PER_JOB = CONFIG.MONTHLY_OVERHEAD / CONFIG.JOBS_PER_MONTH;
 CONFIG.BREAKEVEN_PER_JOB = CONFIG.OVERHEAD_PER_JOB + CONFIG.RISK_BUFFER;
 CONFIG.COST_PER_HOUR = CONFIG.MONTHLY_OVERHEAD / CONFIG.HOURS_PER_MONTH;
 
-// Personnel rates synced with Apps Script backend (hourly * (1 + EMPLOYER_BURDEN))
+// Personnel rates synced with Google Sheet "Personnel" tab (includes health ins, 401k, payroll tax)
 const PERSONNEL = [
-  { name: 'Sam', role: 'Technician', hourly: 25, loaded: 32.50 },
-  { name: 'Lucas', role: 'Technician', hourly: 20, loaded: 26.00 },
-  { name: 'Katie', role: 'Technician', hourly: 20, loaded: 26.00 },
-  { name: 'Spencer', role: 'Lead Tech', hourly: 40, loaded: 52.00 },
-  { name: 'Lex', role: 'Technician', hourly: 30, loaded: 39.00 },
-  { name: 'Caden', role: 'Manager', hourly: 28.85, loaded: 37.51 },
-  { name: 'Jen', role: 'Admin', hourly: 15, loaded: 19.50 },
-  { name: 'Andrew', role: 'Technician', hourly: 25, loaded: 32.50 },
+  { name: 'Sam', role: 'Technician', hourly: 25, loaded: 35.21 },
+  { name: 'Lucas', role: 'Technician', hourly: 20, loaded: 28.17 },
+  { name: 'Katie', role: 'Admin', hourly: 20, loaded: 28.17 },
+  { name: 'Spencer', role: 'Technician', hourly: 40, loaded: 56.33 },
+  { name: 'Lex', role: 'Job Management', hourly: 30, loaded: 42.25 },
+  { name: 'Caden', role: 'Owner', hourly: 28.85, loaded: 40.63 },
+  { name: 'Jen', role: 'Admin (PT)', hourly: 15, loaded: 5.28 },
+  { name: 'Andrew', role: 'Technician', hourly: 25, loaded: 35.21 },
   { name: 'QA', role: 'QA Lead', hourly: 13.54, loaded: 17.60 },
 ];
 
@@ -2689,40 +2689,109 @@ const WARRANTY_STATUSES = [
 
 const WARRANTY_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// Overhead categories scaled to match CONFIG.MONTHLY_OVERHEAD ($43,480)
+// Overhead categories synced with Google Sheet "Overhead_Details" tab
 const OVERHEAD_CATEGORIES = {
-  'People & Payroll': 23732,
-  'Software & Subscriptions': 1293,
-  'Storage & Facilities': 639,
-  'Fleet & Vehicles': 1675,
-  'Miscellaneous': 2514,
-  'Debt Service': 5395,
-  'Reserves': 5908,
-  'Depreciation': 912,
-  'Variable Costs': 1412,
+  'Software & Communications': 1043.74,
+  'Storage & Facilities': 898.82,
+  'Fleet & Insurance': 2308.46,
+  'Debt & Financing': 2093.00,
+  'Misc / Other': 1831.67,
+  'Reserves & Taxes': 8214.91,
+  'Depreciation & CapEx': 283.81,
+  'Variable Job Costs': 3441.67,
+  'Direct Tech Wages': 7799.85,
+  'Overhead Monthly': 20788.86,
 };
 
 const ROUTES_DATA = [
-  { id: 'R1', techs: ['Lucas'], date: '2025-12-21', stops: [
-    { lat: 33.7490, lng: -84.3880, customer: 'Rivera', city: 'Atlanta', state: 'GA', address: 'Atlanta, GA' }
+  // All 18 routes synced from Google Sheet "Route Summary" + "Jobs" tabs
+  { id: 'R1', miles: 372.56, techs: ['Caden'], date: '', stops: [
+    { lat: 33.7490, lng: -84.3880, customer: 'Rivera', city: 'Atlanta', state: 'GA', address: 'Atlanta, GA 30303' },
+    { lat: 33.7490, lng: -84.3880, customer: 'Smith', city: 'Atlanta', state: 'GA', address: 'Atlanta, GA 30303' },
+    { lat: 33.6151, lng: -84.3641, customer: 'Sally Cofield', city: 'Cleveland', state: 'TN', address: 'Cleveland, TN 37323' },
+    { lat: 33.5762, lng: -84.3438, customer: 'Michelle Washington', city: 'Hampton', state: 'GA', address: 'Hampton, GA 30228' },
   ]},
-  { id: 'R3', techs: ['Lucas', 'Caden'], date: '2026-02-17', stops: [
-    { lat: 34.5551, lng: -84.3219, customer: 'Peter Tran', city: 'Ellijay', state: 'TN', address: 'Ellijay, TN' },
-    { lat: 33.4610, lng: -82.1157, customer: 'Erica Drvoldelic', city: 'Grovetown', state: 'GA', address: 'Grovetown, GA' }
+  { id: 'R2', techs: ['Lucas'], date: '', miles: 382.10, stops: [
+    { lat: 33.9597, lng: -83.3788, customer: 'Judd', city: 'Athens', state: 'GA', address: 'Athens, GA 30601' },
+    { lat: 34.2368, lng: -84.4903, customer: 'Maika Rivet', city: 'Canton', state: 'GA', address: 'Canton, GA 30114' },
   ]},
-  { id: 'R7', techs: ['Caden'], date: '2026-02-10', stops: [
-    { lat: 36.1627, lng: -86.7816, customer: 'Martha Berry', city: 'Nashville', state: 'TN', address: 'Nashville, TN' },
-    { lat: 36.0417, lng: -87.5272, customer: 'Jason Wirth', city: 'Fairview', state: 'TN', address: 'Fairview, TN' },
-    { lat: 36.0405, lng: -87.6316, customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', address: 'McEwen, TN' }
+  { id: 'R3', techs: ['Caden', 'Lucas'], date: '2026-02-17', miles: 501.72, stops: [
+    { lat: 34.6946, lng: -84.4822, customer: 'Peter Tran', city: 'Ellijay', state: 'GA', address: 'Ellijay, GA 30540' },
+    { lat: 33.4610, lng: -82.1157, customer: 'Erica Drvoldelic', city: 'Grovetown', state: 'GA', address: 'Grovetown, GA 30813' },
+    { lat: 34.5024, lng: -84.9383, customer: 'Donald Anderson', city: 'Calhoun', state: 'GA', address: 'Calhoun, GA 30701' },
   ]},
-  { id: 'R8', techs: ['Lucas'], date: '2026-02-11', stops: [
-    { lat: 35.2365, lng: -88.1970, customer: 'Robert Makowski', city: 'Adamsville', state: 'TN', address: 'Adamsville, TN' }
+  { id: 'R4', techs: ['Lucas', 'Caden'], date: '', miles: 229.25, stops: [
+    { lat: 35.1120, lng: -85.0189, customer: 'Michael McCrimmon', city: 'Harrison', state: 'TN', address: 'Harrison, TN 37341' },
+    { lat: 35.2948, lng: -85.7732, customer: 'Holly and James Merciers', city: 'Whitwell', state: 'TN', address: 'Whitwell, TN 37397' },
+    { lat: 35.1738, lng: -85.0096, customer: 'Ricardo Martinez', city: 'Cleveland', state: 'TN', address: 'Cleveland, TN 37311' },
+    { lat: 35.3712, lng: -85.3845, customer: 'Robert Stottlemyer', city: 'Dunlap', state: 'TN', address: 'Dunlap, TN 37327' },
   ]},
-  { id: 'R10', techs: ['Lucas'], date: '2026-02-11', stops: [
-    { lat: 36.5816, lng: -86.5186, customer: 'Barbara Arledge', city: 'Portland', state: 'TN', address: 'Portland, TN' }
+  { id: 'R5', techs: ['Caden'], date: '', miles: 289.38, stops: [
+    { lat: 35.4742, lng: -85.8488, customer: 'David Ellis', city: 'Manchester', state: 'TN', address: 'Manchester, TN 37355' },
+    { lat: 35.6900, lng: -85.7670, customer: 'Vickie Rowland', city: 'McMinnville', state: 'TN', address: 'McMinnville, TN 37110' },
   ]},
-  { id: 'R14', techs: ['Sam'], date: '2026-02-11', stops: [
-    { lat: 38.2527, lng: -85.7585, customer: 'Mary Leffell', city: 'Louisville', state: 'KY', address: 'Louisville, KY' }
+  { id: 'R6', techs: ['Lucas', 'Caden'], date: '', miles: 333.08, stops: [
+    { lat: 36.0590, lng: -86.6700, customer: 'Gary Guzman', city: 'Antioch', state: 'TN', address: 'Antioch, TN 37013' },
+    { lat: 35.8503, lng: -86.3922, customer: 'John Omara', city: 'Murfreesboro', state: 'TN', address: 'Murfreesboro, TN 37128' },
+    { lat: 36.1531, lng: -86.7910, customer: 'Karly Campbell', city: 'Nashville', state: 'TN', address: 'Nashville, TN 37220' },
+  ]},
+  { id: 'R7', techs: ['Caden', 'Lucas'], date: '2026-02-10', miles: 445.59, stops: [
+    { lat: 36.1627, lng: -86.7816, customer: 'Martha Berry', city: 'Nashville', state: 'TN', address: 'Nashville, TN 37209' },
+    { lat: 36.0417, lng: -87.5272, customer: 'Jason Wirth', city: 'Fairview', state: 'TN', address: 'Fairview, TN 37062' },
+    { lat: 36.0405, lng: -87.6316, customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', address: 'McEwen, TN 37101' },
+    { lat: 36.1163, lng: -86.5341, customer: 'Anna Testa', city: 'Clarksville', state: 'TN', address: 'Clarksville, TN 37042' },
+  ]},
+  { id: 'R8', techs: ['Lucas', 'Caden'], date: '2026-02-11', miles: 761.43, stops: [
+    { lat: 35.2365, lng: -88.1970, customer: 'Robert Makowski', city: 'Adamsville', state: 'TN', address: 'Adamsville, TN 38310' },
+    { lat: 35.8191, lng: -88.1071, customer: 'Colleen Bruce', city: 'Sugar Tree', state: 'TN', address: 'Sugar Tree, TN 38380' },
+  ]},
+  { id: 'R9', techs: ['Lucas', 'Caden'], date: '', miles: 501.89, stops: [
+    { lat: 34.3287, lng: -86.7249, customer: 'David Berrey', city: 'Arab', state: 'AL', address: 'Arab, AL 35016' },
+    { lat: 36.3859, lng: -86.4565, customer: 'Kelly Westerlund', city: 'Gallatin', state: 'TN', address: 'Gallatin, TN 37066' },
+    { lat: 34.7255, lng: -86.5869, customer: 'Cecil Thompson', city: 'Harvest', state: 'AL', address: 'Harvest, AL 35749' },
+    { lat: 36.2820, lng: -86.3266, customer: 'Henry Atkinson', city: 'Lebanon', state: 'TN', address: 'Lebanon, TN 37090' },
+  ]},
+  { id: 'R10', techs: ['Lucas', 'Caden'], date: '2026-02-11', miles: 470.11, stops: [
+    { lat: 36.5816, lng: -86.5186, customer: 'Barbara Arledge', city: 'Portland', state: 'TN', address: 'Portland, TN 37148' },
+    { lat: 36.8520, lng: -87.1528, customer: 'Brent Baumann', city: 'Elkton', state: 'KY', address: 'Elkton, KY 42220' },
+    { lat: 37.7743, lng: -85.8827, customer: 'Wendall Mosemann', city: 'Edmonton', state: 'KY', address: 'Edmonton, KY 42129' },
+    { lat: 37.9043, lng: -87.1134, customer: 'Brian Johnson', city: 'Owensboro', state: 'KY', address: 'Owensboro, KY 42301' },
+  ]},
+  { id: 'R11', techs: ['Lucas', 'Caden'], date: '', miles: 396.41, stops: [
+    { lat: 38.0592, lng: -83.9321, customer: 'John Lamb', city: 'Mount Sterling', state: 'KY', address: 'Mount Sterling, KY 40353' },
+    { lat: 37.6456, lng: -84.7722, customer: 'Sascha Osterloh', city: 'Danville', state: 'KY', address: 'Danville, KY 40422' },
+    { lat: 37.0553, lng: -84.6041, customer: 'Michael McKinney', city: 'Somerset', state: 'KY', address: 'Somerset, KY 42503' },
+  ]},
+  { id: 'R12', techs: ['Spencer', 'Lucas'], date: '', miles: 329.68, stops: [
+    { lat: 36.8686, lng: -82.7746, customer: 'Amanda Darnell', city: 'Big Stone Gap', state: 'VA', address: 'Big Stone Gap, VA 24219' },
+    { lat: 36.8852, lng: -82.2193, customer: 'Brittany Lorenzo', city: 'Castlewood', state: 'VA', address: 'Castlewood, VA 24224' },
+    { lat: 36.4745, lng: -81.7979, customer: 'John Vanderheyden', city: 'Mountain City', state: 'TN', address: 'Mountain City, TN 37683' },
+    { lat: 37.5500, lng: -83.6466, customer: 'Ryan Couch', city: 'Hazard', state: 'KY', address: 'Hazard, KY 41701' },
+  ]},
+  { id: 'R13', techs: ['Lucas', 'Caden'], date: '', miles: 156.16, stops: [
+    { lat: 35.9576, lng: -83.1882, customer: 'Collette Romero', city: 'Newport', state: 'TN', address: 'Newport, TN 37821' },
+    { lat: 35.7912, lng: -82.6843, customer: 'Jody Wood', city: 'Marshall', state: 'NC', address: 'Marshall, NC 28753' },
+    { lat: 35.8682, lng: -83.5618, customer: 'Ed Tietjen', city: 'Maryville', state: 'TN', address: 'Maryville, TN 37804' },
+  ]},
+  { id: 'R14', techs: ['Caden', 'Sam'], date: '2026-02-11', miles: 46.05, stops: [
+    { lat: 38.2527, lng: -85.7585, customer: 'Mary Leffell', city: 'Louisville', state: 'KY', address: 'Louisville, KY 40202' },
+    { lat: 35.7479, lng: -84.0078, customer: 'Scott Casteel', city: 'Friendsville', state: 'TN', address: 'Friendsville, TN 37737' },
+  ]},
+  { id: 'R15', techs: ['Caden'], date: '', miles: 130.86, stops: [
+    { lat: 35.7565, lng: -83.9705, customer: 'Krista Hogan', city: 'Maryville', state: 'TN', address: 'Maryville, TN 37803' },
+    { lat: 36.0104, lng: -84.2697, customer: 'John Hatmaker', city: 'Oak Ridge', state: 'TN', address: 'Oak Ridge, TN 37830' },
+  ]},
+  { id: 'R16', techs: ['Lucas', 'Caden'], date: '', miles: 168.70, stops: [
+    { lat: 35.6912, lng: -84.8613, customer: 'Beth Casady', city: 'Spring City', state: 'TN', address: 'Spring City, TN 37381' },
+    { lat: 35.8721, lng: -84.9942, customer: 'Larry Hess', city: 'Lake Tansi', state: 'TN', address: 'Lake Tansi, TN 38572' },
+  ]},
+  { id: 'R17', techs: ['Lucas', 'Caden'], date: '', miles: 763.69, stops: [
+    { lat: 38.8496, lng: -84.6162, customer: 'Brandon Neal', city: 'Covington', state: 'KY', address: 'Covington, KY 41017' },
+    { lat: 38.1746, lng: -83.9330, customer: 'Dawn Reid', city: 'Flemingsburg', state: 'KY', address: 'Flemingsburg, KY 41041' },
+    { lat: 36.4394, lng: -79.9689, customer: 'Ray Miles', city: 'Mayodan', state: 'NC', address: 'Mayodan, NC 27027' },
+  ]},
+  { id: 'R18', techs: ['Caden'], date: '', miles: 731.52, stops: [
+    { lat: 34.2257, lng: -77.9447, customer: 'Adrian Vigneault', city: 'Wilmington', state: 'NC', address: 'Wilmington, NC 28411' },
   ]},
 ];
 
@@ -2732,21 +2801,101 @@ const ROUTES_DATA = [
 
 const DataStore = {
   jobs: [
-    { date: '2026-01-05', id: '435804', customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', zip: '37101', address: '123 Main St, McEwen, TN 37101', lat: 36.0405, lng: -87.6316, priority: 'Medium', tech: 'Lucas', type: 'Both', onsite: 1, travel: 4, miles: 234, parts: 0, consumables: 0, revenue: 150, wcase: '435804', wstatus: 'Completed not paid', notes: 'Warranty + service', flags: [], status: 'completed', route: 'R7', routeDate: '2026-01-05', requested: '2025-12-28' },
-    { date: '2026-01-06', id: '439295', customer: 'Krista Hogan', city: 'Maryville', state: 'TN', zip: '37801', address: '456 Oak Ave, Maryville, TN 37801', lat: 35.7565, lng: -83.9705, priority: 'Medium', tech: 'Lucas', type: 'Warranty', onsite: 2.5, travel: 1, miles: 28, parts: 0, consumables: 0, revenue: 450, wcase: '439295', wstatus: 'Completed not paid', notes: 'Warranty claim', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-03' },
-    { date: '2026-02-11', id: '597', customer: 'Barbara Arledge', city: 'Portland', state: 'TN', zip: '37148', address: '789 Cedar Rd, Portland, TN 37148', lat: 36.5816, lng: -86.5186, priority: 'High', tech: 'Lucas', type: 'Service', onsite: 3, travel: 2, miles: 470, parts: 0, consumables: 0, revenue: 3713.62, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R10', routeDate: '2026-02-11', requested: '2026-02-08' },
-    { date: '2026-02-10', id: '628', customer: 'Martha Berry', city: 'Nashville', state: 'TN', zip: '37203', address: '1200 Broadway, Nashville, TN 37203', lat: 36.1627, lng: -86.7816, priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 1.5, miles: 445, parts: 0, consumables: 0, revenue: 1404.20, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R7', routeDate: '2026-02-10', requested: '2026-02-05' },
-    { date: '2026-02-17', id: '649', customer: 'Peter Tran', city: 'Ellijay', state: 'GA', zip: '30540', address: '55 Mountain View Dr, Ellijay, GA 30540', lat: 34.5551, lng: -84.3219, priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 2, miles: 500, parts: 0, consumables: 0, revenue: 740.82, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R3', routeDate: '2026-02-17', requested: '2026-02-12' },
-    { date: '2026-02-11', id: '464', customer: 'Mary Leffell', city: 'Louisville', state: 'KY', zip: '40202', address: '300 W Main St, Louisville, KY 40202', lat: 38.2527, lng: -85.7585, priority: 'Medium', tech: 'Sam', type: 'Service', onsite: 1, travel: 1, miles: 46, parts: 0, consumables: 0, revenue: 394.63, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R14', routeDate: '2026-02-11', requested: '2026-02-09' },
-    { date: '2026-02-19', id: '638', customer: 'Erica Drvoldelic', city: 'Grovetown', state: 'GA', zip: '30813', address: '101 Patriot Way, Grovetown, GA 30813', lat: 33.4610, lng: -82.1157, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 3, miles: 501, parts: 0, consumables: 0, revenue: 343.50, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R3', routeDate: '2026-02-19', requested: '2026-02-14' },
-    { date: '2026-02-11', id: '645', customer: 'Jason Wirth', city: 'Fairview', state: 'TN', zip: '37062', address: '88 Bowie Lake Rd, Fairview, TN 37062', lat: 36.0417, lng: -87.5272, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 3, travel: 2, miles: 445, parts: 0, consumables: 0, revenue: 2191, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R7', routeDate: '2026-02-11', requested: '2026-02-06' },
-    { date: '2026-02-11', id: '666', customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', zip: '37101', address: '123 Main St, McEwen, TN 37101', lat: 36.0405, lng: -87.6316, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 1, travel: 1.5, miles: 333, parts: 0, consumables: 0, revenue: 75, wcase: '', wstatus: '', notes: 'Troubleshoot', flags: [], status: 'scheduled', route: 'R7', routeDate: '2026-02-11', requested: '2026-02-10' },
-    { date: '2026-01-15', id: '200', customer: 'Jon', city: 'Knoxville', state: 'TN', zip: '37902', address: '800 S Gay St, Knoxville, TN 37902', lat: 35.9606, lng: -83.9207, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 2, travel: 1, miles: 98, parts: 0, consumables: 0, revenue: 676, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-10' },
-    { date: '2026-01-20', id: '100', customer: 'Heidi', city: 'Sevierville', state: 'TN', zip: '37862', address: '215 Forks of the River Pkwy, Sevierville, TN 37862', lat: 35.8682, lng: -83.5618, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 7, travel: 1, miles: 100, parts: 0, consumables: 0, revenue: 900, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-15' },
-    { date: '2026-01-25', id: '500', customer: 'Bane', city: 'Chattanooga', state: 'TN', zip: '37402', address: '100 Market St, Chattanooga, TN 37402', lat: 35.0456, lng: -85.3097, priority: 'High', tech: 'Lucas', type: 'Service', onsite: 8, travel: 4, miles: 510, parts: 0, consumables: 0, revenue: 675, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-18' },
-    { date: '2025-12-21', id: '410', customer: 'Rivera', city: 'Atlanta', state: 'GA', zip: '30303', address: '100 Peachtree St, Atlanta, GA 30303', lat: 33.7490, lng: -84.3880, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 1, travel: 2, miles: 372, parts: 0, consumables: 0, revenue: 400, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: 'R1', routeDate: '2025-12-21', requested: '2025-12-15' },
-    { date: '2026-02-11', id: '616', customer: 'Robert Makowski', city: 'Adamsville', state: 'TN', zip: '38310', address: '200 W Main St, Adamsville, TN 38310', lat: 35.2365, lng: -88.1970, priority: 'High', tech: 'Lucas', type: 'Service', onsite: 2, travel: 3, miles: 761, parts: 0, consumables: 0, revenue: 649.50, wcase: '', wstatus: '', notes: '', flags: [], status: 'in-progress', route: 'R8', routeDate: '2026-02-11', requested: '2026-02-07' },
-    { date: '2026-01-05', id: '999', customer: 'Anna Testa', city: 'Knoxville', state: 'TN', zip: '37919', address: '500 Kingston Pike, Knoxville, TN 37919', lat: 35.9509, lng: -83.9806, priority: 'Low', tech: '', type: 'Warranty', onsite: 0, travel: 0, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: 'Submitted', notes: 'Pending', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '2026-01-02' },
+    // === ROUTED JOBS (synced from Google Sheet "Route Optimization > Jobs" tab) ===
+    // R1
+    { date: '2025-12-21', id: '410', customer: 'Rivera', city: 'Atlanta', state: 'GA', zip: '30303', address: 'Atlanta, GA 30303', lat: 33.7490, lng: -84.3880, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 2, travel: 2, miles: 372, parts: 0, consumables: 0, revenue: 400, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R1', routeDate: '2025-12-21', requested: '2025-12-21' },
+    { date: '2025-12-21', id: '412', customer: 'Smith', city: 'Atlanta', state: 'GA', zip: '30303', address: 'Atlanta, GA 30303', lat: 33.7490, lng: -84.3880, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 2, travel: 2, miles: 372, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Overnight'], status: 'scheduled', route: 'R1', routeDate: '', requested: '2025-12-21' },
+    { date: '', id: '410b', customer: 'Sally Cofield', city: 'Cleveland', state: 'TN', zip: '37323', address: 'Cleveland, TN 37323', lat: 35.1738, lng: -84.8766, priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 1, miles: 100, parts: 0, consumables: 0, revenue: 675, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R1', routeDate: '', requested: '' },
+    { date: '', id: '723', customer: 'Michelle Washington', city: 'Hampton', state: 'GA', zip: '30228', address: 'Hampton, GA 30228', lat: 33.5762, lng: -84.3438, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 2, miles: 372, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R1', routeDate: '', requested: '' },
+    // R2
+    { date: '2025-12-20', id: '406', customer: 'Judd', city: 'Athens', state: 'GA', zip: '30601', address: 'Athens, GA 30601', lat: 33.9597, lng: -83.3788, priority: 'High', tech: 'Lucas', type: 'Service', onsite: 2, travel: 2, miles: 382, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Upgrade'], status: 'scheduled', route: 'R2', routeDate: '', requested: '2025-12-20' },
+    { date: '', id: '675', customer: 'Maika Rivet', city: 'Canton', state: 'GA', zip: '30114', address: 'Canton, GA 30114', lat: 34.2368, lng: -84.4903, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 2, travel: 2, miles: 382, parts: 0, consumables: 0, revenue: 150, wcase: '', wstatus: '', notes: '', flags: ['BMU'], status: 'scheduled', route: 'R2', routeDate: '', requested: '' },
+    // R3
+    { date: '2026-02-17', id: '649', customer: 'Peter Tran', city: 'Ellijay', state: 'GA', zip: '30540', address: 'Ellijay, GA 30540', lat: 34.6946, lng: -84.4822, priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 2, miles: 501, parts: 0, consumables: 0, revenue: 740.82, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R3', routeDate: '2026-02-17', requested: '2026-02-17' },
+    { date: '2026-02-19', id: '638', customer: 'Erica Drvoldelic', city: 'Grovetown', state: 'GA', zip: '30813', address: 'Grovetown, GA 30813', lat: 33.4610, lng: -82.1157, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 3, miles: 501, parts: 0, consumables: 0, revenue: 343.50, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R3', routeDate: '2026-02-19', requested: '2026-02-19' },
+    { date: '', id: '668', customer: 'Donald Anderson', city: 'Calhoun', state: 'GA', zip: '30701', address: 'Calhoun, GA 30701', lat: 34.5024, lng: -84.9383, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 2, miles: 501, parts: 0, consumables: 0, revenue: 349.50, wcase: '', wstatus: '', notes: '', flags: ['BMU'], status: 'scheduled', route: 'R3', routeDate: '', requested: '' },
+    // R4
+    { date: '', id: '697', customer: 'Michael McCrimmon', city: 'Harrison', state: 'TN', zip: '37341', address: 'Harrison, TN 37341', lat: 35.1120, lng: -85.0189, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 1, miles: 229, parts: 0, consumables: 0, revenue: 621, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R4', routeDate: '', requested: '' },
+    { date: '', id: '698', customer: 'Holly and James Merciers', city: 'Whitwell', state: 'TN', zip: '37397', address: 'Whitwell, TN 37397', lat: 35.2948, lng: -85.7732, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 2, travel: 1.5, miles: 229, parts: 0, consumables: 0, revenue: 786.88, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R4', routeDate: '', requested: '' },
+    { date: '', id: '703', customer: 'Ricardo Martinez', city: 'Cleveland', state: 'TN', zip: '37311', address: 'Cleveland, TN 37311', lat: 35.1738, lng: -85.0096, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 1, miles: 229, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R4', routeDate: '', requested: '' },
+    { date: '', id: '700', customer: 'Robert Stottlemyer', city: 'Dunlap', state: 'TN', zip: '37327', address: 'Dunlap, TN 37327', lat: 35.3712, lng: -85.3845, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 2, travel: 1.5, miles: 229, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R4', routeDate: '', requested: '' },
+    // R5
+    { date: '', id: '676', customer: 'David Ellis', city: 'Manchester', state: 'TN', zip: '37355', address: 'Manchester, TN 37355', lat: 35.4742, lng: -85.8488, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 1.5, miles: 289, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R5', routeDate: '', requested: '' },
+    { date: '', id: '725', customer: 'Vickie Rowland', city: 'McMinnville', state: 'TN', zip: '37110', address: 'McMinnville, TN 37110', lat: 35.6900, lng: -85.7670, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 1.5, miles: 289, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R5', routeDate: '', requested: '' },
+    // R6
+    { date: '', id: '576', customer: 'Gary Guzman', city: 'Antioch', state: 'TN', zip: '37013', address: 'Antioch, TN 37013', lat: 36.0590, lng: -86.6700, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 2, travel: 1.5, miles: 333, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['DCB'], status: 'scheduled', route: 'R6', routeDate: '', requested: '' },
+    { date: '', id: '677', customer: 'John Omara', city: 'Murfreesboro', state: 'TN', zip: '37128', address: 'Murfreesboro, TN 37128', lat: 35.8503, lng: -86.3922, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 2, travel: 1.5, miles: 333, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R6', routeDate: '', requested: '' },
+    { date: '2026-02-19', id: '620', customer: 'Karly Campbell', city: 'Nashville', state: 'TN', zip: '37220', address: 'Nashville, TN 37220', lat: 36.1531, lng: -86.7910, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 1.5, miles: 333, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R6', routeDate: '2026-02-19', requested: '2026-02-19' },
+    // R7
+    { date: '2026-02-10', id: '628', customer: 'Martha Berry', city: 'Nashville', state: 'TN', zip: '37209', address: 'Nashville, TN 37209', lat: 36.1627, lng: -86.7816, priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 1.5, miles: 445, parts: 0, consumables: 0, revenue: 1404.20, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R7', routeDate: '2026-02-10', requested: '2026-02-10' },
+    { date: '', id: '645', customer: 'Jason Wirth', city: 'Fairview', state: 'TN', zip: '37062', address: 'Fairview, TN 37062', lat: 36.0417, lng: -87.5272, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 3, travel: 2, miles: 445, parts: 0, consumables: 0, revenue: 2191, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R7', routeDate: '', requested: '' },
+    { date: '', id: '666', customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', zip: '37101', address: 'McEwen, TN 37101', lat: 36.0405, lng: -87.6316, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 1, travel: 1.5, miles: 445, parts: 0, consumables: 0, revenue: 75, wcase: '', wstatus: '', notes: 'Troubleshoot', flags: ['Troubleshoot'], status: 'scheduled', route: 'R7', routeDate: '', requested: '' },
+    { date: '', id: '692', customer: 'Anna Testa', city: 'Clarksville', state: 'TN', zip: '37042', address: 'Clarksville, TN 37042', lat: 36.5298, lng: -87.3595, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 2, travel: 1.5, miles: 445, parts: 0, consumables: 0, revenue: 150, wcase: '', wstatus: '', notes: '', flags: ['BMU'], status: 'scheduled', route: 'R7', routeDate: '', requested: '' },
+    // R8
+    { date: '2026-02-11', id: '616', customer: 'Robert Makowski', city: 'Adamsville', state: 'TN', zip: '38310', address: 'Adamsville, TN 38310', lat: 35.2365, lng: -88.1970, priority: 'High', tech: 'Lucas', type: 'Service', onsite: 2, travel: 3, miles: 761, parts: 0, consumables: 0, revenue: 649.50, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R8', routeDate: '2026-02-11', requested: '' },
+    { date: '', id: '631', customer: 'Colleen Bruce', city: 'Sugar Tree', state: 'TN', zip: '38380', address: 'Sugar Tree, TN 38380', lat: 35.8191, lng: -88.1071, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 3, miles: 761, parts: 0, consumables: 0, revenue: 421.71, wcase: '', wstatus: '', notes: '', flags: ['BMU'], status: 'scheduled', route: 'R8', routeDate: '', requested: '' },
+    // R9
+    { date: '', id: '674', customer: 'David Berrey', city: 'Arab', state: 'AL', zip: '35016', address: 'Arab, AL 35016', lat: 34.3287, lng: -86.7249, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 2, travel: 2, miles: 501, parts: 0, consumables: 0, revenue: 571.71, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R9', routeDate: '', requested: '' },
+    { date: '', id: '689', customer: 'Kelly Westerlund', city: 'Gallatin', state: 'TN', zip: '37066', address: 'Gallatin, TN 37066', lat: 36.3859, lng: -86.4565, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 1.5, miles: 501, parts: 0, consumables: 0, revenue: 150, wcase: '', wstatus: '', notes: '', flags: ['DCB'], status: 'scheduled', route: 'R9', routeDate: '', requested: '' },
+    { date: '', id: '533', customer: 'Cecil Thompson', city: 'Harvest', state: 'AL', zip: '35749', address: 'Harvest, AL 35749', lat: 34.7255, lng: -86.5869, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 2, miles: 501, parts: 0, consumables: 0, revenue: 556.80, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R9', routeDate: '', requested: '' },
+    { date: '', id: '636', customer: 'Henry Atkinson', city: 'Lebanon', state: 'TN', zip: '37090', address: 'Lebanon, TN 37090', lat: 36.2820, lng: -86.3266, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 1.5, miles: 501, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: 'Confirm w/ customer', flags: ['DCB'], status: 'scheduled', route: 'R9', routeDate: '', requested: '' },
+    // R10
+    { date: '2026-02-11', id: '597', customer: 'Barbara Arledge', city: 'Portland', state: 'TN', zip: '37148', address: 'Portland, TN 37148', lat: 36.5816, lng: -86.5186, priority: 'High', tech: 'Lucas', type: 'Service', onsite: 3, travel: 2, miles: 470, parts: 0, consumables: 0, revenue: 3713.62, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: 'R10', routeDate: '2026-02-11', requested: '2026-02-11' },
+    { date: '', id: '678', customer: 'Brent Baumann', city: 'Elkton', state: 'KY', zip: '42220', address: 'Elkton, KY 42220', lat: 36.8520, lng: -87.1528, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 2, miles: 470, parts: 0, consumables: 0, revenue: 150, wcase: '', wstatus: '', notes: '', flags: ['Upgrade'], status: 'scheduled', route: 'R10', routeDate: '', requested: '' },
+    { date: '', id: '712', customer: 'Wendall Mosemann', city: 'Edmonton', state: 'KY', zip: '42129', address: 'Edmonton, KY 42129', lat: 37.7743, lng: -85.8827, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 2, travel: 2, miles: 470, parts: 0, consumables: 0, revenue: 75, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R10', routeDate: '', requested: '' },
+    { date: '', id: '602', customer: 'Brian Johnson', city: 'Owensboro', state: 'KY', zip: '42301', address: 'Owensboro, KY 42301', lat: 37.9043, lng: -87.1134, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 2, travel: 2, miles: 470, parts: 0, consumables: 0, revenue: 955, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R10', routeDate: '', requested: '' },
+    // R11
+    { date: '', id: '625', customer: 'John Lamb', city: 'Mount Sterling', state: 'KY', zip: '40353', address: 'Mount Sterling, KY 40353', lat: 38.0592, lng: -83.9321, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 2, miles: 396, parts: 0, consumables: 0, revenue: 667.50, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R11', routeDate: '', requested: '' },
+    { date: '', id: '724', customer: 'Sascha Osterloh', city: 'Danville', state: 'KY', zip: '40422', address: 'Danville, KY 40422', lat: 37.6456, lng: -84.7722, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 2, miles: 396, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R11', routeDate: '', requested: '' },
+    { date: '', id: '701', customer: 'Michael McKinney', city: 'Somerset', state: 'KY', zip: '42503', address: 'Somerset, KY 42503', lat: 37.0553, lng: -84.6041, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 2, miles: 396, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R11', routeDate: '', requested: '' },
+    // R12
+    { date: '2025-12-18', id: '505', customer: 'Amanda Darnell', city: 'Big Stone Gap', state: 'VA', zip: '24219', address: 'Big Stone Gap, VA 24219', lat: 36.8686, lng: -82.7746, priority: 'Medium', tech: 'Spencer', type: 'Service', onsite: 2, travel: 2, miles: 329, parts: 0, consumables: 0, revenue: 675, wcase: '', wstatus: '', notes: '', flags: ['DCB'], status: 'scheduled', route: 'R12', routeDate: '2025-12-18', requested: '2025-12-18' },
+    { date: '2025-12-18', id: '521', customer: 'Brittany Lorenzo', city: 'Castlewood', state: 'VA', zip: '24224', address: 'Castlewood, VA 24224', lat: 36.8852, lng: -82.2193, priority: 'Medium', tech: 'Spencer', type: 'Service', onsite: 2, travel: 2, miles: 329, parts: 0, consumables: 0, revenue: 499.50, wcase: '', wstatus: '', notes: '', flags: ['BMU'], status: 'scheduled', route: 'R12', routeDate: '2025-12-18', requested: '2025-12-18' },
+    { date: '2025-12-18', id: '465', customer: 'John Vanderheyden', city: 'Mountain City', state: 'TN', zip: '37683', address: 'Mountain City, TN 37683', lat: 36.4745, lng: -81.7979, priority: 'Medium', tech: 'Spencer', type: 'Service', onsite: 2, travel: 2, miles: 329, parts: 0, consumables: 0, revenue: 960, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R12', routeDate: '2025-12-18', requested: '2025-12-18' },
+    { date: '', id: '626', customer: 'Ryan Couch', city: 'Hazard', state: 'KY', zip: '41701', address: 'Hazard, KY 41701', lat: 37.5500, lng: -83.6466, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 2, travel: 2, miles: 329, parts: 0, consumables: 0, revenue: 154.50, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R12', routeDate: '', requested: '' },
+    // R13
+    { date: '2026-02-06', id: '610', customer: 'Collette Romero', city: 'Newport', state: 'TN', zip: '37821', address: 'Newport, TN 37821', lat: 35.9576, lng: -83.1882, priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 1, miles: 156, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Upgrade'], status: 'scheduled', route: 'R13', routeDate: '2026-02-06', requested: '2026-02-06' },
+    { date: '', id: '691', customer: 'Jody Wood', city: 'Marshall', state: 'NC', zip: '28753', address: 'Marshall, NC 28753', lat: 35.7912, lng: -82.6843, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 1.5, miles: 156, parts: 0, consumables: 0, revenue: 150, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R13', routeDate: '', requested: '' },
+    { date: '', id: '650', customer: 'Ed Tietjen', city: 'Maryville', state: 'TN', zip: '37804', address: 'Maryville, TN 37804', lat: 35.8682, lng: -83.5618, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 0.5, miles: 156, parts: 0, consumables: 0, revenue: 450, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R13', routeDate: '', requested: '' },
+    // R14
+    { date: '2026-02-11', id: '464', customer: 'Mary Leffell', city: 'Louisville', state: 'KY', zip: '40202', address: 'Louisville, KY 40202', lat: 38.2527, lng: -85.7585, priority: 'Medium', tech: 'Sam', type: 'Service', onsite: 1, travel: 1, miles: 46, parts: 0, consumables: 0, revenue: 394.63, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R14', routeDate: '2026-02-11', requested: '2025-12-17' },
+    { date: '', id: '607', customer: 'Scott Casteel', city: 'Friendsville', state: 'TN', zip: '37737', address: 'Friendsville, TN 37737', lat: 35.7479, lng: -84.0078, priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 0.5, miles: 46, parts: 0, consumables: 0, revenue: 432, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot', 'Upgrade'], status: 'scheduled', route: 'R14', routeDate: '', requested: '' },
+    // R15
+    { date: '', id: '694', customer: 'Krista Hogan', city: 'Maryville', state: 'TN', zip: '37803', address: 'Maryville, TN 37803', lat: 35.7565, lng: -83.9705, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 0.5, miles: 130, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Upgrade'], status: 'scheduled', route: 'R15', routeDate: '', requested: '' },
+    { date: '', id: '637', customer: 'John Hatmaker', city: 'Oak Ridge', state: 'TN', zip: '37830', address: 'Oak Ridge, TN 37830', lat: 36.0104, lng: -84.2697, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 0.5, miles: 130, parts: 0, consumables: 0, revenue: 75, wcase: '', wstatus: '', notes: 'Already paid', flags: ['Troubleshoot'], status: 'scheduled', route: 'R15', routeDate: '', requested: '' },
+    // R16
+    { date: '', id: '695', customer: 'Beth Casady', city: 'Spring City', state: 'TN', zip: '37381', address: 'Spring City, TN 37381', lat: 35.6912, lng: -84.8613, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 1, miles: 168, parts: 0, consumables: 0, revenue: 401.88, wcase: '', wstatus: '', notes: '', flags: ['BMU'], status: 'scheduled', route: 'R16', routeDate: '', requested: '' },
+    { date: '', id: '590', customer: 'Larry Hess', city: 'Lake Tansi', state: 'TN', zip: '38572', address: 'Lake Tansi, TN 38572', lat: 35.8721, lng: -84.9942, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 1, miles: 168, parts: 0, consumables: 0, revenue: 205, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R16', routeDate: '', requested: '' },
+    // R17
+    { date: '', id: '673', customer: 'Brandon Neal', city: 'Covington', state: 'KY', zip: '41017', address: 'Covington, KY 41017', lat: 38.8496, lng: -84.6162, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 2, miles: 763, parts: 0, consumables: 0, revenue: 75, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R17', routeDate: '', requested: '' },
+    { date: '', id: '653', customer: 'Dawn Reid', city: 'Flemingsburg', state: 'KY', zip: '41041', address: 'Flemingsburg, KY 41041', lat: 38.1746, lng: -83.9330, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 2, miles: 763, parts: 0, consumables: 0, revenue: 825, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R17', routeDate: '', requested: '' },
+    { date: '', id: '630', customer: 'Ray Miles', city: 'Mayodan', state: 'NC', zip: '27027', address: 'Mayodan, NC 27027', lat: 36.4394, lng: -79.9689, priority: 'High', tech: 'Caden', type: 'Service', onsite: 2, travel: 3, miles: 763, parts: 0, consumables: 0, revenue: 1173, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: 'R17', routeDate: '', requested: '' },
+    // R18
+    { date: '', id: '585', customer: 'Adrian Vigneault', city: 'Wilmington', state: 'NC', zip: '28411', address: 'Wilmington, NC 28411', lat: 34.2257, lng: -77.9447, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 4, miles: 731, parts: 0, consumables: 0, revenue: 600, wcase: '', wstatus: '', notes: '', flags: ['BMU'], status: 'scheduled', route: 'R18', routeDate: '', requested: '' },
+    // === UNROUTED JOBS (from sheet + historical) ===
+    { date: '2026-01-05', id: '435804', customer: 'Dennis Stadler', city: 'McEwen', state: 'TN', zip: '37101', address: 'McEwen, TN 37101', lat: 36.0405, lng: -87.6316, priority: 'Medium', tech: 'Lucas', type: 'Both', onsite: 1, travel: 4, miles: 234, parts: 0, consumables: 0, revenue: 150, wcase: '435804', wstatus: 'Completed not paid', notes: 'Warranty + service', flags: [], status: 'completed', route: '', routeDate: '', requested: '2025-12-28' },
+    { date: '2026-01-06', id: '439295', customer: 'Krista Hogan', city: 'Maryville', state: 'TN', zip: '37801', address: 'Maryville, TN 37801', lat: 35.7565, lng: -83.9705, priority: 'Medium', tech: 'Lucas', type: 'Warranty', onsite: 2.5, travel: 1, miles: 28, parts: 0, consumables: 0, revenue: 450, wcase: '439295', wstatus: 'Completed not paid', notes: 'Warranty claim', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-03' },
+    { date: '2026-01-15', id: '200', customer: 'Jon', city: 'Knoxville', state: 'TN', zip: '37902', address: 'Knoxville, TN 37902', lat: 35.9606, lng: -83.9207, priority: 'Medium', tech: 'Caden', type: 'Service', onsite: 2, travel: 1, miles: 98, parts: 0, consumables: 0, revenue: 676, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-10' },
+    { date: '2026-01-20', id: '100', customer: 'Heidi', city: 'Sevierville', state: 'TN', zip: '37862', address: 'Sevierville, TN 37862', lat: 35.8682, lng: -83.5618, priority: 'Medium', tech: 'Lucas', type: 'Service', onsite: 7, travel: 1, miles: 100, parts: 0, consumables: 0, revenue: 900, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-15' },
+    { date: '2026-01-25', id: '500', customer: 'Bane', city: 'Chattanooga', state: 'TN', zip: '37402', address: 'Chattanooga, TN 37402', lat: 35.0456, lng: -85.3097, priority: 'High', tech: 'Lucas', type: 'Service', onsite: 8, travel: 4, miles: 510, parts: 0, consumables: 0, revenue: 675, wcase: '', wstatus: '', notes: '', flags: [], status: 'completed', route: '', routeDate: '', requested: '2026-01-18' },
+    // Unrouted from sheet
+    { date: '', id: 'DF1', customer: 'David Fisher', city: 'Memphis', state: 'TN', zip: '38127', address: 'Memphis, TN 38127', lat: 35.2270, lng: -89.9990, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 4, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '2026-02-06', id: 'MB1', customer: 'Marshall Bowes', city: 'Pigeon Forge', state: 'TN', zip: '37863', address: 'Pigeon Forge, TN 37863', lat: 35.7884, lng: -83.5543, priority: 'Low', tech: 'Lucas', type: 'Service', onsite: 2, travel: 1, miles: 0, parts: 0, consumables: 0, revenue: 361.88, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: '', routeDate: '2026-02-06', requested: '' },
+    { date: '', id: 'RT1', customer: 'Rondi Tuten', city: 'Stone Mountain', state: 'GA', zip: '30087', address: 'Stone Mountain, GA 30087', lat: 33.8081, lng: -84.1702, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 2, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '', id: 'DS1', customer: 'David Schratwieser', city: 'Englewood', state: 'TN', zip: '37329', address: 'Englewood, TN 37329', lat: 35.4248, lng: -84.4891, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 1, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '2026-02-09', id: 'KM1', customer: 'Kenneth Maslowski', city: 'Tullahoma', state: 'TN', zip: '37388', address: 'Tullahoma, TN 37388', lat: 35.3620, lng: -86.2094, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 1.5, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['BMU'], status: 'scheduled', route: '', routeDate: '2026-02-09', requested: '2026-02-09' },
+    { date: '', id: 'AW1', customer: 'Albert Webber', city: 'Christiana', state: 'TN', zip: '37037', address: 'Christiana, TN 37037', lat: 35.7115, lng: -86.3936, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 1.5, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '2026-02-09', id: 'DT1', customer: 'Donnie Tawwater', city: 'Tullahoma', state: 'TN', zip: '37388', address: 'Tullahoma, TN 37388', lat: 35.3620, lng: -86.2094, priority: 'Medium', tech: '', type: 'Service', onsite: 2, travel: 1.5, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: '', routeDate: '2026-02-09', requested: '2026-02-09' },
+    { date: '2026-02-13', id: 'GK1', customer: 'Gilbert Kail', city: 'Medina', state: 'TN', zip: '38355', address: 'Medina, TN 38355', lat: 35.8032, lng: -88.7773, priority: 'Low', tech: 'Caden', type: 'Service', onsite: 2, travel: 3, miles: 0, parts: 0, consumables: 0, revenue: 75, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: '', routeDate: '2026-02-13', requested: '' },
+    { date: '', id: 'JC1', customer: 'Jeremy Compton', city: 'Nancy', state: 'KY', zip: '42544', address: 'Nancy, KY 42544', lat: 37.0829, lng: -84.7558, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 2, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['BMU'], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '', id: 'KN1', customer: 'Kathleen Neal', city: 'Covington', state: 'KY', zip: '41017', address: 'Covington, KY 41017', lat: 38.8496, lng: -84.6162, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 2, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: ['Troubleshoot'], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '', id: 'AP1', customer: 'Ashley Paquette', city: 'Knoxville', state: 'TN', zip: '37932', address: 'Knoxville, TN 37932', lat: 35.9285, lng: -84.0768, priority: 'High', tech: '', type: 'Service', onsite: 2, travel: 0.5, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '', id: 'KW1', customer: 'Kathy Wickerd', city: 'Knoxville', state: 'TN', zip: '37934', address: 'Knoxville, TN 37934', lat: 35.8959, lng: -84.0819, priority: 'Medium', tech: '', type: 'Service', onsite: 2, travel: 0.5, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '', id: 'DM1', customer: 'Derek McCosh', city: 'Niota', state: 'TN', zip: '37826', address: 'Niota, TN 37826', lat: 35.5168, lng: -84.5380, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 1, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '', id: 'EB1', customer: 'Elizabeth Boedefeld', city: 'Maryville', state: 'TN', zip: '37894', address: 'Maryville, TN 37894', lat: 35.7565, lng: -83.9705, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 0.5, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '', id: 'KE1', customer: 'Karl Ellis', city: 'Cleveland', state: 'TN', zip: '37311', address: 'Cleveland, TN 37311', lat: 35.1738, lng: -85.0096, priority: 'High', tech: '', type: 'Service', onsite: 2, travel: 1, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '', id: 'CS1', customer: 'Carlton Smith', city: 'Statham', state: 'GA', zip: '30666', address: 'Statham, GA 30666', lat: 33.9651, lng: -83.5966, priority: 'Low', tech: '', type: 'Service', onsite: 2, travel: 2, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '' },
+    { date: '', id: 'KS1', customer: 'Komerette Smith', city: 'Jonesboro', state: 'GA', zip: '30238', address: 'Jonesboro, GA 30238', lat: 33.5218, lng: -84.3538, priority: 'High', tech: '', type: 'Service', onsite: 2, travel: 2, miles: 0, parts: 0, consumables: 0, revenue: 0, wcase: '', wstatus: '', notes: '', flags: [], status: 'scheduled', route: '', routeDate: '', requested: '' },
   ],
   warranty: [],
   reconciliation: [],
