@@ -55,28 +55,29 @@ solar-love/
 
 | Constant | Value | Notes |
 |----------|-------|-------|
-| Monthly Overhead | $43,480 | Sum of 9 overhead categories |
+| Monthly Overhead | $48,704.79 | Sum of 10 overhead categories (synced from Google Sheet) |
 | Fuel Per Mile | $0.99 | |
 | QA Cost Per Job | $85 | |
 | Admin/Mgmt Per Job | $315 | |
 | Risk Buffer | $100 | |
-| Employer Burden | 30% | Applied to hourly rates |
+| Employer Burden | ~40.8% | Includes health ins, 401k, payroll tax (varies by employee) |
 | Jobs Per Week | 5 | Current baseline |
-| Overhead Per Job | ~$2,003 | = $43,480 / (5 * 52/12) |
-| Breakeven Per Job | ~$2,103 | = Overhead/Job + Risk Buffer |
+| Overhead Per Job | ~$2,248 | = $48,704.79 / (5 * 52/12) |
+| Breakeven Per Job | ~$2,348 | = Overhead/Job + Risk Buffer |
 
 ## Personnel Loaded Rates
 
-| Name | Hourly | Loaded (1.3x) | Role |
-|------|--------|----------------|------|
-| Sam | $25.00 | $32.50 | Technician |
-| Lucas | $20.00 | $26.00 | Technician |
-| Katie | $20.00 | $26.00 | Technician |
-| Spencer | $40.00 | $52.00 | Lead Tech |
-| Lex | $30.00 | $39.00 | Technician |
-| Caden | $28.85 | $37.51 | Manager |
-| Jen | $15.00 | $19.50 | Admin |
-| Andrew | $25.00 | $32.50 | Technician |
+| Name | Hourly | Loaded | Multiplier | Role |
+|------|--------|--------|------------|------|
+| Sam | $25.00 | $35.21 | 1.408x | Technician |
+| Lucas | $20.00 | $28.17 | 1.409x | Technician |
+| Katie | $20.00 | $28.17 | 1.409x | Admin |
+| Spencer | $40.00 | $56.33 | 1.408x | Technician |
+| Lex | $30.00 | $42.25 | 1.408x | Job Management |
+| Caden | $28.85 | $40.63 | 1.408x | Owner |
+| Jen | $15.00 | $5.28 | PT | Admin (PT) |
+| Andrew | $25.00 | $35.21 | 1.408x | Technician |
+| QA | $13.54 | $17.60 | 1.300x | QA Lead |
 
 ## Code Conventions
 

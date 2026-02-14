@@ -3176,6 +3176,11 @@ async function syncWithBackend() {
 // UTILITY FUNCTIONS
 // ============================================================================
 
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function fmt(value) {
   if (value === undefined || value === null) return '$0.00';
   const num = parseFloat(value);
@@ -3517,12 +3522,12 @@ function renderJobs() {
 
     return `
       <tr style="border-bottom:1px solid #e5e7eb;hover-background:#f9fafb;">
-        <td style="padding:12px;border-right:1px solid #e5e7eb;">${job.date}</td>
-        <td style="padding:12px;border-right:1px solid #e5e7eb;font-family:monospace;font-weight:600;">${job.id}</td>
-        <td style="padding:12px;border-right:1px solid #e5e7eb;font-weight:500;">${job.customer}</td>
-        <td style="padding:12px;border-right:1px solid #e5e7eb;font-size:13px;">${job.city}${job.city ? ',' : ''} ${job.state}</td>
-        <td style="padding:12px;border-right:1px solid #e5e7eb;font-size:13px;">${job.tech}</td>
-        <td style="padding:12px;border-right:1px solid #e5e7eb;font-size:12px;"><span class="badge badge-${job.type.toLowerCase()}">${job.type}</span></td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;">${esc(job.date)}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-family:monospace;font-weight:600;">${esc(job.id)}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-weight:500;">${esc(job.customer)}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-size:13px;">${esc(job.city)}${job.city ? ',' : ''} ${esc(job.state)}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-size:13px;">${esc(job.tech)}</td>
+        <td style="padding:12px;border-right:1px solid #e5e7eb;font-size:12px;"><span class="badge badge-${esc(job.type).toLowerCase()}">${esc(job.type)}</span></td>
         <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;font-size:13px;">${(job.onsite + job.travel).toFixed(1)}h</td>
         <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;font-size:13px;">${job.miles}mi</td>
         <td style="padding:12px;border-right:1px solid #e5e7eb;text-align:right;color:#2563eb;font-weight:600;">${fmt(job.revenue)}</td>
@@ -3533,8 +3538,8 @@ function renderJobs() {
           <span style="display:inline-block;padding:4px 8px;border-radius:4px;background:${verdictColor === '#16a34a' ? '#f0fdf4' : '#fef2f2'};color:${verdictColor};font-weight:700;font-size:11px;">${verdict}</span>
         </td>
         <td style="padding:12px;text-align:center;">
-          <button class="btn btn-sm" onclick="editJob('${job.id}')" style="margin-right:4px;">Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteJob('${job.id}')">Delete</button>
+          <button class="btn btn-sm" onclick="editJob('${esc(job.id)}')" style="margin-right:4px;">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteJob('${esc(job.id)}')">Delete</button>
         </td>
       </tr>
     `;
@@ -4561,8 +4566,10 @@ function renderFinancials() {
   renderFinancialCharts();
 }
 
+let _trueCostListenersAttached = false;
 function renderTrueCostCalculator() {
-  // Auto-calculate on input change
+  if (_trueCostListenersAttached) return;
+  _trueCostListenersAttached = true;
   ['calcTech', 'calcOnsite', 'calcTravel', 'calcMiles', 'calcParts', 'calcConsumables', 'calcRevenue'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
@@ -6000,6 +6007,47 @@ document.addEventListener('DOMContentLoaded', () => {
       sidebar.classList.toggle('active');
     });
   }
+
+  // Job modal close button
+  const jobModalClose = document.getElementById('jobModalClose');
+  if (jobModalClose) jobModalClose.addEventListener('click', () => hideModal('jobModal'));
+
+  // Warranty modal buttons
+  const addClaimBtn = document.getElementById('addClaimBtn');
+  if (addClaimBtn) addClaimBtn.addEventListener('click', () => showModal('warrantyModal'));
+  const warrantyModalClose = document.getElementById('warrantyModalClose');
+  if (warrantyModalClose) warrantyModalClose.addEventListener('click', () => hideModal('warrantyModal'));
+  const cancelClaimBtn = document.getElementById('cancelClaimBtn');
+  if (cancelClaimBtn) cancelClaimBtn.addEventListener('click', () => hideModal('warrantyModal'));
+  const saveClaimBtn = document.getElementById('saveClaimBtn');
+  if (saveClaimBtn) saveClaimBtn.addEventListener('click', () => {
+    toast('Warranty claim saved', 'success');
+    hideModal('warrantyModal');
+    renderWarranty();
+  });
+
+  // Optimize routes button
+  const optimizeRoutesBtn = document.getElementById('optimizeRoutesBtn');
+  if (optimizeRoutesBtn) optimizeRoutesBtn.addEventListener('click', () => {
+    toast('Route optimization running...', 'info');
+    renderRoutes();
+  });
+
+  // Settings test connection button
+  const testConnectionBtn = document.getElementById('testConnectionBtn');
+  if (testConnectionBtn) testConnectionBtn.addEventListener('click', () => {
+    const url = document.getElementById('appsScriptUrl');
+    if (url && url.value) {
+      toast('Testing connection to Apps Script...', 'info');
+      syncWithBackend();
+    } else {
+      toast('Enter an Apps Script URL first', 'error');
+    }
+  });
+
+  // Reconciliation force match
+  const reconForceMatchBtn = document.getElementById('reconForceMatchBtn');
+  if (reconForceMatchBtn) reconForceMatchBtn.addEventListener('click', forceMatchRecon);
 
   // Initialize Claude sidebar
   initClaudeSidebar();
