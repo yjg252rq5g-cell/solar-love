@@ -1543,6 +1543,40 @@
             <label class="form-label">Notes</label>
             <textarea id="jobModalNotes" class="form-input" rows="3" placeholder="Any additional notes..."></textarea>
           </div>
+
+          <!-- Warranty / RMA Section -->
+          <div class="form-group">
+            <label class="form-label">Warranty Case #</label>
+            <input type="text" id="jobModalWcase" class="form-input" placeholder="e.g., WC-12345">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Warranty Status</label>
+            <select id="jobModalWstatus" class="form-input">
+              <option value="">None</option>
+              <option value="Open">Open</option>
+              <option value="Parts Ordered">Parts Ordered</option>
+              <option value="Parts Received">Parts Received</option>
+              <option value="Shipped">Shipped</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Delivered">Delivered</option>
+              <option value="Installed">Installed</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column:1/-1;">
+            <label class="form-label">Tracking Number</label>
+            <input type="text" id="jobModalTracking" class="form-input" placeholder="UPS/FedEx tracking number...">
+          </div>
+
+          <!-- Parts Used on This Job (read-only display) -->
+          <div id="jobModalPartsSection" class="form-group" style="grid-column:1/-1;display:none;">
+            <label class="form-label">Parts Linked to This Job</label>
+            <div id="jobModalPartsList" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px;max-height:150px;overflow-y:auto;font-size:13px;"></div>
+          </div>
+          <div id="jobModalRmaSection" class="form-group" style="grid-column:1/-1;display:none;">
+            <label class="form-label">RMA Items for This Job</label>
+            <div id="jobModalRmaList" style="background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:8px;max-height:150px;overflow-y:auto;font-size:13px;"></div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -1957,8 +1991,9 @@
       <option value="Accessories">Accessories</option>
     </select>
 
-    <button id="addItemBtn" class="btn btn-primary">Add Item</button>
-    <button id="rmaTrackingBtn" class="btn btn-secondary">RMA Tracking</button>
+    <button id="addItemBtn" class="btn btn-primary"><i class="fas fa-plus"></i> Add Item</button>
+    <button id="rmaTrackingBtn" class="btn btn-secondary"><i class="fas fa-exchange-alt"></i> RMA Tracking</button>
+    <button id="partsLogBtn" class="btn btn-secondary"><i class="fas fa-link"></i> Parts Log</button>
   </div>
 
   <div class="card" style="overflow-x:auto;margin-bottom:24px;">
@@ -1986,16 +2021,22 @@
 
   <div id="rmaSection" style="display:none;">
     <div class="card" style="overflow-x:auto;margin-bottom:24px;">
-      <h3 style="margin-top:0;color:#1F4E79;">RMA Tracking</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="margin-top:0;color:#1F4E79;">RMA Tracking</h3>
+        <button class="btn btn-primary btn-sm" onclick="showAddRmaModal()"><i class="fas fa-plus"></i> New RMA</button>
+      </div>
       <table style="width:100%;border-collapse:collapse;">
         <thead style="background-color:#1F4E79;color:white;">
           <tr>
             <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">RMA #</th>
             <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Part</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Job / Customer</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Tracking #</th>
             <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Status</th>
             <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Submitted</th>
-            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Expected Return</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Expected</th>
             <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Notes</th>
+            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Actions</th>
           </tr>
         </thead>
         <tbody id="rmaTableBody">
@@ -2003,65 +2044,134 @@
         </tbody>
       </table>
     </div>
+  </div>
 
-    <div class="card" style="overflow-x:auto;">
-      <h3 style="margin-top:0;color:#1F4E79;">Technician Checkout</h3>
+  <!-- PARTS LOG — Shows all parts used/assigned to jobs -->
+  <div id="partsLogSection" style="display:none;">
+    <div class="card" style="overflow-x:auto;margin-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="margin-top:0;color:#1F4E79;">Parts Used on Jobs</h3>
+        <button class="btn btn-primary btn-sm" onclick="showLinkPartToJobModal()"><i class="fas fa-link"></i> Link Part to Job</button>
+      </div>
       <table style="width:100%;border-collapse:collapse;">
         <thead style="background-color:#1F4E79;color:white;">
           <tr>
-            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Technician</th>
-            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Item</th>
-            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Serial #</th>
-            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Qty</th>
-            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Date Out</th>
-            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Expected Return</th>
-            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Status</th>
-            <th style="padding:12px;text-align:left;border-bottom:1px solid #1a1a2e;">Action</th>
+            <th style="padding:12px;text-align:left;">Date</th>
+            <th style="padding:12px;text-align:left;">Part</th>
+            <th style="padding:12px;text-align:left;">Job / Customer</th>
+            <th style="padding:12px;text-align:left;">Tech</th>
+            <th style="padding:12px;text-align:left;">Qty</th>
+            <th style="padding:12px;text-align:left;">Cost</th>
+            <th style="padding:12px;text-align:left;">RMA #</th>
+            <th style="padding:12px;text-align:left;">Tracking #</th>
+            <th style="padding:12px;text-align:left;">Actions</th>
           </tr>
         </thead>
-        <tbody id="checkoutTableBody">
-          <!-- JS fills rows -->
-        </tbody>
+        <tbody id="partsLogTableBody"></tbody>
       </table>
     </div>
   </div>
 
-  <!-- CHECKOUT MODAL -->
-  <div id="checkoutModal" class="modal-overlay" style="display:none;">
+  <!-- ADD RMA MODAL -->
+  <div id="rmaModal" class="modal-overlay" style="display:none;">
     <div class="modal">
       <div class="modal-header">
-        <h3 class="modal-title">Checkout Item</h3>
-        <button class="modal-close" id="checkoutModalClose" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">&times;</button>
+        <h3 class="modal-title">RMA / Part Tracking</h3>
+        <button class="modal-close" onclick="hideModal('rmaModal')" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">&times;</button>
       </div>
       <div class="modal-body">
-        <div style="display:grid;grid-template-columns:1fr;gap:16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           <div class="form-group">
-            <label class="form-label">Item Name</label>
-            <input type="text" id="checkoutItemName" class="form-input" readonly>
+            <label class="form-label">RMA Number</label>
+            <input type="text" id="rmaNumber" class="form-input" placeholder="e.g. RMA-12345">
           </div>
           <div class="form-group">
-            <label class="form-label">Technician</label>
-            <select id="checkoutTech" class="form-input">
-              <option value="">Select Tech</option>
-              <option value="Sam">Sam</option>
-              <option value="Lucas">Lucas</option>
-              <option value="Katie">Katie</option>
-              <option value="Spencer">Spencer</option>
-              <option value="Lex">Lex</option>
-              <option value="Caden">Caden</option>
-              <option value="Jen">Jen</option>
-              <option value="Andrew">Andrew</option>
+            <label class="form-label">Part</label>
+            <select id="rmaPart" class="form-input">
+              <option value="">Select Part...</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Quantity</label>
-            <input type="number" id="checkoutQty" class="form-input" min="1" value="1">
+            <label class="form-label">Link to Job</label>
+            <select id="rmaJob" class="form-input">
+              <option value="">Select Job...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="rmaStatus" class="form-input">
+              <option value="Submitted">Submitted</option>
+              <option value="Approved">Approved</option>
+              <option value="Parts Shipped">Parts Shipped</option>
+              <option value="Parts Received">Parts Received</option>
+              <option value="Installed">Installed</option>
+              <option value="Denied">Denied</option>
+              <option value="Waiting RMA">Waiting RMA</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tracking Number</label>
+            <input type="text" id="rmaTracking" class="form-input" placeholder="UPS/FedEx tracking...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expected Arrival</label>
+            <input type="date" id="rmaExpected" class="form-input">
+          </div>
+          <div class="form-group" style="grid-column:1/-1;">
+            <label class="form-label">Notes</label>
+            <textarea id="rmaNotes" class="form-input" rows="2" placeholder="Part description, serial number, etc."></textarea>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button id="checkoutCancelBtn" class="btn btn-secondary">Cancel</button>
-        <button id="saveCheckoutBtn" class="btn btn-primary">Checkout</button>
+        <button class="btn btn-secondary" onclick="hideModal('rmaModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveRma()">Save RMA</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINK PART TO JOB MODAL -->
+  <div id="linkPartModal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Link Part to Job</h3>
+        <button class="modal-close" onclick="hideModal('linkPartModal')" style="background:none;border:none;color:#6b7280;font-size:24px;cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Part from Inventory</label>
+            <select id="linkPart" class="form-input">
+              <option value="">Select Part...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Job</label>
+            <select id="linkJob" class="form-input">
+              <option value="">Select Job...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Quantity Used</label>
+            <input type="number" id="linkQty" class="form-input" min="1" value="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">RMA # (if applicable)</label>
+            <input type="text" id="linkRma" class="form-input" placeholder="RMA-XXXXX">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tracking Number</label>
+            <input type="text" id="linkTracking" class="form-input" placeholder="UPS/FedEx tracking...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <input type="text" id="linkNotes" class="form-input" placeholder="Serial #, condition, etc.">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="hideModal('linkPartModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveLinkPartToJob()">Link Part</button>
       </div>
     </div>
   </div>
@@ -2899,7 +3009,20 @@ const DataStore = {
   ],
   warranty: [],
   reconciliation: [],
-  inventory: [],
+  inventory: [
+    { id: 'INV-001', partNum: '0J5788', name: 'Air Filter Element', category: 'Parts', supplier: 'Generac', quantity: 12, reorderPoint: 5, unitCost: 18.50, sku: '0J5788' },
+    { id: 'INV-002', partNum: '0G9914', name: 'Oil Filter', category: 'Parts', supplier: 'Generac', quantity: 20, reorderPoint: 8, unitCost: 12.00, sku: '0G9914' },
+    { id: 'INV-003', partNum: '0H9005', name: 'Battery 26R', category: 'Batteries', supplier: 'Generac', quantity: 4, reorderPoint: 2, unitCost: 145.00, sku: '0H9005' },
+    { id: 'INV-004', partNum: '0G84420112', name: 'Controller Board', category: 'Components', supplier: 'Generac', quantity: 2, reorderPoint: 1, unitCost: 385.00, sku: '0G84420112' },
+    { id: 'INV-005', partNum: '10000040770', name: 'PWRcell Battery Module', category: 'Batteries', supplier: 'Generac', quantity: 3, reorderPoint: 1, unitCost: 2100.00, sku: '10000040770' },
+    { id: 'INV-006', partNum: 'MISC-FUSE', name: 'Fuse Kit (assorted)', category: 'Consumables', supplier: 'Various', quantity: 30, reorderPoint: 10, unitCost: 4.50, sku: 'MISC-FUSE' },
+    { id: 'INV-007', partNum: '0E4269', name: 'Spark Plug', category: 'Parts', supplier: 'Generac', quantity: 16, reorderPoint: 6, unitCost: 8.75, sku: '0E4269' },
+    { id: 'INV-008', partNum: 'MISC-WIRE', name: 'Wire Nuts & Connectors', category: 'Consumables', supplier: 'Various', quantity: 50, reorderPoint: 15, unitCost: 1.25, sku: 'MISC-WIRE' },
+    { id: 'INV-009', partNum: '0G02070100', name: 'Transfer Switch 200A', category: 'Components', supplier: 'Generac', quantity: 1, reorderPoint: 1, unitCost: 875.00, sku: '0G02070100' },
+    { id: 'INV-010', partNum: '0J93230SRV', name: 'Fuel Solenoid', category: 'Parts', supplier: 'Generac', quantity: 3, reorderPoint: 2, unitCost: 65.00, sku: '0J93230SRV' },
+  ],
+  rmaItems: [],
+  partsLog: [],
   routes: [],
   settings: {
     appsScriptUrl: '',
@@ -2931,6 +3054,8 @@ function persistData() {
       jobs: DataStore.jobs,
       warranty: DataStore.warranty,
       inventory: DataStore.inventory,
+      rmaItems: DataStore.rmaItems,
+      partsLog: DataStore.partsLog,
       reconciliation: DataStore.reconciliation,
       settings: DataStore.settings,
     }));
@@ -2947,6 +3072,8 @@ function loadPersistedData() {
       if (parsed.jobs) DataStore.jobs = parsed.jobs;
       if (parsed.warranty) DataStore.warranty = parsed.warranty;
       if (parsed.inventory) DataStore.inventory = parsed.inventory;
+      if (parsed.rmaItems) DataStore.rmaItems = parsed.rmaItems;
+      if (parsed.partsLog) DataStore.partsLog = parsed.partsLog;
       if (parsed.reconciliation) DataStore.reconciliation = parsed.reconciliation;
       if (parsed.settings) Object.assign(DataStore.settings, parsed.settings);
       return true;
@@ -3430,6 +3557,7 @@ function editJob(jobId) {
 
   const fields = {
     customer: 'jobModalCustomer',
+    address: 'jobModalAddress',
     city: 'jobModalCity',
     state: 'jobModalState',
     tech: 'jobModalTech',
@@ -3438,12 +3566,51 @@ function editJob(jobId) {
     revenue: 'jobModalRevenue',
     routeDate: 'jobModalScheduled',
     notes: 'jobModalNotes',
+    wcase: 'jobModalWcase',
+    wstatus: 'jobModalWstatus',
+    trackingNumber: 'jobModalTracking',
   };
 
   Object.entries(fields).forEach(([key, fieldId]) => {
     const el = document.getElementById(fieldId);
     if (el) el.value = job[key] || '';
   });
+
+  // Show linked parts
+  const partsSection = document.getElementById('jobModalPartsSection');
+  const partsList = document.getElementById('jobModalPartsList');
+  const jobParts = (DataStore.partsLog || []).filter(p => p.jobId === jobId);
+  if (partsSection && partsList) {
+    if (jobParts.length > 0) {
+      partsSection.style.display = '';
+      partsList.innerHTML = jobParts.map(p =>
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #e5e7eb;">
+          <span><strong>${p.partName}</strong> (x${p.qty})</span>
+          <span style="color:#6b7280;">${fmt(p.totalCost)}${p.trackingNumber ? ' &bull; Track: ' + p.trackingNumber : ''}</span>
+        </div>`
+      ).join('');
+    } else {
+      partsSection.style.display = 'none';
+    }
+  }
+
+  // Show linked RMAs
+  const rmaSection = document.getElementById('jobModalRmaSection');
+  const rmaList = document.getElementById('jobModalRmaList');
+  const jobRmas = (DataStore.rmaItems || []).filter(r => r.jobId === jobId);
+  if (rmaSection && rmaList) {
+    if (jobRmas.length > 0) {
+      rmaSection.style.display = '';
+      rmaList.innerHTML = jobRmas.map(r =>
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #fbbf24;">
+          <span><strong>RMA #${r.rmaNumber}</strong> — ${r.partName || 'Unknown Part'}</span>
+          <span style="color:#92400e;">${r.status}${r.trackingNumber ? ' &bull; Track: ' + r.trackingNumber : ''}</span>
+        </div>`
+      ).join('');
+    } else {
+      rmaSection.style.display = 'none';
+    }
+  }
 
   modal.dataset.editingId = jobId;
   showModal('jobModal');
@@ -3473,6 +3640,9 @@ function saveJob() {
     revenue: 'jobModalRevenue',
     routeDate: 'jobModalScheduled',
     notes: 'jobModalNotes',
+    wcase: 'jobModalWcase',
+    wstatus: 'jobModalWstatus',
+    trackingNumber: 'jobModalTracking',
   };
 
   if (jobId) {
@@ -4305,23 +4475,6 @@ function renderWarranty() {
 }
 
 // ============================================================================
-// INVENTORY RENDERING
-// ============================================================================
-
-function renderInventory() {
-  const inventoryTableBody = document.getElementById('inventoryTableBody');
-  if (!inventoryTableBody) return;
-
-  inventoryTableBody.innerHTML = `
-    <tr style="border-bottom:1px solid #e5e7eb;">
-      <td colspan="6" style="padding:24px;text-align:center;color:#666;">
-        No inventory items yet.
-      </td>
-    </tr>
-  `;
-}
-
-// ============================================================================
 // TECHNICIANS RENDERING
 // ============================================================================
 
@@ -5069,48 +5222,99 @@ function renderEmail() {
 }
 
 // ============================================================================
-// INVENTORY RENDERING (enhanced)
+// INVENTORY, RMA & PARTS-TO-JOB ENGINE
 // ============================================================================
 
-function renderInventory() {
-  const inventoryTableBody = document.getElementById('inventoryTableBody');
-  if (!inventoryTableBody) return;
+let invView = 'inventory'; // 'inventory' | 'rma' | 'partsLog'
 
+function renderInventory() {
   const inventory = DataStore.inventory || [];
 
-  if (inventory.length === 0) {
-    inventoryTableBody.innerHTML = `
-      <tr><td colspan="6" style="padding:24px;text-align:center;color:#666;">
-        No inventory items. <button class="btn btn-sm btn-primary" onclick="addInventoryItem()">Add First Item</button>
-      </td></tr>`;
-    return;
+  // KPI cards
+  const totalItems = inventory.length;
+  const inStock = inventory.filter(i => i.quantity > (i.reorderPoint || 5)).length;
+  const lowStock = inventory.filter(i => i.quantity > 0 && i.quantity <= (i.reorderPoint || 5)).length;
+  const outOfStock = inventory.filter(i => i.quantity <= 0).length;
+  const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+  el('invTotalItems', totalItems);
+  el('invInStock', inStock);
+  el('invLowStock', lowStock);
+  el('invOutOfStock', outOfStock);
+
+  // Search and filter
+  const search = (document.getElementById('invSearchInput')?.value || '').toLowerCase();
+  const catFilter = document.getElementById('invCategoryFilter')?.value || '';
+  const filtered = inventory.filter(item => {
+    if (search && !(item.name || '').toLowerCase().includes(search) && !(item.partNum || '').toLowerCase().includes(search)) return false;
+    if (catFilter && item.category !== catFilter) return false;
+    return true;
+  });
+
+  // Inventory table
+  const inventoryTableBody = document.getElementById('inventoryTableBody');
+  if (inventoryTableBody) {
+    if (filtered.length === 0) {
+      inventoryTableBody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:#666;">
+        No items found. <button class="btn btn-sm btn-primary" onclick="addInventoryItem()">Add Item</button></td></tr>`;
+    } else {
+      inventoryTableBody.innerHTML = filtered.map((item, _) => {
+        const idx = inventory.indexOf(item);
+        const isLow = item.quantity > 0 && item.quantity <= (item.reorderPoint || 5);
+        const isOut = item.quantity <= 0;
+        const statusBadge = isOut
+          ? '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">OUT</span>'
+          : isLow
+          ? '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">LOW</span>'
+          : '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">OK</span>';
+        const partsUsed = (DataStore.partsLog || []).filter(p => p.partId === item.id).length;
+
+        return `<tr style="border-bottom:1px solid #e5e7eb;${isOut ? 'background:#fef2f2;' : isLow ? 'background:#fffbeb;' : ''}">
+          <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#6b7280;">${item.partNum || '-'}</td>
+          <td style="padding:10px 12px;font-weight:600;">${item.name}</td>
+          <td style="padding:10px 12px;">${item.category || 'General'}</td>
+          <td style="padding:10px 12px;font-size:12px;color:#6b7280;">${item.supplier || '-'}</td>
+          <td style="padding:10px 12px;text-align:center;font-weight:700;${isOut ? 'color:#dc2626;' : isLow ? 'color:#f59e0b;' : ''}">${item.quantity}</td>
+          <td style="padding:10px 12px;text-align:center;font-size:12px;color:#6b7280;">${item.reorderPoint || 5}</td>
+          <td style="padding:10px 12px;text-align:center;">${statusBadge}</td>
+          <td style="padding:10px 12px;text-align:right;">${fmt(item.unitCost || 0)}</td>
+          <td style="padding:10px 12px;text-align:right;font-weight:600;">${fmt((item.quantity || 0) * (item.unitCost || 0))}</td>
+          <td style="padding:10px 12px;text-align:center;white-space:nowrap;">
+            <button class="btn btn-xs btn-secondary" onclick="editInventoryItem(${idx})" title="Edit">Edit</button>
+            <button class="btn btn-xs btn-primary" onclick="showLinkPartToJobModalFor(${idx})" title="Use on Job">Use</button>
+            <button class="btn btn-xs btn-danger" onclick="deleteInventoryItem(${idx})" title="Delete">Del</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
   }
 
-  inventoryTableBody.innerHTML = inventory.map((item, i) => {
-    const lowStock = item.quantity <= (item.reorderPoint || 5);
-    return `<tr style="border-bottom:1px solid #e5e7eb;${lowStock ? 'background:#fef2f2;' : ''}">
-      <td style="padding:10px 12px;font-weight:600;">${item.name}</td>
-      <td style="padding:10px 12px;">${item.category || 'General'}</td>
-      <td style="padding:10px 12px;text-align:center;${lowStock ? 'color:#dc2626;font-weight:700;' : ''}">${item.quantity}</td>
-      <td style="padding:10px 12px;text-align:right;">${fmt(item.unitCost || 0)}</td>
-      <td style="padding:10px 12px;text-align:right;font-weight:600;">${fmt((item.quantity || 0) * (item.unitCost || 0))}</td>
-      <td style="padding:10px 12px;text-align:center;">
-        <button class="btn btn-xs btn-secondary" onclick="editInventoryItem(${i})">Edit</button>
-        <button class="btn btn-xs btn-danger" onclick="deleteInventoryItem(${i})">Del</button>
-      </td>
-    </tr>`;
-  }).join('');
+  // Toggle views
+  const invCard = inventoryTableBody?.closest('.card');
+  const rmaSection = document.getElementById('rmaSection');
+  const partsLogSection = document.getElementById('partsLogSection');
+  if (invCard) invCard.style.display = invView === 'inventory' ? 'block' : 'none';
+  if (rmaSection) rmaSection.style.display = invView === 'rma' ? 'block' : 'none';
+  if (partsLogSection) partsLogSection.style.display = invView === 'partsLog' ? 'block' : 'none';
+
+  if (invView === 'rma') renderRmaTable();
+  if (invView === 'partsLog') renderPartsLog();
 }
 
 function addInventoryItem() {
-  const name = prompt('Item name:');
+  const name = prompt('Part name:');
   if (!name) return;
-  const category = prompt('Category (e.g., Parts, Consumables, Tools):', 'Parts');
-  const quantity = parseInt(prompt('Quantity:', '10')) || 0;
+  const partNum = prompt('Part # / SKU:', '') || '';
+  const category = prompt('Category (Parts, Consumables, Tools, Batteries, Components):', 'Parts');
+  const supplier = prompt('Supplier:', 'Generac') || '';
+  const quantity = parseInt(prompt('Quantity on hand:', '1')) || 0;
+  const reorderPoint = parseInt(prompt('Reorder point (min stock):', '5')) || 5;
   const unitCost = parseFloat(prompt('Unit cost ($):', '0')) || 0;
 
   if (!DataStore.inventory) DataStore.inventory = [];
-  DataStore.inventory.push({ name, category, quantity, unitCost, reorderPoint: 5 });
+  DataStore.inventory.push({
+    id: 'INV-' + String(Date.now()).slice(-6),
+    partNum, name, category, supplier, quantity, reorderPoint, unitCost, sku: partNum,
+  });
   persistData();
   toast('Added: ' + name, 'success');
   renderInventory();
@@ -5119,9 +5323,13 @@ function addInventoryItem() {
 function editInventoryItem(idx) {
   const item = DataStore.inventory[idx];
   if (!item) return;
-  const qty = parseInt(prompt('New quantity for ' + item.name + ':', item.quantity));
-  if (isNaN(qty)) return;
-  item.quantity = qty;
+  const qty = prompt('Quantity for ' + item.name + ':', item.quantity);
+  if (qty === null) return;
+  item.quantity = parseInt(qty) || 0;
+  const cost = prompt('Unit cost ($):', item.unitCost);
+  if (cost !== null) item.unitCost = parseFloat(cost) || 0;
+  const reorder = prompt('Reorder point:', item.reorderPoint);
+  if (reorder !== null) item.reorderPoint = parseInt(reorder) || 5;
   persistData();
   toast('Updated: ' + item.name, 'success');
   renderInventory();
@@ -5133,6 +5341,315 @@ function deleteInventoryItem(idx) {
   DataStore.inventory.splice(idx, 1);
   persistData();
   toast('Deleted: ' + item.name, 'success');
+  renderInventory();
+}
+
+// ============================================================================
+// RMA TRACKING ENGINE
+// ============================================================================
+
+function populateRmaDropdowns() {
+  const partSelect = document.getElementById('rmaPart');
+  const jobSelect = document.getElementById('rmaJob');
+  if (partSelect) {
+    partSelect.innerHTML = '<option value="">Select Part...</option>' +
+      (DataStore.inventory || []).map(item =>
+        `<option value="${item.id}">${item.partNum || ''} — ${item.name}</option>`
+      ).join('');
+  }
+  if (jobSelect) {
+    jobSelect.innerHTML = '<option value="">Select Job...</option>' +
+      DataStore.jobs.filter(j => j.customer).map(job =>
+        `<option value="${job.id}">#${job.id} — ${job.customer} (${job.city})</option>`
+      ).join('');
+  }
+}
+
+function showAddRmaModal(editIdx) {
+  populateRmaDropdowns();
+  const modal = document.getElementById('rmaModal');
+  if (!modal) return;
+
+  if (editIdx !== undefined) {
+    const rma = DataStore.rmaItems[editIdx];
+    if (!rma) return;
+    modal.dataset.editIdx = editIdx;
+    document.getElementById('rmaNumber').value = rma.rmaNumber || '';
+    document.getElementById('rmaPart').value = rma.partId || '';
+    document.getElementById('rmaJob').value = rma.jobId || '';
+    document.getElementById('rmaStatus').value = rma.status || 'Submitted';
+    document.getElementById('rmaTracking').value = rma.tracking || '';
+    document.getElementById('rmaExpected').value = rma.expectedDate || '';
+    document.getElementById('rmaNotes').value = rma.notes || '';
+  } else {
+    delete modal.dataset.editIdx;
+    ['rmaNumber', 'rmaTracking', 'rmaExpected', 'rmaNotes'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('rmaPart').value = '';
+    document.getElementById('rmaJob').value = '';
+    document.getElementById('rmaStatus').value = 'Submitted';
+  }
+  showModal('rmaModal');
+}
+
+function saveRma() {
+  const rmaNumber = document.getElementById('rmaNumber')?.value?.trim();
+  const partId = document.getElementById('rmaPart')?.value;
+  const jobId = document.getElementById('rmaJob')?.value;
+  const status = document.getElementById('rmaStatus')?.value || 'Submitted';
+  const tracking = document.getElementById('rmaTracking')?.value?.trim();
+  const expectedDate = document.getElementById('rmaExpected')?.value;
+  const notes = document.getElementById('rmaNotes')?.value?.trim();
+
+  if (!rmaNumber) { toast('RMA number is required', 'error'); return; }
+
+  if (!DataStore.rmaItems) DataStore.rmaItems = [];
+
+  const part = (DataStore.inventory || []).find(i => i.id === partId);
+  const job = DataStore.jobs.find(j => j.id === jobId);
+
+  const rmaEntry = {
+    id: 'RMA-' + String(Date.now()).slice(-6),
+    rmaNumber,
+    partId: partId || '',
+    partName: part ? part.name : '',
+    partNum: part ? (part.partNum || '') : '',
+    jobId: jobId || '',
+    jobCustomer: job ? job.customer : '',
+    status,
+    tracking: tracking || '',
+    expectedDate: expectedDate || '',
+    notes: notes || '',
+    submittedDate: dateStr(new Date()),
+  };
+
+  const modal = document.getElementById('rmaModal');
+  const editIdx = modal?.dataset.editIdx;
+  if (editIdx !== undefined) {
+    rmaEntry.id = DataStore.rmaItems[editIdx].id;
+    rmaEntry.submittedDate = DataStore.rmaItems[editIdx].submittedDate;
+    DataStore.rmaItems[editIdx] = rmaEntry;
+    toast('RMA updated', 'success');
+  } else {
+    DataStore.rmaItems.push(rmaEntry);
+    toast('RMA ' + rmaNumber + ' created', 'success');
+  }
+
+  // Update the linked job's wcase and wstatus
+  if (job) {
+    job.wcase = rmaNumber;
+    job.wstatus = status;
+    if (tracking) job.trackingNumber = tracking;
+    if (part) job.partsUsed = (job.partsUsed || '') + (job.partsUsed ? ', ' : '') + part.name;
+  }
+
+  persistData();
+  hideModal('rmaModal');
+  renderInventory();
+}
+
+function updateRmaStatus(idx, newStatus) {
+  const rma = DataStore.rmaItems[idx];
+  if (!rma) return;
+  rma.status = newStatus;
+
+  // Sync to job
+  if (rma.jobId) {
+    const job = DataStore.jobs.find(j => j.id === rma.jobId);
+    if (job) job.wstatus = newStatus;
+  }
+
+  persistData();
+  toast('RMA ' + rma.rmaNumber + ' -> ' + newStatus, 'success');
+  renderInventory();
+}
+
+function deleteRma(idx) {
+  const rma = DataStore.rmaItems[idx];
+  if (!rma || !confirm('Delete RMA ' + rma.rmaNumber + '?')) return;
+  DataStore.rmaItems.splice(idx, 1);
+  persistData();
+  toast('RMA deleted', 'success');
+  renderInventory();
+}
+
+function renderRmaTable() {
+  const tbody = document.getElementById('rmaTableBody');
+  if (!tbody) return;
+
+  const rmaItems = DataStore.rmaItems || [];
+  if (rmaItems.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="padding:24px;text-align:center;color:#666;">No RMAs yet. Click "New RMA" to track a return.</td></tr>';
+    return;
+  }
+
+  const statusColors = {
+    'Submitted': '#3b82f6', 'Approved': '#16a34a', 'Parts Shipped': '#8b5cf6',
+    'Parts Received': '#06b6d4', 'Installed': '#16a34a', 'Denied': '#dc2626', 'Waiting RMA': '#f59e0b',
+  };
+
+  tbody.innerHTML = rmaItems.map((rma, i) => {
+    const color = statusColors[rma.status] || '#6b7280';
+    return `<tr style="border-bottom:1px solid #e5e7eb;">
+      <td style="padding:10px 12px;font-weight:600;font-family:monospace;">${rma.rmaNumber}</td>
+      <td style="padding:10px 12px;">${rma.partName || '-'}${rma.partNum ? '<br><span style="font-size:11px;color:#6b7280;">' + rma.partNum + '</span>' : ''}</td>
+      <td style="padding:10px 12px;">${rma.jobCustomer ? '#' + rma.jobId + ' — ' + rma.jobCustomer : '<span style="color:#9ca3af;">Unlinked</span>'}</td>
+      <td style="padding:10px 12px;font-family:monospace;font-size:12px;">${rma.tracking || '<span style="color:#9ca3af;">—</span>'}</td>
+      <td style="padding:10px 12px;">
+        <select onchange="updateRmaStatus(${i}, this.value)" style="padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;color:${color};font-weight:600;">
+          ${['Submitted','Approved','Parts Shipped','Parts Received','Installed','Denied','Waiting RMA'].map(s =>
+            `<option value="${s}" ${rma.status === s ? 'selected' : ''}>${s}</option>`
+          ).join('')}
+        </select>
+      </td>
+      <td style="padding:10px 12px;font-size:12px;">${rma.submittedDate || '-'}</td>
+      <td style="padding:10px 12px;font-size:12px;">${rma.expectedDate || '-'}</td>
+      <td style="padding:10px 12px;font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;">${rma.notes || '-'}</td>
+      <td style="padding:10px 12px;white-space:nowrap;">
+        <button class="btn btn-xs btn-secondary" onclick="showAddRmaModal(${i})">Edit</button>
+        <button class="btn btn-xs btn-danger" onclick="deleteRma(${i})">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================================
+// PARTS-TO-JOB LINKING ENGINE
+// ============================================================================
+
+function populateLinkDropdowns() {
+  const partSelect = document.getElementById('linkPart');
+  const jobSelect = document.getElementById('linkJob');
+  if (partSelect) {
+    partSelect.innerHTML = '<option value="">Select Part...</option>' +
+      (DataStore.inventory || []).filter(i => i.quantity > 0).map(item =>
+        `<option value="${item.id}">${item.partNum || ''} — ${item.name} (${item.quantity} avail)</option>`
+      ).join('');
+  }
+  if (jobSelect) {
+    jobSelect.innerHTML = '<option value="">Select Job...</option>' +
+      DataStore.jobs.filter(j => j.customer).map(job =>
+        `<option value="${job.id}">#${job.id} — ${job.customer} (${job.city})</option>`
+      ).join('');
+  }
+}
+
+function showLinkPartToJobModal() {
+  populateLinkDropdowns();
+  ['linkQty', 'linkRma', 'linkTracking', 'linkNotes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = id === 'linkQty' ? '1' : '';
+  });
+  document.getElementById('linkPart').value = '';
+  document.getElementById('linkJob').value = '';
+  showModal('linkPartModal');
+}
+
+function showLinkPartToJobModalFor(invIdx) {
+  populateLinkDropdowns();
+  const item = DataStore.inventory[invIdx];
+  if (item) document.getElementById('linkPart').value = item.id;
+  document.getElementById('linkQty').value = '1';
+  ['linkRma', 'linkTracking', 'linkNotes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('linkJob').value = '';
+  showModal('linkPartModal');
+}
+
+function saveLinkPartToJob() {
+  const partId = document.getElementById('linkPart')?.value;
+  const jobId = document.getElementById('linkJob')?.value;
+  const qty = parseInt(document.getElementById('linkQty')?.value) || 1;
+  const rmaNum = document.getElementById('linkRma')?.value?.trim();
+  const tracking = document.getElementById('linkTracking')?.value?.trim();
+  const notes = document.getElementById('linkNotes')?.value?.trim();
+
+  if (!partId || !jobId) { toast('Select both a part and a job', 'error'); return; }
+
+  const part = (DataStore.inventory || []).find(i => i.id === partId);
+  const job = DataStore.jobs.find(j => j.id === jobId);
+  if (!part || !job) { toast('Part or job not found', 'error'); return; }
+
+  if (part.quantity < qty) { toast('Not enough stock (' + part.quantity + ' available)', 'error'); return; }
+
+  // Deduct inventory
+  part.quantity -= qty;
+
+  // Log the part usage
+  if (!DataStore.partsLog) DataStore.partsLog = [];
+  DataStore.partsLog.push({
+    id: 'PL-' + String(Date.now()).slice(-6),
+    date: dateStr(new Date()),
+    partId,
+    partName: part.name,
+    partNum: part.partNum || '',
+    jobId,
+    jobCustomer: job.customer,
+    tech: job.tech || '',
+    qty,
+    unitCost: part.unitCost || 0,
+    totalCost: qty * (part.unitCost || 0),
+    rmaNumber: rmaNum || '',
+    tracking: tracking || '',
+    notes: notes || '',
+  });
+
+  // Update the job record
+  job.parts = (job.parts || 0) + qty * (part.unitCost || 0);
+  job.partsUsed = (job.partsUsed || '') + (job.partsUsed ? ', ' : '') + part.name + (qty > 1 ? ' x' + qty : '');
+  if (tracking) job.trackingNumber = (job.trackingNumber || '') + (job.trackingNumber ? ', ' : '') + tracking;
+  if (rmaNum) job.wcase = rmaNum;
+
+  persistData();
+  hideModal('linkPartModal');
+  toast(part.name + ' x' + qty + ' linked to #' + jobId + ' — ' + job.customer, 'success');
+  renderInventory();
+}
+
+function renderPartsLog() {
+  const tbody = document.getElementById('partsLogTableBody');
+  if (!tbody) return;
+
+  const log = (DataStore.partsLog || []).slice().reverse();
+  if (log.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="padding:24px;text-align:center;color:#666;">No parts linked to jobs yet. Use "Link Part to Job" or click "Use" on an inventory item.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = log.map((entry, i) => {
+    const realIdx = DataStore.partsLog.length - 1 - i;
+    return `<tr style="border-bottom:1px solid #e5e7eb;">
+      <td style="padding:10px 12px;font-size:12px;">${entry.date}</td>
+      <td style="padding:10px 12px;font-weight:600;">${entry.partName}${entry.partNum ? '<br><span style="font-size:11px;color:#6b7280;">' + entry.partNum + '</span>' : ''}</td>
+      <td style="padding:10px 12px;">#${entry.jobId} — ${entry.jobCustomer}</td>
+      <td style="padding:10px 12px;">${entry.tech || '-'}</td>
+      <td style="padding:10px 12px;text-align:center;font-weight:600;">${entry.qty}</td>
+      <td style="padding:10px 12px;text-align:right;">${fmt(entry.totalCost)}</td>
+      <td style="padding:10px 12px;font-family:monospace;font-size:12px;">${entry.rmaNumber || '-'}</td>
+      <td style="padding:10px 12px;font-family:monospace;font-size:12px;">${entry.tracking || '-'}</td>
+      <td style="padding:10px 12px;">
+        <button class="btn btn-xs btn-danger" onclick="deletePartsLogEntry(${realIdx})">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function deletePartsLogEntry(idx) {
+  const entry = DataStore.partsLog[idx];
+  if (!entry || !confirm('Remove ' + entry.partName + ' from job #' + entry.jobId + '?')) return;
+
+  // Restore inventory
+  const part = (DataStore.inventory || []).find(i => i.id === entry.partId);
+  if (part) part.quantity += entry.qty;
+
+  // Reduce job parts cost
+  const job = DataStore.jobs.find(j => j.id === entry.jobId);
+  if (job) job.parts = Math.max(0, (job.parts || 0) - entry.totalCost);
+
+  DataStore.partsLog.splice(idx, 1);
+  persistData();
+  toast('Part removed from job', 'success');
   renderInventory();
 }
 
@@ -5397,6 +5914,28 @@ document.addEventListener('DOMContentLoaded', () => {
   // Archive Paid Jobs button
   const archivePaidBtn = document.getElementById('archivePaidBtn');
   if (archivePaidBtn) archivePaidBtn.addEventListener('click', archivePaidJobs);
+
+  // Inventory buttons
+  const addItemBtn = document.getElementById('addItemBtn');
+  if (addItemBtn) addItemBtn.addEventListener('click', addInventoryItem);
+
+  const rmaTrackingBtn = document.getElementById('rmaTrackingBtn');
+  if (rmaTrackingBtn) rmaTrackingBtn.addEventListener('click', () => {
+    invView = invView === 'rma' ? 'inventory' : 'rma';
+    renderInventory();
+  });
+
+  const partsLogBtn = document.getElementById('partsLogBtn');
+  if (partsLogBtn) partsLogBtn.addEventListener('click', () => {
+    invView = invView === 'partsLog' ? 'inventory' : 'partsLog';
+    renderInventory();
+  });
+
+  const invSearchInput = document.getElementById('invSearchInput');
+  if (invSearchInput) invSearchInput.addEventListener('input', renderInventory);
+
+  const invCategoryFilter = document.getElementById('invCategoryFilter');
+  if (invCategoryFilter) invCategoryFilter.addEventListener('change', renderInventory);
 
   // Fleet PDF Export button
   const exportPdfsBtn = document.getElementById('exportPdfsBtn');
