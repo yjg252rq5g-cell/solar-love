@@ -3315,6 +3315,7 @@ function saveJob() {
   const jobId = modal.dataset.editingId;
   const fields = {
     customer: 'jobModalCustomer',
+    address: 'jobModalAddress',
     city: 'jobModalCity',
     state: 'jobModalState',
     tech: 'jobModalTech',
@@ -3351,6 +3352,8 @@ function saveJob() {
       wstatus: '',
       flags: [],
       route: '',
+      lat: 0,
+      lng: 0,
       requested: dateStr(new Date()),
     };
     Object.entries(fields).forEach(([key, fieldId]) => {
@@ -3371,166 +3374,745 @@ function saveJob() {
 }
 
 // ============================================================================
-// ROUTES RENDERING & MAP
+// ROUTES RENDERING & MAP — V7 ENGINE
 // ============================================================================
 
-let map;
+let mainMap = null;
+const routeMiniMaps = {};
+const ROUTE_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 
-function initMap() {
-  const routeMap = document.getElementById('routeMap');
-  if (!routeMap || typeof L === 'undefined') return;
+function buildGoogleMapsUrl(stops) {
+  let url = `https://www.google.com/maps/dir/${CONFIG.DEPOT.lat},${CONFIG.DEPOT.lng}`;
+  stops.forEach(s => { url += `/${s.lat},${s.lng}`; });
+  url += `/${CONFIG.DEPOT.lat},${CONFIG.DEPOT.lng}`;
+  return url;
+}
 
-  map = L.map('routeMap').setView([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], 7);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 19,
-  }).addTo(map);
+function calcRouteMetrics(route) {
+  const routeJobs = DataStore.jobs.filter(j => j.route === route.id);
+  const techNames = route.techs || [];
+  const stops = route.stops || [];
 
-  L.marker([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], {
-    icon: L.icon({
-      iconUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%231F4E79" width="32" height="32"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>',
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-    }),
-  }).addTo(map).bindPopup('<b>Akino Solar HQ</b><br>Knoxville, TN');
+  let totalMiles = 0;
+  let prev = { lat: CONFIG.DEPOT.lat, lng: CONFIG.DEPOT.lng };
+  stops.forEach(stop => {
+    totalMiles += haversine(prev.lat, prev.lng, stop.lat, stop.lng);
+    prev = stop;
+  });
+  totalMiles += haversine(prev.lat, prev.lng, CONFIG.DEPOT.lat, CONFIG.DEPOT.lng);
 
-  // Plot job locations
-  DataStore.jobs.forEach((job, idx) => {
-    if (job.route) {
-      const route = ROUTES_DATA.find(r => r.id === job.route);
-      if (route) {
-        const lat = CONFIG.DEPOT.lat + (Math.random() - 0.5) * 2;
-        const lng = CONFIG.DEPOT.lng + (Math.random() - 0.5) * 2;
-        L.marker([lat, lng], {
-          icon: L.icon({
-            iconUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%232563eb" width="24" height="24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>',
-            iconSize: [24, 24],
-            iconAnchor: [12, 24],
-          }),
-        }).addTo(map).bindPopup(`<b>${job.customer}</b><br>${job.city}, ${job.state}<br>${fmt(job.revenue)}`);
-      }
-    }
+  const driveMinutes = Math.round(totalMiles / CONFIG.AVG_MPH * 60);
+  const driveHours = totalMiles / CONFIG.AVG_MPH;
+  const totalRevenue = routeJobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
+  const totalOnsiteHrs = routeJobs.reduce((sum, j) => sum + (j.onsite || 0), 0);
+
+  let laborCost = 0;
+  techNames.forEach(name => {
+    const person = getPersonnelByName(name);
+    const rate = person ? person.loaded : 30;
+    laborCost += (driveHours + totalOnsiteHrs) * rate;
+  });
+  if (techNames.length === 0) laborCost = (driveHours + totalOnsiteHrs) * 30;
+
+  const fuelCost = totalMiles * CONFIG.FUEL_PER_MILE;
+  const partsCost = routeJobs.reduce((sum, j) => sum + (j.parts || 0) + (j.consumables || 0), 0);
+  const perJobCosts = routeJobs.length * (CONFIG.QA_PER_JOB + CONFIG.ADMIN_PER_JOB + CONFIG.RISK_BUFFER + CONFIG.OVERHEAD_PER_JOB);
+  const totalCost = laborCost + fuelCost + partsCost + perJobCosts;
+  const profit = totalRevenue - totalCost;
+  const margin = totalRevenue > 0 ? profit / totalRevenue : -1;
+
+  return {
+    jobs: routeJobs,
+    techNames,
+    stops,
+    totalMiles,
+    driveMinutes,
+    driveHours,
+    totalRevenue,
+    totalOnsiteHrs,
+    laborCost,
+    fuelCost,
+    partsCost,
+    perJobCosts,
+    totalCost,
+    profit,
+    margin,
+    googleMapsUrl: buildGoogleMapsUrl(stops),
+    verdict: profit >= 0 ? (margin > 0.15 ? 'profitable' : 'marginal') : 'loss',
+  };
+}
+
+function depotMarkerIcon() {
+  return L.icon({
+    iconUrl: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#1F4E79" width="32" height="32"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="3" fill="white"/></svg>'),
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
   });
 }
 
-function renderRoutes() {
-  // Initialize map
-  setTimeout(initMap, 100);
+function jobMarkerIcon(color) {
+  return L.icon({
+    iconUrl: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" width="28" height="28"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5" fill="white"/></svg>`),
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -28],
+  });
+}
 
+function initMainMap() {
+  const el = document.getElementById('routeMap');
+  if (!el || typeof L === 'undefined') return;
+  if (mainMap) { mainMap.remove(); mainMap = null; }
+
+  mainMap = L.map('routeMap').setView([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], 7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap',
+    maxZoom: 18,
+  }).addTo(mainMap);
+
+  L.marker([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], { icon: depotMarkerIcon() })
+    .addTo(mainMap).bindPopup('<b>Akino Solar HQ</b><br>Knoxville, TN');
+
+  ROUTES_DATA.forEach((route, idx) => {
+    const color = ROUTE_COLORS[idx % ROUTE_COLORS.length];
+    const metrics = calcRouteMetrics(route);
+    const latlngs = [[CONFIG.DEPOT.lat, CONFIG.DEPOT.lng]];
+
+    route.stops.forEach(stop => {
+      latlngs.push([stop.lat, stop.lng]);
+      L.marker([stop.lat, stop.lng], { icon: jobMarkerIcon(color) })
+        .addTo(mainMap)
+        .bindPopup(`<b>${stop.customer}</b><br>${stop.city}, ${stop.state}<br><b>${route.id}</b> — ${metrics.techNames.join(', ') || 'Unassigned'}`);
+    });
+    latlngs.push([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng]);
+
+    L.polyline(latlngs, { color, weight: 3, opacity: 0.7, dashArray: '8,4' }).addTo(mainMap);
+  });
+
+  // Also plot unrouted jobs
+  DataStore.jobs.filter(j => !j.route && j.lat && j.lng).forEach(job => {
+    L.marker([job.lat, job.lng], { icon: jobMarkerIcon('#9ca3af') })
+      .addTo(mainMap)
+      .bindPopup(`<b>${job.customer}</b><br>${job.city}, ${job.state}<br><span style="color:#9ca3af;">Unrouted</span>`);
+  });
+}
+
+function initMiniMap(containerId, route, colorIdx) {
+  const el = document.getElementById(containerId);
+  if (!el || typeof L === 'undefined') return;
+  if (routeMiniMaps[containerId]) { routeMiniMaps[containerId].remove(); delete routeMiniMaps[containerId]; }
+
+  const miniMap = L.map(containerId, { zoomControl: false, attributionControl: false }).setView([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], 7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(miniMap);
+
+  const color = ROUTE_COLORS[colorIdx % ROUTE_COLORS.length];
+  const bounds = [[CONFIG.DEPOT.lat, CONFIG.DEPOT.lng]];
+
+  L.marker([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng], { icon: depotMarkerIcon() }).addTo(miniMap).bindPopup('<b>HQ</b>');
+
+  const latlngs = [[CONFIG.DEPOT.lat, CONFIG.DEPOT.lng]];
+  route.stops.forEach((stop, seq) => {
+    latlngs.push([stop.lat, stop.lng]);
+    bounds.push([stop.lat, stop.lng]);
+    L.marker([stop.lat, stop.lng], { icon: jobMarkerIcon(color) })
+      .addTo(miniMap)
+      .bindPopup(`<b>#${seq + 1} ${stop.customer}</b><br>${stop.address || stop.city}`);
+  });
+  latlngs.push([CONFIG.DEPOT.lat, CONFIG.DEPOT.lng]);
+
+  L.polyline(latlngs, { color, weight: 3, opacity: 0.8 }).addTo(miniMap);
+  miniMap.fitBounds(bounds, { padding: [30, 30] });
+  routeMiniMaps[containerId] = miniMap;
+}
+
+function renderRoutes() {
+  fetchWeather();
+  setTimeout(initMainMap, 100);
+
+  // Update KPIs
+  let kpiTotalRoutes = 0, kpiTotalMiles = 0, kpiTotalRev = 0, kpiTotalProfit = 0;
+  ROUTES_DATA.forEach(route => {
+    const m = calcRouteMetrics(route);
+    kpiTotalRoutes++;
+    kpiTotalMiles += m.totalMiles;
+    kpiTotalRev += m.totalRevenue;
+    kpiTotalProfit += m.profit;
+  });
+  const kpiEls = {
+    routeKpiTotal: kpiTotalRoutes,
+    routeKpiMiles: kpiTotalMiles.toFixed(0),
+    routeKpiRevenue: fmt(kpiTotalRev),
+    routeKpiProfit: fmt(kpiTotalProfit),
+  };
+  Object.entries(kpiEls).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  });
+  const profitEl = document.getElementById('routeKpiProfit');
+  if (profitEl) profitEl.style.color = kpiTotalProfit >= 0 ? '#16a34a' : '#dc2626';
+
+  // Render individual route cards
   const routeList = document.getElementById('routeList');
   if (!routeList) return;
 
-  // Render route list
-  routeList.innerHTML = ROUTES_DATA.map(route => {
-    const routeJobs = DataStore.jobs.filter(j => j.route === route.id);
-    const totalRevenue = routeJobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
-    const totalCost = routeJobs.reduce((sum, j) => sum + calcJobCost(j).total, 0);
-    const profit = totalRevenue - totalCost;
+  routeList.innerHTML = ROUTES_DATA.map((route, idx) => {
+    const m = calcRouteMetrics(route);
+    const color = ROUTE_COLORS[idx % ROUTE_COLORS.length];
+    const mapId = `miniMap_${route.id}`;
+    const verdictBadge = m.verdict === 'profitable'
+      ? '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">PROFITABLE</span>'
+      : m.verdict === 'marginal'
+      ? '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">MARGINAL</span>'
+      : '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">LOSS</span>';
+
+    const techBadges = m.techNames.map(name => {
+      const person = getPersonnelByName(name);
+      return `<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">${name} (${fmt(person?.loaded || 30)}/hr)</span>`;
+    }).join(' ') || '<span style="background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:11px;">Unassigned</span>';
+
+    const stopsList = m.stops.map((stop, seq) => {
+      const job = m.jobs.find(j => j.customer === stop.customer);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f3f4f6;">
+        <span style="background:${color};color:white;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">${seq + 1}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:13px;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${stop.customer}</div>
+          <div style="font-size:11px;color:#6b7280;">${stop.address || stop.city + ', ' + stop.state}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-weight:600;font-size:13px;color:#2563eb;">${fmt(job?.revenue || 0)}</div>
+          <div style="font-size:11px;color:#6b7280;">${job?.onsite || 0}h onsite</div>
+        </div>
+      </div>`;
+    }).join('');
 
     return `
-      <div style="padding:16px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+      <div class="card" style="margin-bottom:20px;border-left:4px solid ${color};">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
           <div>
-            <div style="font-weight:700;font-size:16px;color:#1a1a2e;">${route.id}</div>
-            <div style="font-size:12px;color:#666;margin-top:2px;">${routeJobs.length} jobs • ${route.miles.toFixed(1)} miles</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-weight:800;font-size:20px;color:${color};">${route.id}</span>
+              ${verdictBadge}
+            </div>
+            <div style="font-size:12px;color:#6b7280;margin-top:4px;">
+              ${m.stops.length} stops &bull; ${m.totalMiles.toFixed(1)} mi round trip &bull; ${Math.floor(m.driveMinutes / 60)}h ${m.driveMinutes % 60}m drive &bull; ${route.date || 'No date'}
+            </div>
           </div>
-          <div style="text-align:right;">
-            <div style="color:#16a34a;font-weight:700;">${fmt(profit)}</div>
-            <div style="font-size:12px;color:#666;">profit</div>
+          <a href="${m.googleMapsUrl}" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="text-decoration:none;">
+            <i class="fas fa-directions"></i> Open in Google Maps
+          </a>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:12px;color:#6b7280;font-weight:600;">Crew:</span> ${techBadges}
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <div id="${mapId}" style="height:250px;border-radius:8px;background:#e5e7eb;"></div>
+          <div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+              <div style="padding:8px;background:#f0f9ff;border-radius:6px;text-align:center;">
+                <div style="font-size:18px;font-weight:700;color:#2563eb;">${fmt(m.totalRevenue)}</div>
+                <div style="font-size:11px;color:#6b7280;">Revenue</div>
+              </div>
+              <div style="padding:8px;background:${m.profit >= 0 ? '#f0fdf4' : '#fef2f2'};border-radius:6px;text-align:center;">
+                <div style="font-size:18px;font-weight:700;color:${m.profit >= 0 ? '#16a34a' : '#dc2626'};">${fmt(m.profit)}</div>
+                <div style="font-size:11px;color:#6b7280;">Profit</div>
+              </div>
+              <div style="padding:8px;background:#f9fafb;border-radius:6px;text-align:center;">
+                <div style="font-size:18px;font-weight:700;color:#374151;">${fmt(m.totalCost)}</div>
+                <div style="font-size:11px;color:#6b7280;">Total Cost</div>
+              </div>
+              <div style="padding:8px;background:#f9fafb;border-radius:6px;text-align:center;">
+                <div style="font-size:18px;font-weight:700;color:#374151;">${pct(m.margin)}</div>
+                <div style="font-size:11px;color:#6b7280;">Margin</div>
+              </div>
+            </div>
+            <div style="font-size:12px;color:#6b7280;">
+              <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>Labor:</span><span style="font-weight:600;">${fmt(m.laborCost)}</span></div>
+              <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>Fuel (${m.totalMiles.toFixed(0)} mi):</span><span style="font-weight:600;">${fmt(m.fuelCost)}</span></div>
+              <div style="display:flex;justify-content:space-between;padding:3px 0;"><span>QA+Admin+OH:</span><span style="font-weight:600;">${fmt(m.perJobCosts)}</span></div>
+            </div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-          <div><span style="color:#666;">Revenue:</span> <span style="color:#2563eb;font-weight:600;">${fmt(totalRevenue)}</span></div>
-          <div><span style="color:#666;">Cost:</span> <span style="color:#dc2626;font-weight:600;">${fmt(totalCost)}</span></div>
+
+        <div style="border-top:1px solid #e5e7eb;padding-top:12px;">
+          <div style="font-weight:700;font-size:13px;color:#1F4E79;margin-bottom:8px;">Stops</div>
+          ${stopsList}
         </div>
       </div>
     `;
   }).join('');
 
-  // View toggle buttons
+  // Initialize mini maps after DOM updates
+  setTimeout(() => {
+    ROUTES_DATA.forEach((route, idx) => {
+      initMiniMap(`miniMap_${route.id}`, route, idx);
+    });
+  }, 200);
+
+  // Wire view toggle buttons (remove old listeners by cloning)
+  ['routeMapViewBtn', 'routeListViewBtn', 'routeAnalyticsViewBtn'].forEach(id => {
+    const old = document.getElementById(id);
+    if (old) { const btn = old.cloneNode(true); old.parentNode.replaceChild(btn, old); }
+  });
+
   const mapBtn = document.getElementById('routeMapViewBtn');
   const listBtn = document.getElementById('routeListViewBtn');
   const analyticsBtn = document.getElementById('routeAnalyticsViewBtn');
+  const mapEl = document.getElementById('routeMap');
+  const listEl = document.getElementById('routeList');
+  const analyticsEl = document.getElementById('analyticsSection');
 
-  if (mapBtn) mapBtn.addEventListener('click', () => {
-    const map = document.getElementById('routeMap');
-    const list = document.getElementById('routeList');
-    const analytics = document.getElementById('analyticsSection');
-    if (map) map.style.display = 'block';
-    if (list) list.style.display = 'none';
-    if (analytics) analytics.style.display = 'none';
-  });
+  function setRouteView(view) {
+    if (mapEl) mapEl.style.display = view === 'map' ? 'block' : 'none';
+    if (listEl) listEl.style.display = view === 'list' ? 'block' : 'none';
+    if (analyticsEl) analyticsEl.style.display = view === 'analytics' ? 'block' : 'none';
+    [mapBtn, listBtn, analyticsBtn].forEach(b => { if (b) { b.className = 'btn btn-secondary'; }});
+    const activeBtn = view === 'map' ? mapBtn : view === 'list' ? listBtn : analyticsBtn;
+    if (activeBtn) activeBtn.className = 'btn btn-primary';
+    if (view === 'map' && mainMap) setTimeout(() => mainMap.invalidateSize(), 100);
+    if (view === 'list') {
+      setTimeout(() => {
+        ROUTES_DATA.forEach((route, idx) => {
+          const mm = routeMiniMaps[`miniMap_${route.id}`];
+          if (mm) mm.invalidateSize();
+        });
+      }, 100);
+    }
+    if (view === 'analytics') renderRouteAnalytics();
+  }
 
-  if (listBtn) listBtn.addEventListener('click', () => {
-    const map = document.getElementById('routeMap');
-    const list = document.getElementById('routeList');
-    const analytics = document.getElementById('analyticsSection');
-    if (map) map.style.display = 'none';
-    if (list) list.style.display = 'block';
-    if (analytics) analytics.style.display = 'none';
-  });
+  if (mapBtn) mapBtn.addEventListener('click', () => setRouteView('map'));
+  if (listBtn) listBtn.addEventListener('click', () => setRouteView('list'));
+  if (analyticsBtn) analyticsBtn.addEventListener('click', () => setRouteView('analytics'));
 
-  if (analyticsBtn) analyticsBtn.addEventListener('click', () => {
-    const map = document.getElementById('routeMap');
-    const list = document.getElementById('routeList');
-    const analytics = document.getElementById('analyticsSection');
-    if (map) map.style.display = 'none';
-    if (list) list.style.display = 'none';
-    if (analytics) analytics.style.display = 'block';
-    renderRouteAnalytics();
-  });
-
-  // Weather widget
-  fetchWeather();
+  // Default to map view
+  setRouteView('map');
 }
 
-function renderRouteAnalytics() {
-  // Route performance overview chart
-  const overviewCtx = document.getElementById('routeOverviewChart');
-  if (overviewCtx) {
-    destroyChart('routeOverviewChart');
-    const routeRevenue = ROUTES_DATA.slice(0, 6).map(r => {
-      const jobs = DataStore.jobs.filter(j => j.route === r.id);
-      return jobs.reduce((sum, j) => sum + (j.revenue || 0), 0);
+// ============================================================================
+// SMART JOB OPTIMIZER — adds job to best route by efficiency
+// ============================================================================
+
+function findBestRouteForJob(lat, lng, priorityDate) {
+  let bestRoute = null;
+  let bestScore = Infinity;
+
+  ROUTES_DATA.forEach(route => {
+    // If priority date set, only consider routes on that date
+    if (priorityDate && route.date && route.date !== priorityDate) return;
+
+    const stops = route.stops || [];
+    if (stops.length >= CONFIG.MAX_JOBS_PER_ROUTE) return;
+
+    // Calculate added mileage if this job were inserted
+    let minAddedMiles = Infinity;
+    const newStop = { lat, lng };
+
+    // Try inserting at each position in the route
+    for (let i = 0; i <= stops.length; i++) {
+      const prev = i === 0 ? { lat: CONFIG.DEPOT.lat, lng: CONFIG.DEPOT.lng } : stops[i - 1];
+      const next = i === stops.length ? { lat: CONFIG.DEPOT.lat, lng: CONFIG.DEPOT.lng } : stops[i];
+      const oldDist = haversine(prev.lat, prev.lng, next.lat, next.lng);
+      const newDist = haversine(prev.lat, prev.lng, lat, lng) + haversine(lat, lng, next.lat, next.lng);
+      const addedMiles = newDist - oldDist;
+      if (addedMiles < minAddedMiles) minAddedMiles = addedMiles;
+    }
+
+    if (minAddedMiles < bestScore) {
+      bestScore = minAddedMiles;
+      bestRoute = route;
+    }
+  });
+
+  // If no matching route or no routes have capacity, suggest a new route
+  if (!bestRoute) {
+    return { route: null, addedMiles: 0, message: 'No existing route fits. A new route will be created.' };
+  }
+
+  return { route: bestRoute, addedMiles: bestScore, message: `Best fit: ${bestRoute.id} (+${bestScore.toFixed(1)} mi)` };
+}
+
+function handleSmartAddJob() {
+  const customer = document.getElementById('smartJobCustomer')?.value?.trim();
+  const address = document.getElementById('smartJobAddress')?.value?.trim();
+  const date = document.getElementById('smartJobDate')?.value;
+  const type = document.getElementById('smartJobType')?.value || 'Service';
+  const revenue = parseFloat(document.getElementById('smartJobRevenue')?.value) || 0;
+  const onsite = parseFloat(document.getElementById('smartJobOnsite')?.value) || 2;
+  const priority = document.getElementById('smartJobPriority')?.value || 'Medium';
+  const resultDiv = document.getElementById('smartJobResult');
+
+  if (!customer || !address) {
+    if (resultDiv) {
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<div style="padding:12px;background:#fef2f2;border-radius:8px;border-left:4px solid #dc2626;color:#991b1b;">Please enter customer name and address.</div>';
+    }
+    return;
+  }
+
+  // Estimate lat/lng from nearest known location or use geocoding placeholder
+  let estimatedLat = CONFIG.DEPOT.lat;
+  let estimatedLng = CONFIG.DEPOT.lng;
+
+  // Try to find a matching city in existing jobs for a rough estimate
+  const lowerAddr = address.toLowerCase();
+  const matchingJob = DataStore.jobs.find(j => j.lat && j.lng && (
+    (j.city && lowerAddr.includes(j.city.toLowerCase())) ||
+    (j.address && lowerAddr.includes(j.address.toLowerCase().split(',')[0]))
+  ));
+  if (matchingJob) {
+    estimatedLat = matchingJob.lat + (Math.random() - 0.5) * 0.02;
+    estimatedLng = matchingJob.lng + (Math.random() - 0.5) * 0.02;
+  }
+
+  const result = findBestRouteForJob(estimatedLat, estimatedLng, date || null);
+
+  if (resultDiv) {
+    resultDiv.style.display = 'block';
+    if (result.route) {
+      const m = calcRouteMetrics(result.route);
+      resultDiv.innerHTML = `
+        <div style="padding:16px;background:#f0fdf4;border-radius:8px;border-left:4px solid #16a34a;">
+          <div style="font-weight:700;color:#166534;font-size:14px;margin-bottom:8px;">Best Route: ${result.route.id} (+${result.addedMiles.toFixed(1)} extra miles)</div>
+          <div style="font-size:13px;color:#374151;margin-bottom:8px;">
+            Crew: ${m.techNames.join(', ') || 'Unassigned'} &bull; Current stops: ${m.stops.length} &bull; Date: ${result.route.date || 'Flexible'}
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="confirmAddToRoute('${result.route.id}', '${customer.replace(/'/g, "\\'")}', '${address.replace(/'/g, "\\'")}', ${estimatedLat}, ${estimatedLng}, '${type}', ${revenue}, ${onsite}, '${priority}', '${date}')">
+              <i class="fas fa-plus"></i> Add to ${result.route.id}
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="confirmAddToRoute('NEW', '${customer.replace(/'/g, "\\'")}', '${address.replace(/'/g, "\\'")}', ${estimatedLat}, ${estimatedLng}, '${type}', ${revenue}, ${onsite}, '${priority}', '${date}')">
+              <i class="fas fa-route"></i> Create New Route
+            </button>
+          </div>
+        </div>`;
+    } else {
+      resultDiv.innerHTML = `
+        <div style="padding:16px;background:#f0f9ff;border-radius:8px;border-left:4px solid #2563eb;">
+          <div style="font-weight:700;color:#1e40af;font-size:14px;margin-bottom:8px;">No existing route fits — new route recommended</div>
+          <button class="btn btn-primary btn-sm" onclick="confirmAddToRoute('NEW', '${customer.replace(/'/g, "\\'")}', '${address.replace(/'/g, "\\'")}', ${estimatedLat}, ${estimatedLng}, '${type}', ${revenue}, ${onsite}, '${priority}', '${date}')">
+            <i class="fas fa-route"></i> Create New Route
+          </button>
+        </div>`;
+    }
+  }
+}
+
+function confirmAddToRoute(routeId, customer, address, lat, lng, type, revenue, onsite, priority, date) {
+  const newJobId = 'J-' + String(Date.now()).slice(-6);
+  const cityMatch = address.match(/,\s*([^,]+),\s*([A-Z]{2})/);
+  const city = cityMatch ? cityMatch[1].trim() : '';
+  const state = cityMatch ? cityMatch[2].trim() : 'TN';
+
+  const newJob = {
+    date: date || dateStr(new Date()),
+    id: newJobId,
+    customer,
+    city,
+    state,
+    zip: '',
+    address,
+    lat,
+    lng,
+    priority,
+    tech: '',
+    type,
+    onsite,
+    travel: 0,
+    miles: 0,
+    parts: 0,
+    consumables: 0,
+    revenue,
+    wcase: '',
+    wstatus: '',
+    notes: '',
+    flags: [],
+    status: 'scheduled',
+    route: '',
+    routeDate: date || dateStr(new Date()),
+    requested: dateStr(new Date()),
+  };
+
+  if (routeId === 'NEW') {
+    const newRouteId = 'R' + (ROUTES_DATA.length + 1);
+    ROUTES_DATA.push({
+      id: newRouteId,
+      techs: [],
+      date: date || dateStr(new Date()),
+      stops: [{ lat, lng, customer, city, state, address }],
     });
-    charts.routeOverviewChart = new Chart(overviewCtx, {
+    newJob.route = newRouteId;
+    newJob.tech = '';
+  } else {
+    const route = ROUTES_DATA.find(r => r.id === routeId);
+    if (route) {
+      route.stops.push({ lat, lng, customer, city, state, address });
+      newJob.route = routeId;
+      newJob.tech = route.techs[0] || '';
+    }
+  }
+
+  DataStore.jobs.push(newJob);
+  persistData();
+  toast(`Job added to ${newJob.route}`, 'success');
+  renderRoutes();
+}
+
+// ============================================================================
+// ROUTE ANALYTICS — V7
+// ============================================================================
+
+function renderRouteAnalytics() {
+  const allMetrics = ROUTES_DATA.map(r => ({ id: r.id, ...calcRouteMetrics(r) }));
+
+  // Profitability chart
+  const profitCtx = document.getElementById('routeOverviewChart');
+  if (profitCtx) {
+    destroyChart('routeOverviewChart');
+    charts.routeOverviewChart = new Chart(profitCtx, {
       type: 'bar',
       data: {
-        labels: ROUTES_DATA.slice(0, 6).map(r => r.id),
+        labels: allMetrics.map(m => m.id),
         datasets: [{
-          label: 'Route Revenue',
-          data: routeRevenue,
+          label: 'Profit',
+          data: allMetrics.map(m => m.profit),
+          backgroundColor: allMetrics.map(m => m.profit >= 0 ? '#16a34a' : '#dc2626'),
+          borderRadius: 4,
+        }],
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+    });
+  }
+
+  // Mileage chart
+  const mileCtx = document.getElementById('routeMileageChart');
+  if (mileCtx) {
+    destroyChart('routeMileageChart');
+    charts.routeMileageChart = new Chart(mileCtx, {
+      type: 'bar',
+      data: {
+        labels: allMetrics.map(m => m.id),
+        datasets: [{
+          label: 'Miles',
+          data: allMetrics.map(m => m.totalMiles),
           backgroundColor: '#2563eb',
           borderRadius: 4,
         }],
       },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+    });
+  }
+
+  // Revenue vs Cost chart
+  const revCostCtx = document.getElementById('routeRevCostChart');
+  if (revCostCtx) {
+    destroyChart('routeRevCostChart');
+    charts.routeRevCostChart = new Chart(revCostCtx, {
+      type: 'bar',
+      data: {
+        labels: allMetrics.map(m => m.id),
+        datasets: [
+          { label: 'Revenue', data: allMetrics.map(m => m.totalRevenue), backgroundColor: '#2563eb', borderRadius: 4 },
+          { label: 'Cost', data: allMetrics.map(m => m.totalCost), backgroundColor: '#dc2626', borderRadius: 4 },
+        ],
       },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } },
+    });
+  }
+
+  // Efficiency (revenue per mile)
+  const effCtx = document.getElementById('routeEfficiencyChart');
+  if (effCtx) {
+    destroyChart('routeEfficiencyChart');
+    charts.routeEfficiencyChart = new Chart(effCtx, {
+      type: 'bar',
+      data: {
+        labels: allMetrics.map(m => m.id),
+        datasets: [{
+          label: '$/mile',
+          data: allMetrics.map(m => m.totalMiles > 0 ? m.totalRevenue / m.totalMiles : 0),
+          backgroundColor: '#8b5cf6',
+          borderRadius: 4,
+        }],
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
     });
   }
 }
+
+// ============================================================================
+// CSV MASS IMPORT ENGINE
+// ============================================================================
+
+let csvParsedData = null;
+let csvHeaderMap = {};
+
+const CSV_FIELD_MAP = {
+  customer: ['customer name', 'customer', 'name', 'client'],
+  address: ['address', 'service address', 'site address', 'street address', 'street', 'ship to address', 'location'],
+  city: ['city', 'town'],
+  state: ['state', 'st'],
+  zip: ['zip', 'zipcode', 'zip code', 'postal'],
+  tech: ['tech', 'technician', 'assigned tech', 'driver'],
+  revenue: ['revenue', 'rev', 'total amount', 'total amount approve', 'amount', 'price'],
+  date: ['date', 'job date', 'requested date', 'job completed date', 'scheduled date'],
+  status: ['status', 'tags', 'job status'],
+  priority: ['priority', 'urgency'],
+  type: ['type', 'service type', 'job type'],
+  onsite: ['onsite', 'onsite hrs', 'onsite hours', 'labor hr approved', 'labor', 'hours'],
+  travel: ['travel', 'travel hrs', 'travel hours', 'travel time'],
+  miles: ['miles', 'distance', 'one-way miles', 'total miles'],
+  parts: ['parts', 'parts cost', 'parts needed'],
+  consumables: ['consumables', 'consumables cost'],
+  notes: ['notes', 'comments', 'description'],
+  id: ['hcp #', 'hcp', 'case #', 'case', 'job#', 'job', 'job id', 'id'],
+};
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return null;
+
+  const delimiter = lines[0].includes('\t') ? '\t' : ',';
+  const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, ''));
+
+  // Auto-map headers
+  csvHeaderMap = {};
+  headers.forEach((header, idx) => {
+    const lower = header.toLowerCase().trim();
+    for (const [field, aliases] of Object.entries(CSV_FIELD_MAP)) {
+      if (aliases.includes(lower) || aliases.some(a => lower.includes(a))) {
+        if (!csvHeaderMap[field]) csvHeaderMap[field] = idx;
+        break;
+      }
+    }
+  });
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(delimiter).map(v => v.trim().replace(/^["']|["']$/g, ''));
+    if (vals.length < 2 || vals.every(v => !v)) continue;
+
+    const row = {};
+    for (const [field, colIdx] of Object.entries(csvHeaderMap)) {
+      row[field] = vals[colIdx] || '';
+    }
+    rows.push(row);
+  }
+
+  return { headers, rows, mappedFields: Object.keys(csvHeaderMap) };
+}
+
+function handleCSVFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const result = parseCSV(e.target.result);
+    if (!result || result.rows.length === 0) {
+      toast('No valid data found in CSV', 'error');
+      return;
+    }
+    csvParsedData = result;
+
+    // Show mapping info
+    const mappingInfo = document.getElementById('csvMappingInfo');
+    const mappingText = document.getElementById('csvMappingText');
+    if (mappingInfo && mappingText) {
+      mappingInfo.style.display = 'block';
+      mappingText.innerHTML = `<strong>Mapped ${result.mappedFields.length} fields:</strong> ${result.mappedFields.join(', ')}<br>
+        <span style="color:#6b7280;">From ${result.headers.length} CSV columns. Unmapped columns are ignored.</span>`;
+    }
+
+    // Show preview table
+    const preview = document.getElementById('csvPreview');
+    if (preview) {
+      const displayFields = result.mappedFields.filter(f => csvHeaderMap[f] !== undefined);
+      const previewRows = result.rows.slice(0, 10);
+      preview.style.display = 'block';
+      preview.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#1F4E79;color:white;">
+            ${displayFields.map(f => `<th style="padding:8px;text-align:left;">${f}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${previewRows.map(row => `<tr style="border-bottom:1px solid #e5e7eb;">
+              ${displayFields.map(f => `<td style="padding:6px 8px;">${row[f] || ''}</td>`).join('')}
+            </tr>`).join('')}
+            ${result.rows.length > 10 ? `<tr><td colspan="${displayFields.length}" style="padding:8px;text-align:center;color:#6b7280;font-style:italic;">...and ${result.rows.length - 10} more rows</td></tr>` : ''}
+          </tbody>
+        </table>`;
+    }
+
+    // Update row count and enable import
+    const rowCount = document.getElementById('csvRowCount');
+    if (rowCount) rowCount.textContent = `${result.rows.length} jobs ready to import`;
+    const importBtn = document.getElementById('csvImportBtn');
+    if (importBtn) importBtn.disabled = false;
+  };
+  reader.readAsText(file);
+}
+
+function importCSVJobs() {
+  if (!csvParsedData || !csvParsedData.rows.length) return;
+
+  let imported = 0;
+  csvParsedData.rows.forEach(row => {
+    const job = {
+      date: row.date || dateStr(new Date()),
+      id: row.id || 'CSV-' + String(Date.now()).slice(-4) + '-' + Math.floor(Math.random() * 1000),
+      customer: row.customer || 'Unknown',
+      city: row.city || '',
+      state: row.state || 'TN',
+      zip: row.zip || '',
+      address: row.address || '',
+      lat: 0,
+      lng: 0,
+      priority: row.priority || 'Medium',
+      tech: row.tech || '',
+      type: row.type || 'Service',
+      onsite: parseFloat(row.onsite) || 2,
+      travel: parseFloat(row.travel) || 0,
+      miles: parseFloat(row.miles) || 0,
+      parts: parseFloat(row.parts) || 0,
+      consumables: parseFloat(row.consumables) || 0,
+      revenue: parseFloat(String(row.revenue).replace(/[^0-9.-]/g, '')) || 0,
+      wcase: row.id || '',
+      wstatus: '',
+      notes: row.notes || '',
+      flags: [],
+      status: row.status || 'scheduled',
+      route: '',
+      routeDate: row.date || '',
+      requested: dateStr(new Date()),
+    };
+    DataStore.jobs.push(job);
+    imported++;
+  });
+
+  persistData();
+  csvParsedData = null;
+  csvHeaderMap = {};
+  hideModal('csvModal');
+  toast(`Imported ${imported} jobs from CSV`, 'success');
+  renderJobs();
+}
+
+// ============================================================================
+// WEATHER — V7
+// ============================================================================
 
 async function fetchWeather() {
   try {
     const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.DEPOT.lat}&longitude=${CONFIG.DEPOT.lng}&current=temperature_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit`);
     const data = await res.json();
     const current = data.current;
-
     const weatherWidget = document.getElementById('weatherWidget');
     if (weatherWidget) {
-      weatherWidget.innerHTML = `
-        <div style="padding:12px;background:#f0f9ff;border-radius:8px;border-left:4px solid #2563eb;">
-          <div style="font-size:12px;color:#666;text-transform:uppercase;font-weight:500;">Weather at HQ</div>
-          <div style="font-size:24px;font-weight:700;color:#1a1a2e;margin-top:4px;">${Math.round(current.temperature_2m)}°F</div>
-          <div style="font-size:12px;color:#666;margin-top:4px;">Wind: ${Math.round(current.wind_speed_10m)} mph</div>
-        </div>
-      `;
+      weatherWidget.innerHTML = `${Math.round(current.temperature_2m)}°F <span style="font-size:12px;font-weight:400;color:#6b7280;">Wind ${Math.round(current.wind_speed_10m)}mph</span>`;
     }
   } catch (e) {
-    console.error('Weather fetch failed:', e);
+    const weatherWidget = document.getElementById('weatherWidget');
+    if (weatherWidget) weatherWidget.textContent = 'N/A';
   }
 }
 
@@ -4671,9 +5253,47 @@ document.addEventListener('DOMContentLoaded', () => {
   const exportPdfsBtn = document.getElementById('exportPdfsBtn');
   if (exportPdfsBtn) exportPdfsBtn.addEventListener('click', exportFleetPDF);
 
-  // Geocode Backlog button
-  const geocodeBacklogBtn = document.getElementById('geocodeBacklogBtn');
-  if (geocodeBacklogBtn) geocodeBacklogBtn.addEventListener('click', geocodeBacklog);
+  // Smart Job Optimizer button
+  const smartAddJobBtn = document.getElementById('smartAddJobBtn');
+  if (smartAddJobBtn) smartAddJobBtn.addEventListener('click', handleSmartAddJob);
+
+  // CSV Import Modal wiring
+  const importCsvBtn = document.getElementById('importCsvBtn');
+  if (importCsvBtn) importCsvBtn.addEventListener('click', () => {
+    csvParsedData = null;
+    const preview = document.getElementById('csvPreview');
+    const mappingInfo = document.getElementById('csvMappingInfo');
+    const rowCount = document.getElementById('csvRowCount');
+    const importBtn = document.getElementById('csvImportBtn');
+    if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
+    if (mappingInfo) mappingInfo.style.display = 'none';
+    if (rowCount) rowCount.textContent = '';
+    if (importBtn) importBtn.disabled = true;
+    showModal('csvModal');
+  });
+
+  const csvDropZone = document.getElementById('csvDropZone');
+  const csvFileInput = document.getElementById('csvFileInput');
+  if (csvDropZone && csvFileInput) {
+    csvDropZone.addEventListener('click', () => csvFileInput.click());
+    csvDropZone.addEventListener('dragover', (e) => { e.preventDefault(); csvDropZone.style.borderColor = '#16a34a'; csvDropZone.style.background = '#f0fdf4'; });
+    csvDropZone.addEventListener('dragleave', () => { csvDropZone.style.borderColor = '#2563EB'; csvDropZone.style.background = '#f0f2f5'; });
+    csvDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      csvDropZone.style.borderColor = '#2563EB'; csvDropZone.style.background = '#f0f2f5';
+      if (e.dataTransfer.files.length > 0) handleCSVFile(e.dataTransfer.files[0]);
+    });
+    csvFileInput.addEventListener('change', () => {
+      if (csvFileInput.files.length > 0) handleCSVFile(csvFileInput.files[0]);
+    });
+  }
+
+  const csvImportBtn = document.getElementById('csvImportBtn');
+  if (csvImportBtn) csvImportBtn.addEventListener('click', importCSVJobs);
+  const csvCancelBtn = document.getElementById('csvCancelBtn');
+  if (csvCancelBtn) csvCancelBtn.addEventListener('click', () => hideModal('csvModal'));
+  const csvModalClose = document.getElementById('csvModalClose');
+  if (csvModalClose) csvModalClose.addEventListener('click', () => hideModal('csvModal'));
 
   // System Diagnostics buttons
   const runDiagnosticsBtn = document.getElementById('runDiagnosticsBtn');
