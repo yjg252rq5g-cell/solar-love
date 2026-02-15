@@ -209,6 +209,9 @@ function getRouteJobs() {
         revenue: data[i][10] || 0,
         notes: data[i][11],
         jobFlags: data[i][12],
+        lat: data[i][13] || 0,     // Column N: Latitude
+        lng: data[i][14] || 0,     // Column O: Longitude
+        address: data[i][15] || '', // Column P: Full address
         row: i + 1,
       });
     }

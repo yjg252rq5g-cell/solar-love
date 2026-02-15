@@ -1504,6 +1504,14 @@
             </select>
           </div>
           <div class="form-group">
+            <label class="form-label">Latitude</label>
+            <input type="number" id="jobModalLat" class="form-input" step="0.0001" placeholder="Auto-filled on save">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Longitude</label>
+            <input type="number" id="jobModalLng" class="form-input" step="0.0001" placeholder="Auto-filled on save">
+          </div>
+          <div class="form-group">
             <label class="form-label">Technician</label>
             <select id="jobModalTech" class="form-input">
               <option value="">Unassigned</option>
@@ -3143,9 +3151,12 @@ async function syncWithBackend() {
     date: j.routeDate || '',
     id: String(j.jobId || ''),
     customer: j.customer || '',
+    address: j.address || '',
     city: j.city || '',
     state: j.state || '',
     zip: j.zip || '',
+    lat: parseFloat(j.lat) || 0,
+    lng: parseFloat(j.lng) || 0,
     priority: j.priority || 'Medium',
     tech: j.tech || '',
     type: 'Service',
@@ -3565,6 +3576,8 @@ function editJob(jobId) {
     address: 'jobModalAddress',
     city: 'jobModalCity',
     state: 'jobModalState',
+    lat: 'jobModalLat',
+    lng: 'jobModalLng',
     tech: 'jobModalTech',
     status: 'jobModalStatus',
     type: 'jobModalService',
@@ -3629,7 +3642,7 @@ function deleteJob(jobId) {
   renderJobs();
 }
 
-function saveJob() {
+async function saveJob() {
   const modal = document.getElementById('jobModal');
   if (!modal) return;
 
@@ -3639,6 +3652,8 @@ function saveJob() {
     address: 'jobModalAddress',
     city: 'jobModalCity',
     state: 'jobModalState',
+    lat: 'jobModalLat',
+    lng: 'jobModalLng',
     tech: 'jobModalTech',
     status: 'jobModalStatus',
     type: 'jobModalService',
@@ -3657,9 +3672,20 @@ function saveJob() {
     Object.entries(fields).forEach(([key, fieldId]) => {
       const el = document.getElementById(fieldId);
       if (el) {
-        job[key] = key === 'revenue' ? parseFloat(el.value) || 0 : el.value;
+        const val = el.value;
+        if (key === 'revenue' || key === 'lat' || key === 'lng') {
+          job[key] = parseFloat(val) || 0;
+        } else {
+          job[key] = val;
+        }
       }
     });
+
+    // Auto-geocode if lat/lng are 0 or empty and address exists
+    if ((!job.lat || job.lat === 0) && (job.address || job.city)) {
+      await geocodeSingleJob(job);
+    }
+
     toast('Job updated', 'success');
   } else {
     // Create new job
@@ -3683,11 +3709,22 @@ function saveJob() {
     Object.entries(fields).forEach(([key, fieldId]) => {
       const el = document.getElementById(fieldId);
       if (el) {
-        newJob[key] = key === 'revenue' ? parseFloat(el.value) || 0 : el.value;
+        const val = el.value;
+        if (key === 'revenue' || key === 'lat' || key === 'lng') {
+          newJob[key] = parseFloat(val) || 0;
+        } else {
+          newJob[key] = val;
+        }
       }
     });
     newJob.status = newJob.status || 'scheduled';
     newJob.type = newJob.type || 'Service';
+
+    // Auto-geocode if lat/lng are 0 or empty and address exists
+    if ((!newJob.lat || newJob.lat === 0) && (newJob.address || newJob.city)) {
+      await geocodeSingleJob(newJob);
+    }
+
     DataStore.jobs.push(newJob);
     toast('Job created', 'success');
   }
@@ -5144,13 +5181,56 @@ function exportFleetPDF() {
 // GEOCODE BACKLOG (uses browser geocoding placeholder)
 // ============================================================================
 
-function geocodeBacklog() {
-  const missing = DataStore.jobs.filter(j => j.city && !j.lat);
+async function geocodeSingleJob(job) {
+  const address = `${job.address || ''} ${job.city || ''}, ${job.state || ''} ${job.zip || ''}`.trim();
+  if (!address) return false;
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Akino Solar Command Center' }
+    });
+    const data = await res.json();
+
+    if (data && data.length > 0) {
+      job.lat = parseFloat(data[0].lat);
+      job.lng = parseFloat(data[0].lon);
+      return true;
+    }
+  } catch (err) {
+    console.error('Geocoding error for', address, err);
+  }
+  return false;
+}
+
+async function geocodeBacklog() {
+  const missing = DataStore.jobs.filter(j => (j.city || j.address) && (!j.lat || j.lat === 0));
   if (missing.length === 0) {
     toast('All jobs with addresses already have coordinates', 'info');
     return;
   }
-  toast(missing.length + ' jobs need geocoding. Connect to Google Maps API in Settings to resolve.', 'warning');
+
+  toast(`Geocoding ${missing.length} job(s)... This may take a moment.`, 'info');
+
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const job of missing) {
+    // Respect usage policy: add delay between requests
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const success = await geocodeSingleJob(job);
+    if (success) {
+      successCount++;
+    } else {
+      failCount++;
+    }
+  }
+
+  persistData();
+  toast(`Geocoding complete: ${successCount} succeeded, ${failCount} failed`, successCount > 0 ? 'success' : 'warning');
+  renderJobs();
+  if (DataStore.currentTab === 'routes') renderRoutes();
 }
 
 // ============================================================================
